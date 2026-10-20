@@ -3,6 +3,7 @@
 
 #include "dslvm.hpp"
 #include "schema_embedded.hpp"
+#include "presets_embedded.hpp"
 #include "view_luts.h"
 #include <iostream>
 #include <algorithm>
@@ -70,6 +71,7 @@ struct Mesh {
   bool ground_plane = false;
   bool smooth = false;
   bool visible = true;
+  bool preset_generated = false;
   struct TransformKey { int frame; std::array<float,3> value; std::string interpolation; };
   std::vector<TransformKey> transform_keys;
   struct VisibilityKey { int frame; bool value; };
@@ -89,6 +91,7 @@ struct Material {
   float volume_density = 0.0f;
   std::array<float, 3> volume_color{1.0f, 1.0f, 1.0f};
   float emission_strength = 0.0f;
+  bool preset_generated = false;
   int texture_kind = 0;
   std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
   float texture_scale = 5.0f;
@@ -121,6 +124,7 @@ struct AreaLightData {
   float size = 1.0f;
   float size_y = 1.0f;
   int shape = 0; /* 0 square/rectangle, 1 disk, 2 ellipse */
+  bool preset_generated = false;
 };
 struct SunLightData {
   std::array<float, 3> direction{0.0f, 0.0f, -1.0f};
@@ -151,6 +155,9 @@ struct Scene {
   std::vector<AreaLightData> area_lights;
   std::vector<SunLightData> sun_lights;
   std::vector<SpotLightData> spot_lights;
+  size_t preset_area_light_count = 0;
+  nlohmann::json active_preset = nlohmann::json::object();
+  nlohmann::json palette = nlohmann::json::object();
   std::array<float, 3> world_color{0.16f, 0.18f, 0.22f};
   float world_strength = 0.45f;
   bool sky_enabled = false;
@@ -183,6 +190,123 @@ struct Scene {
   std::vector<CameraOpticsKey> camera_optics_keys;
   int render_frame = 0;
 };
+
+using PresetJson = nlohmann::json;
+
+const PresetJson &builtin_presets()
+{
+  static const PresetJson data = PresetJson::parse(
+      reinterpret_cast<const char *>(lmblender::embedded_presets),
+      reinterpret_cast<const char *>(lmblender::embedded_presets) + lmblender::embedded_presets_size);
+  return data;
+}
+
+PresetJson find_builtin_preset(const std::string &name)
+{
+  for (const auto &preset : builtin_presets().at("presets"))
+    if (preset.value("name", std::string()) == name) return preset;
+  throw dslvm::Error("PRESET_NOT_FOUND", "unknown preset '" + name + "'; list choices with lmblender --presets");
+}
+
+void apply_preset(Scene &scene, const PresetJson &preset)
+{
+  try {
+    if (!preset.is_object() || !preset.contains("name") || !preset.contains("render") ||
+        !preset.contains("world") || !preset.contains("camera") || !preset.contains("ground") ||
+        !preset.contains("lights") || !preset.contains("palette"))
+      throw dslvm::Error("PRESET_INVALID", "preset needs name, render, world, camera, ground, lights, and palette fields");
+    const std::string tier = preset.at("render").at("tier").get<std::string>();
+    if (tier != "draft" && tier != "final") throw dslvm::Error("PRESET_INVALID", "render.tier must be draft or final");
+    scene.preset_samples = preset.at("render").value("samples", tier == "draft" ? 8 : 64);
+    scene.preset_bounces = preset.at("render").value("bounces", tier == "draft" ? 2 : 8);
+    scene.max_bounces = scene.preset_bounces;
+    scene.denoise = preset.at("render").value("denoise", tier == "final");
+    if (scene.preset_samples < 1 || scene.preset_samples > 65536 || scene.preset_bounces < 0 || scene.preset_bounces > 64)
+      throw dslvm::Error("PRESET_INVALID", "render.samples must be 1..65536 and render.bounces 0..64");
+    if (scene.denoise && !ccl::openimagedenoise_supported())
+      throw dslvm::Error("PRESET_UNSUPPORTED", "this preset needs CPU OpenImageDenoise, unavailable in this build");
+    scene.render_threads = preset.at("render").value("threads", 4);
+    if (scene.render_threads < 1 || scene.render_threads > 64) throw dslvm::Error("PRESET_INVALID", "render.threads must be in [1,64]");
+    scene.view_transform = preset.at("render").value("view_transform", std::string("Standard"));
+    if (scene.view_transform != "Standard" && scene.view_transform != "Filmic" && scene.view_transform != "AgX")
+      throw dslvm::Error("PRESET_INVALID", "render.view_transform must be Standard, Filmic, or AgX");
+    const auto &world = preset.at("world");
+    const auto &world_rgb = world.at("color");
+    if (!world_rgb.is_array() || world_rgb.size() != 3) throw dslvm::Error("PRESET_INVALID", "world.color must contain three channels");
+    for (size_t i = 0; i < 3; ++i) {
+      const float channel = world_rgb[i].get<float>();
+      if (!std::isfinite(channel) || channel < 0 || channel > 1) throw dslvm::Error("PRESET_INVALID", "world.color channels must be in [0,1]");
+      scene.world_color[i] = channel;
+    }
+    scene.world_strength = world.value("strength", 0.5f);
+    if (!std::isfinite(scene.world_strength) || scene.world_strength < 0 || scene.world_strength > 100)
+      throw dslvm::Error("PRESET_INVALID", "world.strength must be in [0,100]");
+
+    const auto &camera = preset.at("camera");
+    const float fov = camera.value("fov_degrees", 42.0f);
+    const float vertical_span = camera.value("vertical_span", 8.0f);
+    if (!std::isfinite(fov) || fov < 5 || fov > 170 || !std::isfinite(vertical_span) || vertical_span <= 0)
+      throw dslvm::Error("PRESET_INVALID", "camera FOV must be 5..170 degrees and vertical span positive");
+    scene.camera.fov_radians = fov * float(M_PI / 180.0);
+    scene.camera.ortho_scale = vertical_span;
+    scene.camera.orthographic = camera.value("orthographic", false);
+    scene.camera.fit_to_geometry = camera.value("auto_frame", true);
+    scene.camera.target = {0, 0, 0};
+    scene.custom_camera = true;
+
+    /* Replace only lights and ground created by the previous preset. */
+    scene.area_lights.erase(std::remove_if(scene.area_lights.begin(), scene.area_lights.end(), [](const auto &light) { return light.preset_generated; }), scene.area_lights.end());
+    scene.preset_area_light_count = 0;
+    scene.meshes.erase(std::remove_if(scene.meshes.begin(), scene.meshes.end(), [](const auto &mesh) { return mesh->preset_generated; }), scene.meshes.end());
+
+    std::array<float,3> center{0,0,0};
+    std::array<double,3> lo{INFINITY,INFINITY,INFINITY}, hi{-INFINITY,-INFINITY,-INFINITY};
+    for (const auto &mesh : scene.meshes) if (!mesh->ground_plane) {
+      const Mesh *data = mesh->geometry_source ? mesh->geometry_source : mesh.get();
+      for (const auto &v : data->vertices) for (size_t axis = 0; axis < 3; ++axis) {
+        const double p = v[axis] * mesh->scale[axis] + mesh->translation[axis];
+        lo[axis] = std::min(lo[axis], p); hi[axis] = std::max(hi[axis], p);
+      }
+    }
+    if (std::isfinite(lo[0])) for (size_t axis = 0; axis < 3; ++axis) center[axis] = float((lo[axis] + hi[axis]) * 0.5);
+    const float radius = std::isfinite(lo[0]) ? std::max(0.5f, float(std::sqrt((hi[0]-lo[0])*(hi[0]-lo[0]) + (hi[1]-lo[1])*(hi[1]-lo[1]) + (hi[2]-lo[2])*(hi[2]-lo[2])) * 0.5)) : 1.0f;
+    scene.camera.target = center;
+    scene.camera.ortho_scale = vertical_span;
+    const auto &ground = preset.at("ground");
+    if (ground.value("enabled", false)) {
+      auto material = std::make_unique<Material>();
+      const auto color = ground.value("color", std::vector<float>{0.32f,0.34f,0.37f});
+      if (color.size() != 3) throw dslvm::Error("PRESET_INVALID", "ground.color must contain three channels");
+      for (size_t i=0;i<3;++i) material->color[i]=color[i];
+      material->roughness = 0.82f; material->preset_generated = true;
+      Material *mat = material.get(); scene.materials.push_back(std::move(material));
+      const float z = std::isfinite(lo[2]) ? float(lo[2]) - ground.value("offset", 0.01f) * radius : -radius;
+      const float side = std::max(10.0f, radius * ground.value("size_scale", 10.0f));
+      auto mesh = std::make_unique<Mesh>();
+      mesh->vertices = {{{center[0]-side,center[1]-side,z},{center[0]+side,center[1]-side,z},{center[0]+side,center[1]+side,z},{center[0]-side,center[1]+side,z}}};
+      mesh->triangles = {{{0,1,2},{0,2,3}}}; mesh->material=mat; mesh->ground_plane=true; mesh->preset_generated=true;
+      scene.meshes.push_back(std::move(mesh));
+    }
+    for (const auto &light_json : preset.at("lights")) {
+      AreaLightData light;
+      const auto pos = light_json.at("position").get<std::array<float,3>>();
+      const auto target = light_json.value("target", std::array<float,3>{0,0,0});
+      const auto color = light_json.at("color").get<std::array<float,3>>();
+      for (size_t i=0;i<3;++i) {
+        light.position[i]=center[i]+pos[i]*radius;
+        light.target[i]=center[i]+target[i]*radius;
+        light.color[i]=color[i];
+      }
+      light.strength = light_json.value("strength", 100.0f) * radius * radius;
+      light.size = light.size_y = light_json.value("size", 3.0f) * radius;
+      light.preset_generated = true;
+      scene.area_lights.push_back(light); ++scene.preset_area_light_count;
+    }
+    scene.palette = preset.at("palette");
+    scene.active_preset = preset;
+  } catch (const dslvm::Error &) { throw; }
+  catch (const std::exception &error) { throw dslvm::Error("PRESET_INVALID", std::string("invalid preset data: ") + error.what()); }
+}
 
 template<typename Key, typename Value>
 Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base);
@@ -1839,6 +1963,77 @@ dslvm::Registry make_registry() {
     scene->max_bounces = scene->preset_bounces;
     return dslvm::Value::none();
   });
+  registry.method("Scene", "use_preset", {"string"}, "void", [](void *p, dslvm::Args &a) {
+    apply_preset(*static_cast<Scene *>(p), find_builtin_preset(a[0].s));
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "load_preset", {"string"}, "void", [](void *p, dslvm::Args &a) {
+    if (a[0].s.empty() || a[0].s.front() == '-') throw dslvm::Error("PRESET_INVALID", "preset file path must not be empty or begin with '-'");
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(a[0].s, ec) || ec) throw dslvm::Error("PRESET_INVALID", "preset file must be a readable regular file");
+    const uintmax_t bytes = std::filesystem::file_size(a[0].s, ec);
+    if (ec || bytes == 0 || bytes > 128u * 1024u) throw dslvm::Error("PRESET_INVALID", "preset JSON file must be between 1 byte and 128 KiB");
+    std::ifstream input(a[0].s, std::ios::binary);
+    std::string data((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    try {
+      PresetJson external = PresetJson::parse(data);
+      if (external.is_object() && external.contains("version")) {
+        if (external.at("version").get<int>() != 1 || !external.contains("preset"))
+          throw dslvm::Error("PRESET_INVALID", "external preset envelope must have version 1 and a preset object");
+        external = external.at("preset");
+      }
+      apply_preset(*static_cast<Scene *>(p), external);
+    }
+    catch (const dslvm::Error &) { throw; }
+    catch (const std::exception &error) { throw dslvm::Error("PRESET_INVALID", std::string("could not parse preset JSON: ") + error.what()); }
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "preset_param", {"string", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->active_preset.empty()) throw dslvm::Error("PRESET_INVALID", "call scene.use_preset or scene.load_preset before preset_param");
+    if (!std::isfinite(a[1].f)) throw dslvm::Error("PRESET_INVALID", "preset parameter value must be finite");
+    const std::string &name = a[0].s;
+    if (name == "samples") {
+      if (a[1].f < 1 || a[1].f > 65536 || std::floor(a[1].f) != a[1].f) throw dslvm::Error("PRESET_INVALID", "preset samples must be an integer in [1,65536]");
+      scene->preset_samples = int(a[1].f);
+    } else if (name == "bounces") {
+      if (a[1].f < 0 || a[1].f > 64 || std::floor(a[1].f) != a[1].f) throw dslvm::Error("PRESET_INVALID", "preset bounces must be an integer in [0,64]");
+      scene->preset_bounces = scene->max_bounces = int(a[1].f);
+    } else if (name == "threads") {
+      if (a[1].f < 1 || a[1].f > 64 || std::floor(a[1].f) != a[1].f) throw dslvm::Error("PRESET_INVALID", "preset threads must be an integer in [1,64]");
+      scene->render_threads = int(a[1].f);
+    } else if (name == "world_strength") {
+      if (a[1].f < 0 || a[1].f > 100) throw dslvm::Error("PRESET_INVALID", "world_strength must be in [0,100]");
+      scene->world_strength = float(a[1].f);
+    } else if (name == "camera_fov_degrees") {
+      if (a[1].f < 5 || a[1].f > 170) throw dslvm::Error("PRESET_INVALID", "camera_fov_degrees must be in [5,170]");
+      scene->camera.fov_radians = float(a[1].f * M_PI / 180.0);
+    } else if (name == "orthographic_vertical_span") {
+      if (a[1].f <= 0 || a[1].f > 1'000'000) throw dslvm::Error("PRESET_INVALID", "orthographic_vertical_span must be within (0,1000000]");
+      scene->camera.ortho_scale = float(a[1].f);
+    } else {
+      throw dslvm::Error("PRESET_INVALID", "unsupported numeric preset parameter '" + name + "'; supported: samples, bounces, threads, world_strength, camera_fov_degrees, orthographic_vertical_span");
+    }
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "material_from_palette", {"string"}, "Material", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (!scene->palette.is_object() || !scene->palette.contains(a[0].s)) throw dslvm::Error("PRESET_INVALID", "palette entry '" + a[0].s + "' is unavailable; choose one from the active preset");
+    const auto &entry = scene->palette.at(a[0].s);
+    auto material = std::make_unique<Material>();
+    const auto color = entry.value("color", std::vector<float>{0.8f,0.8f,0.8f});
+    const auto emission = entry.value("emission", std::vector<float>{0.0f,0.0f,0.0f});
+    if (color.size() != 3 || emission.size() != 3) throw dslvm::Error("PRESET_INVALID", "palette color and emission need three channels");
+    for (size_t i=0;i<3;++i) {
+      if (!std::isfinite(color[i]) || color[i] < 0 || color[i] > 1 || !std::isfinite(emission[i]) || emission[i] < 0 || emission[i] > 1)
+        throw dslvm::Error("PRESET_INVALID", "palette channels must be in [0,1]");
+      material->color[i]=color[i]; material->emission[i]=emission[i];
+    }
+    material->metallic=entry.value("metallic",0.0f); material->roughness=entry.value("roughness",0.5f);
+    material->transmission=entry.value("transmission",0.0f); material->emission_strength=entry.value("emission_strength",0.0f);
+    Material *result=material.get(); scene->materials.push_back(std::move(material));
+    return dslvm::Value::object("Material", result);
+  });
   registry.method("Scene", "set_view_transform", {"string"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].s != "Standard" && a[0].s != "Filmic" && a[0].s != "AgX")
       throw dslvm::Error("view transform must be Standard, Filmic, or AgX");
@@ -2413,6 +2608,15 @@ int main(int argc, char **argv) {
 #endif
     return 0;
   }
+  if (argc == 2 && std::string(argv[1]) == "--presets") {
+    for (const auto &preset : builtin_presets().at("presets"))
+      std::cout << preset.at("name").get<std::string>() << "\t" << preset.at("description").get<std::string>() << '\n';
+    return 0;
+  }
+  if (argc == 3 && std::string(argv[1]) == "--preset-show") {
+    try { std::cout << find_builtin_preset(argv[2]).dump(2) << '\n'; return 0; }
+    catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 2; }
+  }
   if (argc == 2 && std::string(argv[1]) == "--schema") {
     std::cout.write(reinterpret_cast<const char *>(lmblender::embedded_schema),
                      static_cast<std::streamsize>(lmblender::embedded_schema_size));
@@ -2425,7 +2629,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (argc != 3 || std::string(argv[1]) != "--dsl") {
-    std::cerr << "usage: lmblender --version | --schema | --dsl-signatures | --dsl BYTECODE.dslb\n";
+    std::cerr << "usage: lmblender --version | --schema | --presets | --preset-show NAME | --dsl-signatures | --dsl BYTECODE.dslb\n";
     return 2;
   }
   try {

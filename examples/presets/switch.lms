@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+out = ARGV.len() > 0 ? ARGV[0] : "build/preset-switch.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+scene.cube(1.2);
+scene.use_preset("product-studio");
+let accent = scene.material_from_palette("accent");
+let ball = scene.uv_sphere(0.7,24,16,true); ball.translate(1.5,0.0,0.0); ball.set_material(accent);
+scene.use_preset("technical-clean");
+let cube = scene.cube(0.8); cube.translate(-1.5,0.0,0.0); cube.set_material(accent);
+scene.preset_param("samples",16.0);
+scene.render_settings(2,17,true);
+scene.render_png("build/preset-switch.png",16,320,240);
+end _dsl_
+savedsl(p,out);

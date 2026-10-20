@@ -58,6 +58,10 @@ savedsl(p,out);
 - A Cornell-box-style XML smoke scene rendered identically with static and dynamic Cycles at 128x128 and 16 samples (RGB MAD 0/255). The fixture uses emissive room panels and a blue box to check geometry/XML/image output; it is not a lighting parity fixture.
 - OBJ/STL mesh handles render without launching another process. Production rendering uses the Cycles C++ node API; the XML reader is only a test oracle. Separate depth/normal/albedo passes are implemented. CPU denoising is linked through static OIDN archives and covered by the quality regression described below.
 
+## Named presentation presets
+
+`lmblender --presets` lists six embedded, versioned looks; `lmblender --preset-show product-studio` prints one preset as JSON. In DSL, call `scene.use_preset("product-studio")` after adding the geometry to auto-frame it, then use `scene.material_from_palette("accent")`. Explicit settings called afterward take precedence. External version-1 JSON presets use `scene.load_preset(path)`. See [the preset guide](docs/PRESETS.md) and [LLM DSL guide](docs/LLM_GUIDE.md).
+
 ## Build and test
 
 The scripts below build host-specific dependencies and Cycles from Blender's source checkout without changing that checkout. GCC 14 is used to match the existing Blender build.

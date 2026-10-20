@@ -655,6 +655,39 @@
             ],
             "returns": "void"
           }
+        ],
+        "use_preset": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "load_preset": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "preset_param": [
+          {
+            "params": [
+              "string",
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "material_from_palette": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Material"
+          }
         ]
       }
     },

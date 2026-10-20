@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "preset": {
+    "name": "technical-clean",
+    "description": "Bright orthographic technical preview with neutral colors",
+    "render": {
+      "tier": "draft",
+      "threads": 4,
+      "view_transform": "Standard",
+      "samples": 8,
+      "bounces": 2,
+      "denoise": false,
+      "resolution": [
+        960,
+        960
+      ],
+      "fps": 24
+    },
+    "world": {
+      "color": [
+        0.68,
+        0.72,
+        0.78
+      ],
+      "strength": 0.85
+    },
+    "camera": {
+      "fov_degrees": 42,
+      "orthographic": true,
+      "vertical_span": 8,
+      "auto_frame": true
+    },
+    "ground": {
+      "enabled": false
+    },
+    "lights": [
+      {
+        "position": [
+          -4,
+          -5,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "color": [
+          1,
+          1,
+          1
+        ],
+        "strength": 650,
+        "size": 4
+      }
+    ],
+    "palette": {
+      "body": {
+        "color": [
+          0.68,
+          0.71,
+          0.75
+        ],
+        "metallic": 0.12,
+        "roughness": 0.42
+      },
+      "accent": {
+        "color": [
+          0.9,
+          0.22,
+          0.07
+        ],
+        "metallic": 0,
+        "roughness": 0.5
+      }
+    }
+  }
+}

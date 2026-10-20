@@ -122,6 +122,9 @@ method Scene.world_color(float, float, float, float) -> void
 | `world_color(r,g,b,strength)`, `sky_texture(elevation_degrees,rotation_degrees,intensity)` | Linear RGB world or built-in procedural sky. |
 | `render_settings(max_bounces,seed,denoise)` | Max bounces 0..64; seed is a nonnegative 32-bit integer. |
 | `render_preset(name)` | `draft` = 8 samples, 2 bounces, no denoise; `final` = 64 samples, 8 bounces, CPU OIDN. Pass `0` for samples to `render_png` or `render_sequence` to use the preset. `Scene.set_threads(n)` selects 1–64 CPU threads; default four is capped by available cores. See [throughput measurements](THROUGHPUT.md). |
+| `use_preset(name)` / `load_preset(path)` | Apply one embedded presentation preset or a version-1 external JSON preset. Later explicit DSL calls override its settings. `lmblender --presets` lists names; `--preset-show NAME` prints the embedded JSON. |
+| `preset_param(name,value)` | Numeric overrides: `samples`, `bounces`, `threads`, `world_strength`, `camera_fov_degrees`, `orthographic_vertical_span`. |
+| `material_from_palette(name)` | Create a material from the active preset palette (`color`, `metallic`, `roughness`, optional `transmission` and `emission`). |
 | `render_png/exr(path,samples,width,height)` | Single frame, samples 1..65536, dimensions and total pixel bounds apply. |
 | `render_sequence(pattern,start,end,samples,width,height)` | Inclusive integer frames; path includes `{frame}` or `####`; key interpolation is `linear` or `ease`. |
 | `render_apng(path,start,end,samples,width,height,fps)` | Inclusive frames; exact rational frame delay is 1/fps; fps 1..240. |
@@ -146,3 +149,7 @@ For an animated loop, add mesh and camera keys at the first, middle, and final f
 ## Errors and recovery
 
 The host returns a JSON result with `ok`, `code`, and a human-readable `message`; direct `--version`, `--schema`, and `--dsl-signatures` commands print plain text or JSON to stdout. `LOAD_BAD_BYTECODE` means compile the `.lms` against the current schema again. `RUN_ERROR`/`VALIDATION_ERROR` means check method signatures, finite values, ranges, input paths, or output extensions. `RENDER_TIMEOUT` means increase `render_timeout(seconds)` within 1..3600 or lower samples/resolution. Import errors identify the expected format, malformed header, resource budget, or unreadable regular-file condition. Use the error message as the first diagnostic; do not retry unchanged invalid values.
+
+## Named presets
+
+The versioned embedded catalog is [presets/presets.json](../presets/presets.json). It includes diagram-dark-16x9-draft/final, product-studio, turntable-neutral, glass-showcase, and technical-clean. Runnable preview scenes and numeric image checks are in [examples/presets](../examples/presets) and `tests/preset_quality.py`. Preset resolution and FPS fields are metadata for consumers; the render call still takes its output dimensions and sequence timing explicitly. External JSON uses the same object schema and is loaded with a 128 KiB file cap.

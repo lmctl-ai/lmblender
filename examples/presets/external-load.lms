@@ -1,0 +1,12 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+out = ARGV.len() > 0 ? ARGV[0] : "build/preset-external.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+let cube = scene.cube(1.5);
+scene.load_preset("examples/presets/technical-clean.external.json");
+cube.set_material(scene.material_from_palette("body"));
+scene.preset_param("samples",16.0);
+scene.render_settings(2,17,true);
+scene.render_png("build/preset-external.png",8,320,240);
+end _dsl_
+savedsl(p,out);
