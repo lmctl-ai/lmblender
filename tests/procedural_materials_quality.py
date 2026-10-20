@@ -5,8 +5,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from png_metrics import decode
 w,h,c,rows=decode(sys.argv[1])
+sx,sy=w/512.0,h/384.0
 def pixels(box):
     x0,y0,x1,y1=box
+    x0,x1=round(x0*sx),round(x1*sx)
+    y0,y1=round(y0*sy),round(y1*sy)
     return [tuple(rows[y][x*c:x*c+3]) for y in range(y0,y1) for x in range(x0,x1)]
 checker=pixels((175,100,255,280)); noise=pixels((280,100,400,280))
 red=[p for p in checker if p[0]>p[1]*1.4 and p[0]>p[2]*1.3 and p[0]>40]

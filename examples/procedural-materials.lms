@@ -14,6 +14,6 @@ scene.spot_light(-5.0, -6.0, 7.0, -2.4, 0.0, 1.2, 1.0, 0.72, 0.5, 420.0, 48.0, 0
 scene.area_light(3.0, -5.0, 7.0, 2.4, 0.0, 1.0, 0.65, 0.82, 1.0, 1900.0, 5.0);
 scene.camera_look_at(0.0, -15.0, 2.0, 0.0, 0.0, 2.0, 35.0);
 scene.render_settings(8, 31, false);
-scene.render_png("build/procedural-materials.png", 96, 512, 384);
+scene.render_png("build/procedural-materials.png", 96, 640, 480);
 end _dsl_
 savedsl(p, out);
