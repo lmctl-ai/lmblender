@@ -24,8 +24,8 @@ import struct,sys
 from pathlib import Path
 b=Path(sys.argv[1])
 images=['import-gltf-gltf.png','import-gltf-glb.png','sky-texture.png','environment-texture.png',
-        'transparent-film.png','camera-dof.png','primitives-gallery.png','volume-fog.png',
-        'subsurface.png','glass-transmission.png','procedural-materials.png','image-texture.png']
+        'transparent-film.png','camera-dof.png','primitives-gallery.png','volume-fog.png','material-maps.png',
+        'subsurface.png','glass-transmission.png','procedural-materials.png','image-texture.png','backface-culling.png']
 for name in images:
     data=(b/name).read_bytes()
     assert data[:8]==b'\x89PNG\r\n\x1a\n', f'{name}: not PNG'
@@ -62,6 +62,8 @@ qa_image subsurface subsurface.png '1) a warm orange wax-like sphere is clearly 
 qa_image glass glass-transmission.png '1) a glass sphere is clearly visible over a checker floor; 2) the checker pattern is visibly refracted through its center; 3) highlights are localized and there are no conspicuous firefly specks.'
 qa_image procedural procedural-materials.png '1) two distinct objects are visible; 2) the left object has a red/yellow checker material and the right has blue noise variation; 3) both objects and their shadows are inside the frame.'
 qa_image image-texture image-texture.png '1) the textured cube is fully visible; 2) red and yellow regions from the texture appear on multiple faces; 3) the image is not a plain gray cube.'
+qa_image material-maps material-maps.png '1) exactly two smooth spheres sit apart on the ground and both are fully framed; 2) the left orange sphere has visibly irregular normal-map relief and varying metallic/roughness highlights; 3) the right sphere visibly alternates gold and blue from a texture-driven shader mix; 4) neither sphere overlaps or is cropped.'
+qa_image backface-culling backface-culling.png '1) one bright green square panel is clearly visible on the left; 2) the corresponding right panel area is empty gray because the red material is viewed from its culled backface; 3) both left/right regions are unclipped and the distinction is clear.'
 
 size_host=$(stat -c %s "$exe")
 size_cycles=$(stat -c %s "$cycle")
@@ -73,9 +75,9 @@ else
 fi
 {
   printf '# Full-check status\n\n'
-  printf 'Generated: %s\n\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
+printf 'Generated: %s\n\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf 'Source revision tested: `%s`\n\n' "$tested_revision"
-  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Strict pixel and file checks: PASS; 12 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 12 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
+  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 14 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
   while IFS= read -r line; do printf -- '- %s\n' "$line"; done < "$qa_dir/results.txt"
 } > docs/STATUS.md
 cat docs/STATUS.md

@@ -1,16 +1,16 @@
 # Full-check status
 
-Generated: 2026-10-20 17:25 UTC
+Generated: 2026-10-20 18:16 UTC
 
-Source revision tested: `d01543f plus tested worktree changes`
+Source revision tested: `f845657 plus tested worktree changes`
 
 ## Results
 
 - `BUILD_JOBS=2 ./test.sh`: PASS.
-- Strict pixel and file checks: PASS; 12 gallery images are at least 640×480.
+- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.
 - Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).
-- Binary sizes: `lmblender` 80926256 bytes; standalone Cycles 79138952 bytes.
-- QA provider `agy/gemini-4-argon-medium`: PASS on all 12 named images; exact responses follow.
+- Binary sizes: `lmblender` 80930712 bytes; standalone Cycles 79138952 bytes.
+- QA provider `agy/gemini-4-argon-medium`: PASS on all 14 named images; exact responses follow.
 
 ## QA responses
 
@@ -26,3 +26,5 @@ Source revision tested: `d01543f plus tested worktree changes`
 - glass: PASS | score 5/5 | A clear glass sphere sits over a checkerboard floor with the checker pattern visibly refracted through its interior, localized highlights, and no conspicuous firefly specks.
 - procedural: PASS | score 5/5 | Two distinct objects are visible inside the frame with their shadows, with a red/yellow checker material on the left object and blue procedural noise variation on the right object.
 - image-texture: PASS | score 5/5 | The textured cube is fully visible inside the frame with red and yellow checker regions clearly appearing across all three visible faces.
+- material-maps: PASS | score 5/5 | Two smooth spheres sit apart and fully framed without overlapping or cropping; the left orange sphere displays irregular normal-map relief and varying metallic/roughness highlights across its surface, while the right sphere alternates gold and blue regions from a texture-driven shader mix.
+- backface-culling: PASS | score 5/5 | One bright green square panel is clearly visible and unclipped on the left while the corresponding right panel area is empty gray background due to backface culling.

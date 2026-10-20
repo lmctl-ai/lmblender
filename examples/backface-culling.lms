@@ -1,0 +1,18 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/backface-culling.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let visible = scene.plane(1.65);
+visible.rotate_x(-90.0);
+visible.translate(-1.05, 0.0, 0.0);
+let green = scene.material(0.02, 0.9, 0.08, 0.0, 0.5, 0.0, 0.02, 0.9, 0.08, 1.0);
+visible.set_material(green);
+let hidden = scene.plane(1.65);
+hidden.rotate_x(-90.0);
+hidden.translate(1.05, 0.0, 0.0);
+let red = scene.material(0.9, 0.02, 0.02, 0.0, 0.5, 0.0, 0.9, 0.02, 0.02, 1.0);
+red.backface_culling(true);
+hidden.set_material(red);
+scene.world_color(0.25, 0.27, 0.3, 0.35);
+scene.camera_look_at(0.0, -6.0, 0.0, 0.0, 0.0, 0.0, 40.0);
+scene.render_png("build/backface-culling.png", 16, 640, 480);
+end _dsl_
+savedsl(p, out);

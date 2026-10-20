@@ -14,6 +14,10 @@ This list is generated from `lmblender --dsl-signatures` and should match the DS
 context scene: Scene
 method Material.bump(float, float, float) -> void
 method Material.keyframe_color(int, float, float, float, string) -> void
+method Material.texture_maps(string, string, string, string) -> void
+method Material.mix_with(Material, float) -> void
+method Material.mix_with_texture(Material, string) -> void
+method Material.backface_culling(bool) -> void
 method Material.subsurface(float, float, float, float, float) -> void
 method Material.volume(string, float, float, float, float) -> void
 method Mesh.keyframe_transform(int, float, float, float, string) -> void
@@ -31,6 +35,7 @@ method Mesh.translate(float, float, float) -> void
 method Mesh.triangle_count() -> int
 method Mesh.vertex_count() -> int
 method Scene.area_light(float, float, float, float, float, float, float, float, float, float, float) -> void
+method Scene.area_light_shape(float, float, float, float, float, float, float, float, float, float, float, float, string) -> void
 method Scene.camera_dof(float, float) -> void
 method Scene.camera_keyframe(int, float, float, float, float, float, float, string) -> void
 method Scene.camera_look_at(float, float, float, float, float, float, float) -> void
@@ -88,7 +93,12 @@ method Scene.world_color(float, float, float, float) -> void
 | `checker_material(c1 RGB,c2 RGB,scale,roughness)`, `noise_material(...)`, `ramp_material(...)` | Two RGB colors, procedural scale, roughness. Ramp uses Generated coordinates and Noise → RGB Ramp. |
 | `image_material(path,roughness)` | PNG/JPEG/EXR texture read with the mesh UVs. |
 | `Material.bump(strength,distance,scale)` | Procedural noise to bump normal; strength [0,1], distance 0..2 scene units. |
+| `Material.texture_maps(normal,roughness,metallic,ao)` | Optional PNG/JPEG/EXR tangent normal, roughness, metallic, and AO maps; empty path leaves a channel unset. Data maps use Cycles' `data` colorspace. AO multiplies base color; it is not a separate ambient-occlusion shader. Each map <=64 MiB, all maps <=256 MiB. |
+| `Material.mix_with(other,factor)`, `mix_with_texture(other,path)` | Mixes the receiver shader with a plain Principled second layer by constant [0,1] or texture factor. Complex second layers are rejected. |
+| `Material.backface_culling(enabled)` | When enabled, backside hits mix to transparent; default path shading is two-sided. |
 | `area_light(px,py,pz,tx,ty,tz,r,g,b,power,size)` | Area-light position/target, linear color, power, square side length. |
+| `area_light_shape(...,power,size_x,size_y,shape)` | `rectangle`, `disk`, or `ellipse`; sizes are in scene units. |
+| `spot_light(px,py,pz,tx,ty,tz,r,g,b,power,angle_degrees,blend)` | Cone angle 1..170 degrees; softness/blend 0..1. |
 | `point_light(x,y,z,r,g,b,power)`; `sun_light(dx,dy,dz,r,g,b,power,angle)` | World-space position or direction; power in renderer units and sun angle in radians. |
 | `camera_look_at(px,py,pz,tx,ty,tz,fov_degrees)` | Perspective camera, FOV 5..170 degrees. |
 | `camera_orthographic(px,py,pz,tx,ty,tz,width)` | Orthographic camera width in scene units. |

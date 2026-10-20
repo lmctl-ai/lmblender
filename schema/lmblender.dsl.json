@@ -498,6 +498,26 @@
             ],
             "returns": "void"
           }
+        ],
+        "area_light_shape": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "string"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },
@@ -653,6 +673,43 @@
               "float",
               "float",
               "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "texture_maps": [
+          {
+            "params": [
+              "string",
+              "string",
+              "string",
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "mix_with": [
+          {
+            "params": [
+              "Material",
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "mix_with_texture": [
+          {
+            "params": [
+              "Material",
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "backface_culling": [
+          {
+            "params": [
+              "bool"
             ],
             "returns": "void"
           }

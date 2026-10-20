@@ -3,6 +3,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
+python3 tests/create_material_maps.py "$build/material-map-assets"
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
@@ -42,6 +43,8 @@ done
 "${LMSCRIPT:-lmscript}" examples/animation-tween.lms "$build/animation-tween.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/motion-blur.lms "$build/motion-blur.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes.lms "$build/material-nodes.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes-control.lms "$build/material-nodes-control.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
@@ -82,6 +85,8 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/animation-tween.dslb" >"$build/animation-tween-result.json"
 "$exe" --dsl "$build/motion-blur.dslb" >"$build/motion-blur-result.json"
 "$exe" --dsl "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
+"$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
+"$exe" --dsl "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
 "$exe" --dsl "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
@@ -125,6 +130,10 @@ for pass in combined depth normal albedo; do
   test -s "$build/passes-ramp-$pass.png"
 done
 test -s "$build/perspective-reference.png"
+test -s "$build/material-maps.png"
+test -s "$build/material-maps-control.png"
+test -s "$build/material-mix-factor.png"
+test -s "$build/backface-culling.png"
 test -s "$build/motion-blur-2.png"
 test -s "$build/motion-control.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
@@ -157,6 +166,8 @@ python3 tests/denoise_quality.py "$build/denoise-noisy.png" "$build/denoise-filt
 python3 tests/animation_quality.py "$build"
 python3 tests/motion_blur_quality.py "$build"
 python3 tests/material_nodes_quality.py "$build/material-nodes.png" "$build/material-nodes-control.png"
+python3 tests/material_maps_quality.py "$build"
+python3 tests/backface_culling_quality.py "$build/backface-culling.png"
 if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
   blender="$BLENDERCLI_BLENDER"
 elif [ -x /home/ubuntu/blender-install/blender ]; then
@@ -176,7 +187,7 @@ else
 fi
 python3 tests/png_compare.py "$build/imported-mesh.png" "$build/imported-mesh-xml.png"
 diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
-python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" "$build/animation-tween-result.json" "$build/motion-blur-result.json" "$build/material-nodes-result.json" "$build/material-nodes-control-result.json" <<'PY'
+python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" "$build/animation-tween-result.json" "$build/motion-blur-result.json" "$build/material-nodes-result.json" "$build/material-maps-result.json" "$build/backface-culling-result.json" "$build/material-nodes-control-result.json" <<'PY'
 import json,sys
 for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result

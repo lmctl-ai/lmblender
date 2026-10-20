@@ -85,7 +85,12 @@ struct Material {
   std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
   float texture_scale = 5.0f;
   std::string image_path;
+  std::string normal_map_path, roughness_map_path, metallic_map_path, ao_map_path;
   bool image_factor_enabled = false;
+  bool backface_culling = false;
+  Material *mix_material = nullptr;
+  float mix_factor = 0.5f;
+  std::string mix_factor_image;
   bool bump_enabled = false;
   float bump_strength = 0.35f, bump_distance = 0.12f, bump_scale = 18.0f;
   struct ColorKey { int frame; std::array<float,3> value; std::string interpolation; };
@@ -102,6 +107,8 @@ struct AreaLightData {
   std::array<float, 3> color{1.0f, 1.0f, 1.0f};
   float strength = 100.0f;
   float size = 1.0f;
+  float size_y = 1.0f;
+  int shape = 0; /* 0 square/rectangle, 1 disk, 2 ellipse */
 };
 struct SunLightData {
   std::array<float, 3> direction{0.0f, 0.0f, -1.0f};
@@ -562,12 +569,13 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_subsurface_scale(material.subsurface_scale);
     principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
     principled->set_emission_strength(material.emission_strength);
+    ccl::ShaderOutput *base_color_source = nullptr;
     if (material.texture_kind == 1) {
       ccl::CheckerTextureNode *checker = graph->create_node<ccl::CheckerTextureNode>();
       checker->set_color1(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
       checker->set_color2(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
       checker->set_scale(material.texture_scale);
-      graph->connect(checker->output("Color"), principled->input("Base Color"));
+      base_color_source = checker->output("Color");
     } else if (material.texture_kind == 2) {
       ccl::NoiseTextureNode *noise = graph->create_node<ccl::NoiseTextureNode>();
       noise->set_scale(material.texture_scale);
@@ -577,7 +585,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       mix->set_a(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
       mix->set_b(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
       graph->connect(noise->output("Fac"), mix->input("Factor"));
-      graph->connect(mix->output("Result"), principled->input("Base Color"));
+      base_color_source = mix->output("Result");
     } else if (material.texture_kind == 3) {
       ccl::TextureCoordinateNode *coordinates = graph->create_node<ccl::TextureCoordinateNode>();
       ccl::ImageTextureNode *image = graph->create_node<ccl::ImageTextureNode>();
@@ -591,9 +599,9 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
         multiply->set_fac(1.0f);
         multiply->set_a(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
         graph->connect(image->output("Color"), multiply->input("B"));
-        graph->connect(multiply->output("Result"), principled->input("Base Color"));
+        base_color_source = multiply->output("Result");
       } else {
-        graph->connect(image->output("Color"), principled->input("Base Color"));
+        base_color_source = image->output("Color");
       }
     } else if (material.texture_kind == 4) {
       ccl::TextureCoordinateNode *coordinates=graph->create_node<ccl::TextureCoordinateNode>();
@@ -602,7 +610,43 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       ccl::RGBRampNode *ramp=graph->create_node<ccl::RGBRampNode>();
       ccl::array<ccl::packed_float3> colors;colors.push_back_slow(ccl::make_float3(material.color[0],material.color[1],material.color[2]));colors.push_back_slow(ccl::make_float3(material.texture_color2[0],material.texture_color2[1],material.texture_color2[2]));ramp->set_ramp(colors);
       ccl::array<float> alpha;alpha.push_back_slow(1.0f);alpha.push_back_slow(1.0f);ramp->set_ramp_alpha(alpha);
-      graph->connect(noise->output("Fac"),ramp->input("Fac"));graph->connect(ramp->output("Color"),principled->input("Base Color"));
+      graph->connect(noise->output("Fac"),ramp->input("Fac"));base_color_source=ramp->output("Color");
+    }
+    auto data_texture = [&](const std::string &path) {
+      ccl::TextureCoordinateNode *coordinates = graph->create_node<ccl::TextureCoordinateNode>();
+      ccl::ImageTextureNode *image = graph->create_node<ccl::ImageTextureNode>();
+      image->set_filename(ccl::ustring(path));
+      image->set_colorspace(ccl::u_colorspace_data);
+      image->set_interpolation(ccl::INTERPOLATION_LINEAR);
+      image->set_extension(ccl::EXTENSION_REPEAT);
+      graph->connect(coordinates->output("UV"), image->input("Vector"));
+      return image;
+    };
+    if (!material.roughness_map_path.empty()) {
+      ccl::ImageTextureNode *map = data_texture(material.roughness_map_path);
+      graph->connect(map->output("Color"), principled->input("Roughness"));
+    }
+    if (!material.metallic_map_path.empty()) {
+      ccl::ImageTextureNode *map = data_texture(material.metallic_map_path);
+      graph->connect(map->output("Color"), principled->input("Metallic"));
+    }
+    if (!material.ao_map_path.empty()) {
+      ccl::ImageTextureNode *map = data_texture(material.ao_map_path);
+      ccl::MixColorNode *multiply = graph->create_node<ccl::MixColorNode>();
+      multiply->set_blend_type(ccl::NODE_MIX_MUL);
+      multiply->set_fac(1.0f);
+      multiply->set_a(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+      if (base_color_source) graph->connect(base_color_source, multiply->input("A"));
+      graph->connect(map->output("Color"), multiply->input("B"));
+      base_color_source = multiply->output("Result");
+    }
+    if (base_color_source) graph->connect(base_color_source, principled->input("Base Color"));
+    if (!material.normal_map_path.empty()) {
+      ccl::ImageTextureNode *map = data_texture(material.normal_map_path);
+      ccl::NormalMapNode *normal = graph->create_node<ccl::NormalMapNode>();
+      normal->set_space(ccl::NODE_NORMAL_MAP_TANGENT);
+      graph->connect(map->output("Color"), normal->input("Color"));
+      graph->connect(normal->output("Normal"), principled->input("Normal"));
     }
     if(material.bump_enabled){
       ccl::TextureCoordinateNode *coordinates=graph->create_node<ccl::TextureCoordinateNode>();
@@ -616,7 +660,44 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       transparent->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f));
       graph->connect(transparent->output("BSDF"), graph->output()->input("Surface"));
     } else {
-      graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
+      ccl::ShaderOutput *surface = principled->output("BSDF");
+      if (material.mix_material) {
+        const Material &other = *material.mix_material;
+        if (other.texture_kind != 0 || other.bump_enabled || !other.normal_map_path.empty() ||
+            !other.roughness_map_path.empty() || !other.metallic_map_path.empty() || !other.ao_map_path.empty() ||
+            other.mix_material || other.backface_culling || other.volume_kind != 0 || other.volume_only)
+          throw dslvm::Error("mix_with currently accepts a plain-factor material without maps on the second layer");
+        ccl::PrincipledBsdfNode *layer = graph->create_node<ccl::PrincipledBsdfNode>();
+        layer->set_base_color(ccl::make_float3(other.color[0], other.color[1], other.color[2]));
+        layer->set_metallic(other.metallic);
+        layer->set_roughness(other.roughness);
+        layer->set_transmission_weight(other.transmission);
+        layer->set_subsurface_weight(other.subsurface);
+        layer->set_subsurface_radius(ccl::make_float3(other.subsurface_radius[0], other.subsurface_radius[1], other.subsurface_radius[2]));
+        layer->set_subsurface_scale(other.subsurface_scale);
+        layer->set_emission_color(ccl::make_float3(other.emission[0], other.emission[1], other.emission[2]));
+        layer->set_emission_strength(other.emission_strength);
+        ccl::MixClosureNode *blend = graph->create_node<ccl::MixClosureNode>();
+        blend->set_fac(material.mix_factor);
+        if (!material.mix_factor_image.empty()) {
+          ccl::ImageTextureNode *factor = data_texture(material.mix_factor_image);
+          graph->connect(factor->output("Color"), blend->input("Fac"));
+        }
+        graph->connect(surface, blend->input("Closure1"));
+        graph->connect(layer->output("BSDF"), blend->input("Closure2"));
+        surface = blend->output("Closure");
+      }
+      if (material.backface_culling) {
+        ccl::GeometryNode *geometry = graph->create_node<ccl::GeometryNode>();
+        ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
+        ccl::MixClosureNode *cull = graph->create_node<ccl::MixClosureNode>();
+        cull->set_fac(0.0f);
+        graph->connect(geometry->output("Backfacing"), cull->input("Fac"));
+        graph->connect(surface, cull->input("Closure1"));
+        graph->connect(transparent->output("BSDF"), cull->input("Closure2"));
+        surface = cull->output("Closure");
+      }
+      graph->connect(surface, graph->output()->input("Surface"));
     }
     if (material.volume_kind == 1) {
       ccl::AbsorptionVolumeNode *volume = graph->create_node<ccl::AbsorptionVolumeNode>();
@@ -784,7 +865,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     ccl::AreaLight *area = scene->create_node<ccl::AreaLight>();
     area->set_strength(ccl::make_float3(light.color[0], light.color[1], light.color[2]) * light.strength);
     area->set_sizeu(light.size);
-    area->set_sizev(light.size);
+    area->set_sizev(light.size_y);
+    area->set_ellipse(light.shape != 0);
     ccl::Shader *light_shader = make_light_shader();
     ccl::array<ccl::Node *> light_shaders; light_shaders.push_back_slow(light_shader); area->set_used_shaders(light_shaders);
     ccl::Object *object = scene->create_node<ccl::Object>();
@@ -1440,7 +1522,27 @@ dslvm::Registry make_registry() {
     light.position = {float(a[0].f), float(a[1].f), float(a[2].f)};
     light.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
     light.color = {float(a[6].f), float(a[7].f), float(a[8].f)};
-    light.strength = float(a[9].f); light.size = float(a[10].f);
+    light.strength = float(a[9].f); light.size = light.size_y = float(a[10].f);
+    scene->area_lights.push_back(light);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "area_light_shape", {"float","float","float","float","float","float","float","float","float","float","float","float","string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->area_lights.size() >= 128) throw dslvm::Error("area light limit exceeded (128)");
+    for (size_t i = 0; i < 12; ++i) if (!std::isfinite(a[i].f)) throw dslvm::Error("area light values must be finite");
+    for (int i = 0; i < 3; ++i) {
+      if (std::abs(a[i].f) > 1'000'000 || std::abs(a[i+3].f) > 1'000'000 || a[i+6].f < 0 || a[i+6].f > 1)
+        throw dslvm::Error("invalid area light position, target, or color");
+    }
+    if (a[9].f < 0 || a[9].f > 1'000'000 || a[10].f <= 0 || a[10].f > 10000 || a[11].f <= 0 || a[11].f > 10000)
+      throw dslvm::Error("area light strength or dimensions outside supported bounds");
+    if (a[12].s != "rectangle" && a[12].s != "disk" && a[12].s != "ellipse")
+      throw dslvm::Error("area light shape must be rectangle, disk, or ellipse");
+    AreaLightData light;
+    for (int i=0;i<3;++i) { light.position[i]=float(a[i].f); light.target[i]=float(a[i+3].f); light.color[i]=float(a[i+6].f); }
+    light.strength=float(a[9].f); light.size=float(a[10].f); light.size_y=float(a[11].f);
+    light.shape = a[12].s == "rectangle" ? 0 : a[12].s == "disk" ? 1 : 2;
+    if (light.shape == 1) light.size_y = light.size;
     scene->area_lights.push_back(light);
     return dslvm::Value::none();
   });
@@ -1562,6 +1664,57 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "noise_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,2);});
   registry.method("Scene", "ramp_material", {"float","float","float","float","float","float","float","float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,4);});
   registry.method("Material", "bump", {"float","float","float"}, "void", [](void *p,dslvm::Args &a){auto*m=static_cast<Material*>(p);for(const auto&v:a)if(!std::isfinite(v.f))throw dslvm::Error("bump parameters must be finite");if(a[0].f<0||a[0].f>1||a[1].f<0||a[1].f>2||a[2].f<0.1||a[2].f>1000)throw dslvm::Error("bump strength must be 0..1, distance 0..2 scene units, texture scale 0.1..1000");m->bump_enabled=true;m->bump_strength=float(a[0].f);m->bump_distance=float(a[1].f);m->bump_scale=float(a[2].f);return dslvm::Value::none();});
+  registry.method("Material", "texture_maps", {"string","string","string","string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *material = static_cast<Material *>(p);
+    std::array<std::string *,4> destinations{&material->normal_map_path,&material->roughness_map_path,
+                                             &material->metallic_map_path,&material->ao_map_path};
+    uint64_t total_bytes = 0;
+    for (size_t i=0;i<a.size();++i) {
+      if (a[i].s.empty()) { *destinations[i] = {}; continue; }
+      const std::filesystem::path input(a[i].s);
+      const std::string ext = input.extension().string();
+      std::error_code ec;
+      if (a[i].s.front()=='-' || (ext!=".png"&&ext!=".jpg"&&ext!=".jpeg"&&ext!=".exr") ||
+          !std::filesystem::is_regular_file(input,ec) || ec)
+        throw dslvm::Error("texture map must be a readable PNG/JPEG/EXR regular file");
+      const uintmax_t size=std::filesystem::file_size(input,ec);
+      if(ec||size==0||size>64u*1024u*1024u||total_bytes+size>256u*1024u*1024u)
+        throw dslvm::Error("texture maps must total at most 256 MiB (64 MiB per map)");
+      total_bytes += size;
+      *destinations[i]=std::filesystem::absolute(input,ec).string();
+      if(ec) throw dslvm::Error("could not resolve texture map path");
+    }
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "mix_with", {"Material","float"}, "void", [](void *p,dslvm::Args &a) {
+    auto *material=static_cast<Material *>(p);
+    auto *other=static_cast<Material *>(a[0].obj);
+    if (!other || other==material || other->mix_material || other->texture_kind != 0 || other->bump_enabled ||
+        !other->normal_map_path.empty() || !other->roughness_map_path.empty() || !other->metallic_map_path.empty() ||
+        !other->ao_map_path.empty() || other->backface_culling)
+      throw dslvm::Error("mix_with needs a distinct plain material as its second layer");
+    if (!std::isfinite(a[1].f)||a[1].f<0||a[1].f>1) throw dslvm::Error("mix factor must be in [0,1]");
+    material->mix_material=other; material->mix_factor=float(a[1].f); material->mix_factor_image.clear();
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "mix_with_texture", {"Material","string"}, "void", [](void *p,dslvm::Args &a) {
+    auto *material=static_cast<Material *>(p);
+    auto *other=static_cast<Material *>(a[0].obj);
+    if (!other || other==material || other->mix_material || other->texture_kind != 0 || other->bump_enabled ||
+        !other->normal_map_path.empty() || !other->roughness_map_path.empty() || !other->metallic_map_path.empty() ||
+        !other->ao_map_path.empty() || other->backface_culling)
+      throw dslvm::Error("mix_with_texture needs a distinct plain material as its second layer");
+    const std::filesystem::path path(a[1].s); const std::string ext=path.extension().string(); std::error_code ec;
+    if(a[1].s.empty()||a[1].s.front()=='-'||(ext!=".png"&&ext!=".jpg"&&ext!=".jpeg"&&ext!=".exr")||!std::filesystem::is_regular_file(path,ec)||ec)
+      throw dslvm::Error("mix factor texture must be a readable PNG/JPEG/EXR regular file");
+    const uintmax_t size=std::filesystem::file_size(path,ec);if(ec||size==0||size>64u*1024u*1024u)throw dslvm::Error("mix factor texture must be non-empty and at most 64 MiB");
+    material->mix_material=other;material->mix_factor_image=std::filesystem::absolute(path,ec).string();if(ec)throw dslvm::Error("could not resolve mix factor texture path");
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "backface_culling", {"bool"}, "void", [](void *p,dslvm::Args &a) {
+    static_cast<Material *>(p)->backface_culling=a[0].b;
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "image_material", {"string", "float"}, "Material", [](void *p, dslvm::Args &a) {
     const std::filesystem::path path(a[0].s);
     const std::string ext = path.extension().string();
