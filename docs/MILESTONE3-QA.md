@@ -9,6 +9,9 @@ Re-rendered 2026-10-20 after correcting direct Cycles light shader assignments a
 
 The mug is explicitly rotated from lmcad's Y-up `revolve_y` coordinates to renderer +Z-up. Generic STL carries no axis metadata, so arbitrary imports are not rotated automatically. `scene.fit_camera(fov)` uses transformed mesh bounds and ignores studio planes; the composition uses a diffuse XY floor, area key/fill, and a point-fill default where no point light is supplied. The plate uses a lit vertical wall behind its holes so openings can be checked visually and numerically.
 
+| `build/procedural-materials.png` / `examples/procedural-materials.lms` | checker color mask and noise color bins | checker red pixels 2,355; noise blue pixels 6,662; 255 coarse noise-color bins | Opus PASS, 4/5. Checker alternation and blue mottling are clear. Noise material brightness was lowered after review to retain highlight detail; tetra fixture is still narrow and the floor is grainy. |
+| `build/perspective-reference.png` + `build/orthographic-camera.png` / `examples/orthographic-camera.lms` | uncropped orange object mask; compare rendered object height | before revised angle: perspective 115 px; orthographic 224 px; ratio 1.95 | Opus PASS, 4/5. Revised both views to a three-quarter camera angle because the initial tetra read as a flat triangle. |
+
 ## Technical smoke images (not product-gallery claims)
 
 The compact binding examples use a tetrahedron fixture to exercise execution and pixels, not to claim a realistic material or composition. I inspected each generated image directly:

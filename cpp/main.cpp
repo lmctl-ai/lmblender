@@ -59,6 +59,9 @@ struct Material {
   float roughness = 0.5f;
   float transmission = 0.0f;
   float emission_strength = 0.0f;
+  int texture_kind = 0;
+  std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
+  float texture_scale = 5.0f;
 };
 struct PointLightData {
   std::array<float, 3> position{};
@@ -72,16 +75,34 @@ struct AreaLightData {
   float strength = 100.0f;
   float size = 1.0f;
 };
+struct SunLightData {
+  std::array<float, 3> direction{0.0f, 0.0f, -1.0f};
+  std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+  float strength = 1.0f;
+  float angle = 0.05f;
+};
+struct SpotLightData {
+  std::array<float, 3> position{};
+  std::array<float, 3> target{};
+  std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+  float strength = 100.0f;
+  float angle = 0.785398f;
+  float blend = 0.15f;
+};
 struct CameraConfig {
   std::array<float, 3> position{};
   std::array<float, 3> target{};
   float fov_radians = 0.785398163f;
+  bool orthographic = false;
+  float ortho_scale = 10.0f;
 };
 struct Scene {
   std::vector<std::unique_ptr<Mesh>> meshes;
   std::vector<std::unique_ptr<Material>> materials;
   std::vector<PointLightData> point_lights;
   std::vector<AreaLightData> area_lights;
+  std::vector<SunLightData> sun_lights;
+  std::vector<SpotLightData> spot_lights;
   std::array<float, 3> world_color{0.16f, 0.18f, 0.22f};
   float world_strength = 0.45f;
   bool custom_camera = false;
@@ -298,9 +319,35 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_transmission_weight(material.transmission);
     principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
     principled->set_emission_strength(material.emission_strength);
+    if (material.texture_kind == 1) {
+      ccl::CheckerTextureNode *checker = graph->create_node<ccl::CheckerTextureNode>();
+      checker->set_color1(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+      checker->set_color2(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
+      checker->set_scale(material.texture_scale);
+      graph->connect(checker->output("Color"), principled->input("Base Color"));
+    } else if (material.texture_kind == 2) {
+      ccl::NoiseTextureNode *noise = graph->create_node<ccl::NoiseTextureNode>();
+      noise->set_scale(material.texture_scale);
+      noise->set_detail(3.0f);
+      noise->set_roughness(0.65f);
+      ccl::MixColorNode *mix = graph->create_node<ccl::MixColorNode>();
+      mix->set_a(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+      mix->set_b(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
+      graph->connect(noise->output("Fac"), mix->input("Factor"));
+      graph->connect(mix->output("Result"), principled->input("Base Color"));
+    }
     graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
     shader->set_graph(std::move(graph));
     shader->tag_update(scene);
+    return shader;
+  };
+  auto make_light_shader = [scene]() {
+    ccl::Shader *shader = scene->create_node<ccl::Shader>();
+    auto graph = ccl::make_unique<ccl::ShaderGraph>();
+    ccl::EmissionNode *emission = graph->create_node<ccl::EmissionNode>();
+    emission->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f)); emission->set_strength(1.0f);
+    graph->connect(emission->output("Emission"), graph->output()->input("Surface"));
+    shader->set_graph(std::move(graph)); shader->tag_update(scene);
     return shader;
   };
   ccl::Shader *default_surface = make_emission_shader(ccl::make_float3(0.62f, 0.66f, 0.72f), 1.0f);
@@ -315,7 +362,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
 
   for (const auto &source_mesh : source.meshes) {
     const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
-    ccl::Shader *surface = mesh_data->material ? make_principled_shader(*mesh_data->material) : default_surface;
+    const Material *material = source_mesh->material ? source_mesh->material : mesh_data->material;
+    ccl::Shader *surface = material ? make_principled_shader(*material) : default_surface;
     ccl::array<ccl::Node *> used_shaders;
     used_shaders.push_back_slow(surface);
     ccl::Mesh *mesh = scene->create_node<ccl::Mesh>();
@@ -341,35 +389,23 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     object->set_tfm(ccl::transform_identity());
   }
 
-  auto add_point_light = [scene](const ccl::float3 position, const ccl::float3 color, const float strength) {
+  auto add_point_light = [scene, make_light_shader](const ccl::float3 position, const ccl::float3 color, const float strength) {
     ccl::PointLight *point = scene->create_node<ccl::PointLight>();
     point->set_strength(color * strength);
     point->set_radius(0.0f);
-    ccl::Shader *light_shader = scene->create_node<ccl::Shader>();
-    auto light_graph = ccl::make_unique<ccl::ShaderGraph>();
-    ccl::EmissionNode *light_emission = light_graph->create_node<ccl::EmissionNode>();
-    light_emission->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f));
-    light_emission->set_strength(1.0f);
-    light_graph->connect(light_emission->output("Emission"), light_graph->output()->input("Surface"));
-    light_shader->set_graph(std::move(light_graph));
-    light_shader->tag_update(scene);
+    ccl::Shader *light_shader = make_light_shader();
     ccl::array<ccl::Node *> light_shaders; light_shaders.push_back_slow(light_shader); point->set_used_shaders(light_shaders);
     ccl::Object *object = scene->create_node<ccl::Object>();
     object->set_geometry(point);
     ccl::Transform tfm = ccl::transform_translate(position);
     object->set_tfm(tfm);
   };
-  auto add_area_light = [scene](const AreaLightData &light) {
+  auto add_area_light = [scene, make_light_shader](const AreaLightData &light) {
     ccl::AreaLight *area = scene->create_node<ccl::AreaLight>();
     area->set_strength(ccl::make_float3(light.color[0], light.color[1], light.color[2]) * light.strength);
     area->set_sizeu(light.size);
     area->set_sizev(light.size);
-    ccl::Shader *light_shader = scene->create_node<ccl::Shader>();
-    auto light_graph = ccl::make_unique<ccl::ShaderGraph>();
-    ccl::EmissionNode *light_emission = light_graph->create_node<ccl::EmissionNode>();
-    light_emission->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f)); light_emission->set_strength(1.0f);
-    light_graph->connect(light_emission->output("Emission"), light_graph->output()->input("Surface"));
-    light_shader->set_graph(std::move(light_graph)); light_shader->tag_update(scene);
+    ccl::Shader *light_shader = make_light_shader();
     ccl::array<ccl::Node *> light_shaders; light_shaders.push_back_slow(light_shader); area->set_used_shaders(light_shaders);
     ccl::Object *object = scene->create_node<ccl::Object>();
     object->set_geometry(area);
@@ -384,6 +420,36 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
                                         right.y, up.y, back.y, p.y,
                                         right.z, up.z, back.z, p.z));
   };
+  auto light_transform = [](const ccl::float3 position, const ccl::float3 direction) {
+    const ccl::float3 forward = ccl::normalize(direction);
+    ccl::float3 right = ccl::cross(forward, ccl::make_float3(0.0f, 0.0f, 1.0f));
+    if (ccl::len_squared(right) < 1.0e-8f) right = ccl::make_float3(1.0f, 0.0f, 0.0f);
+    right = ccl::normalize(right);
+    const ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
+    const ccl::float3 back = -forward;
+    return ccl::make_transform(right.x, up.x, back.x, position.x,
+                               right.y, up.y, back.y, position.y,
+                               right.z, up.z, back.z, position.z);
+  };
+  auto add_spot_light = [scene, make_light_shader, light_transform](const SpotLightData &light) {
+    ccl::SpotLight *spot = scene->create_node<ccl::SpotLight>();
+    spot->set_strength(ccl::make_float3(light.color[0], light.color[1], light.color[2]) * light.strength);
+    spot->set_angle(light.angle); spot->set_smooth(light.blend); spot->set_radius(0.0f);
+    ccl::Shader *shader = make_light_shader(); ccl::array<ccl::Node *> shaders; shaders.push_back_slow(shader); spot->set_used_shaders(shaders);
+    ccl::Object *object = scene->create_node<ccl::Object>(); object->set_geometry(spot);
+    const ccl::float3 p = ccl::make_float3(light.position[0], light.position[1], light.position[2]);
+    const ccl::float3 target = ccl::make_float3(light.target[0], light.target[1], light.target[2]);
+    object->set_tfm(light_transform(p, target - p));
+  };
+  auto add_sun_light = [scene, make_light_shader, light_transform](const SunLightData &light) {
+    ccl::SunLight *sun = scene->create_node<ccl::SunLight>();
+    sun->set_strength(ccl::make_float3(light.color[0], light.color[1], light.color[2]) * light.strength);
+    sun->set_angle(light.angle);
+    ccl::Shader *shader = make_light_shader(); ccl::array<ccl::Node *> shaders; shaders.push_back_slow(shader); sun->set_used_shaders(shaders);
+    ccl::Object *object = scene->create_node<ccl::Object>(); object->set_geometry(sun);
+    const ccl::float3 direction = ccl::make_float3(light.direction[0], light.direction[1], light.direction[2]);
+    object->set_tfm(light_transform(ccl::make_float3(0.0f,0.0f,0.0f), direction));
+  };
   if (source.point_lights.empty()) {
     add_point_light(ccl::make_float3(center.x - radius * 2.5f, center.y - radius * 3.2f, center.z + radius * 4.0f),
                     ccl::make_float3(1.0f, 1.0f, 1.0f), 550.0f);
@@ -393,11 +459,13 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
                       ccl::make_float3(light.color[0], light.color[1], light.color[2]), light.strength);
   }
   for (const AreaLightData &light : source.area_lights) add_area_light(light);
+  for (const SpotLightData &light : source.spot_lights) add_spot_light(light);
+  for (const SunLightData &light : source.sun_lights) add_sun_light(light);
 
   scene->camera->set_full_width(width);
   scene->camera->set_full_height(height);
   scene->camera->set_fov(source.custom_camera ? source.camera.fov_radians : 0.8f);
-  scene->camera->set_camera_type(ccl::CAMERA_PERSPECTIVE);
+  scene->camera->set_camera_type(source.custom_camera && source.camera.orthographic ? ccl::CAMERA_ORTHOGRAPHIC : ccl::CAMERA_PERSPECTIVE);
   scene->camera->set_nearclip(0.01f);
   scene->camera->set_farclip(10000.0f);
   ccl::Transform camera_tfm;
@@ -421,6 +489,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
     right = ccl::normalize(right);
     ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
+    if (source.camera.orthographic) { right *= source.camera.ortho_scale * 0.5f; up *= source.camera.ortho_scale * 0.5f; }
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
                                      right.y, up.y, forward.y, p[1],
                                      right.z, up.z, forward.z, p[2]);
@@ -571,7 +640,20 @@ dslvm::Registry make_registry() {
     scene->camera.position = {float(a[0].f), float(a[1].f), float(a[2].f)};
     scene->camera.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
     scene->camera.fov_radians = float(a[6].f * M_PI / 180.0);
+    scene->camera.orthographic = false;
     scene->custom_camera = true;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "camera_orthographic", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("orthographic camera values must be finite");
+    for (size_t i = 0; i < 6; ++i) if (std::abs(a[i].f) > 1'000'000) throw dslvm::Error("orthographic camera position or target exceeds scene bounds");
+    const double dx=a[3].f-a[0].f, dy=a[4].f-a[1].f, dz=a[5].f-a[2].f;
+    if (dx*dx+dy*dy+dz*dz < 1.0e-12) throw dslvm::Error("orthographic camera position and target must differ");
+    if (a[6].f < 0.1 || a[6].f > 100000.0) throw dslvm::Error("orthographic camera width must be in [0.1,100000]");
+    scene->camera.position={float(a[0].f),float(a[1].f),float(a[2].f)};
+    scene->camera.target={float(a[3].f),float(a[4].f),float(a[5].f)};
+    scene->camera.orthographic=true; scene->camera.ortho_scale=float(a[6].f); scene->custom_camera=true;
     return dslvm::Value::none();
   });
   registry.method("Scene", "fit_camera", {"float"}, "void", [](void *p, dslvm::Args &a) {
@@ -655,6 +737,27 @@ dslvm::Registry make_registry() {
     scene->area_lights.push_back(light);
     return dslvm::Value::none();
   });
+  registry.method("Scene", "sun_light", {"float", "float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p); if(scene->sun_lights.size()>=128) throw dslvm::Error("sun light limit exceeded (128)");
+    for(const auto &v:a) if(!std::isfinite(v.f)) throw dslvm::Error("sun light values must be finite");
+    const double len=std::sqrt(a[0].f*a[0].f+a[1].f*a[1].f+a[2].f*a[2].f);
+    if(len<1.0e-8 || len>1'000'000) throw dslvm::Error("sun direction must be nonzero and bounded");
+    for(int i=3;i<6;++i) if(a[i].f<0||a[i].f>1) throw dslvm::Error("sun color channels must be in [0,1]");
+    if(a[6].f<0||a[6].f>1'000'000||a[7].f<0||a[7].f>90) throw dslvm::Error("sun strength or angle outside supported bounds");
+    SunLightData light; for(int i=0;i<3;++i){light.direction[i]=float(a[i].f/len);light.color[i]=float(a[i+3].f);} light.strength=float(a[6].f);light.angle=float(a[7].f*M_PI/180.0);scene->sun_lights.push_back(light);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "spot_light", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p); if(scene->spot_lights.size()>=128) throw dslvm::Error("spot light limit exceeded (128)");
+    for(const auto &v:a) if(!std::isfinite(v.f)) throw dslvm::Error("spot light values must be finite");
+    for(int i=0;i<6;++i) if(std::abs(a[i].f)>1'000'000) throw dslvm::Error("spot light position or target exceeds scene bounds");
+    double dx=a[3].f-a[0].f,dy=a[4].f-a[1].f,dz=a[5].f-a[2].f;
+    if(dx*dx+dy*dy+dz*dz<1.0e-12) throw dslvm::Error("spot light position and target must differ");
+    for(int i=6;i<9;++i) if(a[i].f<0||a[i].f>1) throw dslvm::Error("spot light color channels must be in [0,1]");
+    if(a[9].f<0||a[9].f>1'000'000||a[10].f<1||a[10].f>170||a[11].f<0||a[11].f>1) throw dslvm::Error("spot light strength, angle, or blend outside supported bounds");
+    SpotLightData light; for(int i=0;i<3;++i){light.position[i]=float(a[i].f);light.target[i]=float(a[i+3].f);light.color[i]=float(a[i+6].f);} light.strength=float(a[9].f);light.angle=float(a[10].f*M_PI/180.0);light.blend=float(a[11].f);scene->spot_lights.push_back(light);
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "ground_plane", {"float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("ground plane values must be finite");
@@ -708,6 +811,20 @@ dslvm::Registry make_registry() {
     scene->materials.push_back(std::move(material));
     return dslvm::Value::object("Material", result);
   });
+  auto patterned_material = [](void *p, dslvm::Args &a, int kind) {
+    auto *scene=static_cast<Scene *>(p); if(scene->materials.size()>=4096) throw dslvm::Error("material limit exceeded (4096)");
+    for(const auto &v:a) if(!std::isfinite(v.f)) throw dslvm::Error("procedural material values must be finite");
+    for(int i=0;i<6;++i) if(a[i].f<0||a[i].f>1) throw dslvm::Error("procedural color channels must be in [0,1]");
+    if(a[6].f<0.1||a[6].f>1000||a[7].f<0||a[7].f>1) throw dslvm::Error("procedural scale or roughness outside supported bounds");
+    auto material=std::make_unique<Material>();
+    material->color={float(a[0].f),float(a[1].f),float(a[2].f)};
+    material->texture_color2={float(a[3].f),float(a[4].f),float(a[5].f)};
+    material->texture_scale=float(a[6].f);material->roughness=float(a[7].f);material->texture_kind=kind;
+    Material *result=material.get();scene->materials.push_back(std::move(material));
+    return dslvm::Value::object("Material",result);
+  };
+  registry.method("Scene", "checker_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,1);});
+  registry.method("Scene", "noise_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,2);});
   auto import = [](void *p, dslvm::Args &args, bool stl) {
     auto *scene = static_cast<Scene *>(p);
     if (args[0].s.empty()) throw dslvm::Error("mesh input path must not be empty");

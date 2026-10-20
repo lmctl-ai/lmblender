@@ -1,0 +1,14 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/orthographic-camera.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+let clay = scene.material(0.55, 0.24, 0.08, 0.0, 0.62, 0.0, 0.0, 0.0, 0.0, 0.0);
+mesh.set_material(clay);
+scene.ground_plane(-0.12, 60.0, 0.28, 0.3, 0.34);
+scene.sun_light(0.25, -0.5, -1.0, 1.0, 0.9, 0.78, 2.4, 0.2);
+scene.area_light(-4.0, -5.0, 7.0, 0.0, 0.0, 1.5, 1.0, 0.8, 0.65, 1800.0, 4.0);
+scene.camera_look_at(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 55.0);
+scene.render_png("build/perspective-reference.png", 64, 512, 384);
+scene.camera_orthographic(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 7.0);
+scene.render_png("build/orthographic-camera.png", 64, 512, 384);
+end _dsl_
+savedsl(p, out);

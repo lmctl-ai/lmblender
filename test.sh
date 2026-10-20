@@ -18,6 +18,8 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/render-exr.lms "$build/render-exr.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/mesh-instances.lms "$build/mesh-instances.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-settings.lms "$build/render-settings.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/procedural-materials.lms "$build/procedural-materials.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/orthographic-camera.lms "$build/orthographic-camera.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
@@ -27,6 +29,8 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/render-exr.dslb" >"$build/render-exr-result.json"
 "$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-result.json"
 "$exe" --dsl "$build/render-settings.dslb" >"$build/render-settings-result.json"
+"$exe" --dsl "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
+"$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
   echo "render-timeout test unexpectedly completed" >&2
@@ -46,6 +50,9 @@ test -s "$build/camera-look-at.png"
 test -s "$build/imported-mesh.exr"
 test -s "$build/mesh-instances.png"
 test -s "$build/render-settings.png"
+test -s "$build/procedural-materials.png"
+test -s "$build/orthographic-camera.png"
+test -s "$build/perspective-reference.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
 python3 tests/png_metrics.py "$build/imported-mesh.png"
@@ -58,13 +65,15 @@ python3 tests/exr_header.py "$build/imported-mesh.exr"
 python3 tests/png_metrics.py "$build/mesh-instances.png"
 python3 tests/png_instances.py "$build/mesh-instances.png"
 python3 tests/png_metrics.py "$build/render-settings.png"
+python3 tests/procedural_materials_quality.py "$build/procedural-materials.png"
+python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" "$build/orthographic-camera.png"
 python3 tests/png_compare.py "$build/imported-mesh.png" "$build/imported-mesh-xml.png"
 diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
-python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" <<'PY'
+python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" <<'PY'
 import json,sys
 for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result
-print('DSL v5 runner, OBJ/ASCII/binary STL import, direct Cycles API PNG render, XML oracle comparison, and embedded schema pass')
+print('DSL v5 runner, mesh import, direct Cycles rendering, material/light/camera bindings, XML oracle comparison, and embedded schema pass')
 PY
 for binary in "$exe" "$build/cycles-static/bin/cycles"; do
   [ ! -x "$binary" ] && continue

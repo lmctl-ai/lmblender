@@ -5,10 +5,15 @@
     "Scene": {
       "methods": {
         "camera_look_at": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "camera_orthographic": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "fit_camera": [{"params": ["float"], "returns": "void"}],
         "area_light": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "sun_light": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "spot_light": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "ground_plane": [{"params": ["float", "float", "float", "float", "float"], "returns": "void"}],
         "wall_plane_y": [{"params": ["float", "float", "float", "float", "float"], "returns": "void"}],
+        "checker_material": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float"], "returns": "Material"}],
+        "noise_material": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float"], "returns": "Material"}],
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
         "expect_int": [
