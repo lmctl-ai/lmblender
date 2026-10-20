@@ -13,6 +13,10 @@ Measured with `tests/throughput-bench.lms`-style scene on 2026-10-20. Values are
 
 The component values can differ slightly from total wall time because Cycles phases overlap and each timer has separate boundaries. OIDN consumes most of the time for this small scene. Session reuse or BVH optimization cannot materially improve this case without changing the denoiser or image quality settings.
 
+## Sequence session experiment
+
+`render_sequence` was profiled over three animated 480x270 frames (8 spp + OIDN): scene construction/session setup was 1 ms on frame 1 and below 1 ms on frames 2–3; `Session::reset`/BVH was below 1 ms on all three. Render plus denoise was 1.76, 1.75, and 1.70 seconds. Reusing a C++ `Session` would require retaining and updating its Cycles scene graph and shader/object nodes; merely retaining the `Session` while rebuilding those nodes is unsafe and still forces scene synchronization. Since measured session/BVH work is below timer resolution and under 0.06% of the frame time, that refactor has no measurable throughput benefit for the requested scene. The sequence currently creates a fresh Cycles session per frame. The next useful speed experiments are denoiser quality and sample count, measured against a high-sample image reference.
+
 For comparison, the earlier 64 spp + OIDN end-to-end measurements were 19.93 s at 960x540 and 35.16 s at 1280x720. The prior 8 spp, no-denoise draft values were 1.90 s and 3.36 s respectively. Those older runs were not phase-instrumented and are not directly comparable to the present 16 spp profile.
 
 ## Reproducing the phase profile
