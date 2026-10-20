@@ -36,6 +36,9 @@ printf '\nRun: bin/lmblender --version\nSchema: schema/lmblender.dsl.json\n' >>"
 archive="$root/dist/${artifact}-v${version}.tar.gz"
 tar -C "$stage" -czf "$archive" "$artifact"
 sha256sum "$archive" >"$archive.sha256"
+bare="$root/dist/${artifact}-v${version}"
+install -m 0755 "$binary" "$bare"
+sha256sum "$bare" >"$bare.sha256"
 host_root=${LMBLENDER_HOST_RELEASE:-/home/ubuntu/lmblender-release}
 mkdir -p "$host_root/versions/v${version}"
 cp -a "$pkg/." "$host_root/versions/v${version}/"
@@ -43,13 +46,13 @@ ln -sfn "versions/v${version}" "$host_root/latest"
 ln -sfn latest "$host_root/current"
 for path in bin schema docs examples; do ln -sfn "current/$path" "$host_root/$path"; done
 echo "Installed stable host layout at $host_root (current -> v${version})"
-echo "Created $archive ($(stat -c '%s' "$archive") bytes compressed); binary=$size bytes"
+echo "Created $archive ($(stat -c '%s' "$archive") bytes compressed); binary=$size bytes; bare=$bare"
 if [[ ${1:-} == --draft ]]; then
   if gh release view "v${version}" --repo lmctlhq/lmblender >/dev/null 2>&1; then
-    gh release upload "v${version}" "$archive" "$archive.sha256" --repo lmctlhq/lmblender --clobber
+    gh release upload "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" --repo lmctlhq/lmblender --clobber
     gh release edit "v${version}" --repo lmctlhq/lmblender --draft --notes-file docs/RELEASE_NOTES.md
   else
-    gh release create "v${version}" "$archive" "$archive.sha256" --repo lmctlhq/lmblender --draft \
+    gh release create "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" --repo lmctlhq/lmblender --draft \
       --title "lmblender ${version} (${artifact})" --notes-file docs/RELEASE_NOTES.md
   fi
 fi
