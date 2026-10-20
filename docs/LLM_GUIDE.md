@@ -37,6 +37,13 @@ method Mesh.vertex_count() -> int
 method Scene.area_light(float, float, float, float, float, float, float, float, float, float, float) -> void
 method Scene.area_light_shape(float, float, float, float, float, float, float, float, float, float, float, float, string) -> void
 method Scene.camera_dof(float, float) -> void
+method Scene.capsule(float, float, int, int) -> Mesh
+method Scene.glow_orb(float, float, float, float, float, float, float, float) -> Mesh
+method Scene.tube_between(float, float, float, float, float, float, float) -> Mesh
+method Scene.arrow_between(float, float, float, float, float, float, float) -> Mesh
+method Scene.ring_arc(float, float, float, float, float, float, float, int) -> Mesh
+method Scene.checkmark(float, float, float, float, float) -> Mesh
+method Scene.label(string, float, float, float, float) -> Mesh
 method Scene.camera_keyframe(int, float, float, float, float, float, float, string) -> void
 method Scene.camera_look_at(float, float, float, float, float, float, float) -> void
 method Scene.camera_orthographic(float, float, float, float, float, float, float) -> void
@@ -89,6 +96,12 @@ method Scene.world_color(float, float, float, float) -> void
 |---|---|
 | `cube(size)`, `plane(size)` | Positive extent in scene units, up to 10,000. |
 | `uv_sphere(radius, segments, rings, smooth)`, `cylinder(radius,height,segments,smooth)`, `cone(radius,height,segments,smooth)`, `torus(major,minor,segments,rings,smooth)` | Dimensions in scene units; segments 8..256 and rings 4..256. |
+| `capsule(radius,length,segments,cap_rings)` | Rounded capsule along Z; total length is at least twice the radius. |
+| `glow_orb(x,y,z,radius,r,g,b,strength)` | Smooth emissive sphere; use a second larger low-strength orb for a simple halo effect. |
+| `tube_between(x1,y1,z1,x2,y2,z2,radius)`, `arrow_between(...)` | Cylindrical path or tapered arrow between two 3D points. |
+| `ring_arc(x,y,z,major,minor,start_deg,end_deg,segments)` | Partial torus gauge, angles in degrees, ordered span up to 360. |
+| `checkmark(x,y,z,size,stroke)` | Green check silhouette mesh; assign its material explicitly. |
+| `label(text,x,y,z,cell_size)` | Extruded 5×7 ASCII uppercase letters and spaces, suitable for flat title plates. |
 | `import_obj/stl/ply/gltf(path)` | Import mesh from a regular file; formats and size limits are validated. |
 | `mesh.translate(x,y,z)`, `scale(x,y,z)`, `rotate_x(degrees)` | Relative translation/scale and baked X-axis rotation. |
 | `material(r,g,b,metallic,roughness,transmission,emission_r,g,b,emission_strength)` | Principled BSDF factors; color [0,1], emission strength [0,10000]. |

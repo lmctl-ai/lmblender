@@ -4,7 +4,12 @@ root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
 python3 tests/create_material_maps.py "$build/material-map-assets"
-cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON
+cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
+  -DBLENDER_SOURCE_TREE="${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}" \
+  -DBLENDER_DEPS_INSTALL="${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}" \
+  -DBLENDER_LIBDIR="${BLENDER_LIBDIR:-${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}}" \
+  -DCYCLES_BUILD_DIR="${CYCLES_BUILD_DIR:-$build/cycles-static}" \
+  -DLMBLENDER_STATIC_PREFIX="${LMBLENDER_STATIC_PREFIX:-$build/static-prefix-gcc14}"
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
 exe="$build/lmblender"
@@ -46,6 +51,10 @@ done
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
+mkdir -p "$build/video"
+for video in level1-teams level2-agents level3-flow level4-pipeline; do
+  "${LMSCRIPT:-lmscript}" "examples/video/$video.lms" "$build/video/$video.dslb" >/dev/null
+done
 "${LMSCRIPT:-lmscript}" examples/material-nodes-control.lms "$build/material-nodes-control.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"

@@ -429,6 +429,13 @@
             "returns": "Mesh"
           }
         ],
+        "capsule": [{"params":["float","float","int","int"],"returns":"Mesh"}],
+        "glow_orb": [{"params":["float","float","float","float","float","float","float","float"],"returns":"Mesh"}],
+        "tube_between": [{"params":["float","float","float","float","float","float","float"],"returns":"Mesh"}],
+        "arrow_between": [{"params":["float","float","float","float","float","float","float"],"returns":"Mesh"}],
+        "ring_arc": [{"params":["float","float","float","float","float","float","float","int"],"returns":"Mesh"}],
+        "checkmark": [{"params":["float","float","float","float","float"],"returns":"Mesh"}],
+        "label": [{"params":["string","float","float","float","float"],"returns":"Mesh"}],
         "checker_ground": [
           {
             "params": [

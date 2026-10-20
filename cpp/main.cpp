@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 #include "dslvm.hpp"
 #include "schema_embedded.hpp"
 #include "view_luts.h"
@@ -19,6 +22,7 @@
 #include <tuple>
 #include <limits>
 #include <cmath>
+#include <cctype>
 #include <chrono>
 #include <set>
 #include <unistd.h>
@@ -1382,6 +1386,56 @@ Mesh read_stl(const std::string &path) {
   return mesh;
 }
 
+void append_triangle(Mesh &mesh, uint32_t a, uint32_t b, uint32_t c)
+{
+  mesh.triangles.push_back({a, b, c});
+}
+
+void append_box(Mesh &mesh, const std::array<double, 3> &center, const std::array<double, 3> &size)
+{
+  const uint32_t base = uint32_t(mesh.vertices.size());
+  for (int z = -1; z <= 1; z += 2) for (int y = -1; y <= 1; y += 2) for (int x = -1; x <= 1; x += 2)
+    mesh.vertices.push_back({center[0] + x * size[0] * 0.5, center[1] + y * size[1] * 0.5, center[2] + z * size[2] * 0.5});
+  const uint32_t faces[][3] = {{0,2,3},{0,3,1},{4,5,7},{4,7,6},{0,1,5},{0,5,4},
+                               {2,6,7},{2,7,3},{0,4,6},{0,6,2},{1,3,7},{1,7,5}};
+  for (const auto &face : faces) append_triangle(mesh, base + face[0], base + face[1], base + face[2]);
+}
+
+void append_prism_segment(Mesh &mesh, const std::array<double, 3> &a, const std::array<double, 3> &b,
+                          double width, double depth)
+{
+  const double dx=b[0]-a[0], dy=b[1]-a[1], length=std::hypot(dx,dy);
+  if (length < 1.0e-9) return;
+  const double nx=-dy/length*width*0.5, ny=dx/length*width*0.5, z0=-depth*0.5, z1=depth*0.5;
+  const uint32_t i=uint32_t(mesh.vertices.size());
+  mesh.vertices.push_back({a[0]+nx,a[1]+ny,z0}); mesh.vertices.push_back({a[0]-nx,a[1]-ny,z0});
+  mesh.vertices.push_back({b[0]-nx,b[1]-ny,z0}); mesh.vertices.push_back({b[0]+nx,b[1]+ny,z0});
+  mesh.vertices.push_back({a[0]+nx,a[1]+ny,z1}); mesh.vertices.push_back({a[0]-nx,a[1]-ny,z1});
+  mesh.vertices.push_back({b[0]-nx,b[1]-ny,z1}); mesh.vertices.push_back({b[0]+nx,b[1]+ny,z1});
+  const uint32_t f[][3]={{0,2,1},{0,3,2},{4,5,6},{4,6,7},{0,1,5},{0,5,4},
+                         {1,2,6},{1,6,5},{2,3,7},{2,7,6},{3,0,4},{3,4,7}};
+  for(const auto &t:f) append_triangle(mesh,i+t[0],i+t[1],i+t[2]);
+}
+
+std::array<uint8_t,7> glyph_rows(char input)
+{
+  const char c = char(std::toupper(static_cast<unsigned char>(input)));
+  static const std::array<std::array<uint8_t,7>,26> letters = {{
+    {{14,17,17,31,17,17,17}},{{30,17,17,30,17,17,30}},{{14,17,16,16,16,17,14}},
+    {{30,17,17,17,17,17,30}},{{31,16,16,30,16,16,31}},{{31,16,16,30,16,16,16}},
+    {{14,17,16,23,17,17,15}},{{17,17,17,31,17,17,17}},{{14,4,4,4,4,4,14}},
+    {{7,2,2,2,18,18,12}},{{17,18,20,24,20,18,17}},{{16,16,16,16,16,16,31}},
+    {{17,27,21,21,17,17,17}},{{17,25,21,19,17,17,17}},{{14,17,17,17,17,17,14}},
+    {{30,17,17,30,16,16,16}},{{14,17,17,17,21,18,13}},{{30,17,17,30,20,18,17}},
+    {{15,16,16,14,1,1,30}},{{31,4,4,4,4,4,4}},{{17,17,17,17,17,17,14}},
+    {{17,17,17,17,17,10,4}},{{17,17,17,21,21,21,10}},{{17,17,10,4,10,17,17}},
+    {{17,17,10,4,4,4,4}},{{31,1,2,4,8,16,31}}
+  }};
+  if(c==' ') return {0,0,0,0,0,0,0};
+  if(c>='A'&&c<='Z') return letters[size_t(c-'A')];
+  throw dslvm::Error("label currently accepts ASCII letters and spaces only");
+}
+
 dslvm::Registry make_registry() {
   dslvm::Registry registry;
   registry.context("scene", "Scene");
@@ -1430,6 +1484,63 @@ dslvm::Registry make_registry() {
   registry.method("Scene","cylinder",{"float","float","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[1].f<=0||a[0].f>10000||a[1].f>10000)throw dslvm::Error("cylinder dimensions must be in (0,10000]");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[2].i)};return primitive(p,"cylinder",v,4,a[3].b);});
   registry.method("Scene","cone",{"float","float","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[1].f<=0||a[0].f>10000||a[1].f>10000)throw dslvm::Error("cone dimensions must be in (0,10000]");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[2].i)};return primitive(p,"cone",v,4,a[3].b);});
   registry.method("Scene","torus",{"float","float","int","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=a[1].f||a[1].f<=0||a[0].f>10000)throw dslvm::Error("torus radii require major > minor > 0");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[3].i)};return primitive(p,"torus",v,4,a[4].b);});
+  registry.method("Scene","glow_orb",{"float","float","float","float","float","float","float","float"},"Mesh",[primitive](void*p,dslvm::Args&a){
+    for(const auto &v:a)if(!std::isfinite(v.f))throw dslvm::Error("glow orb parameters must be finite");if(a[3].f<=0||a[3].f>10000||a[4].f<0||a[4].f>1||a[5].f<0||a[5].f>1||a[6].f<0||a[6].f>1||a[7].f<0||a[7].f>10000)throw dslvm::Error("glow orb radius/color/emission outside supported bounds");
+    double v[]={a[3].f,32,16};auto result=primitive(p,"uv_sphere",v,3,true);auto *mesh=static_cast<Mesh*>(result.obj);mesh->translation={float(a[0].f),float(a[1].f),float(a[2].f)};
+    auto *scene=static_cast<Scene*>(p);auto mat=std::make_unique<Material>();mat->color={float(a[4].f),float(a[5].f),float(a[6].f)};mat->emission=mat->color;mat->emission_strength=float(a[7].f);mat->roughness=0.3f;mesh->material=mat.get();scene->materials.push_back(std::move(mat));return result;
+  });
+  registry.method("Scene", "capsule", {"float","float","int","int"}, "Mesh", [](void *p,dslvm::Args&a) {
+    auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)"); const double r=a[0].f, length=a[1].f; const int seg=int(a[2].i), hemi=int(a[3].i);
+    if(!std::isfinite(r)||!std::isfinite(length)||r<=0||length<2*r||r>10000||length>10000||seg<8||seg>128||hemi<4||hemi>64) throw dslvm::Error("capsule requires radius>0, length>=2*radius, segments 8..128 and cap rings 4..64");
+    auto m=std::make_unique<Mesh>(); m->smooth=true; const double half=length*0.5-r;
+    std::vector<std::pair<double,double>> profile;
+    for(int i=0;i<=hemi;++i){double t=-M_PI*0.5+(M_PI*0.5)*i/hemi;profile.push_back({-half+r*std::sin(t),r*std::cos(t)});}
+    profile.push_back({half,r});
+    for(int i=1;i<=hemi;++i){double t=(M_PI*0.5)*i/hemi;profile.push_back({half+r*std::sin(t),r*std::cos(t)});}
+    for(const auto &ring:profile)for(int x=0;x<seg;++x){double t=2*M_PI*x/seg;m->vertices.push_back({ring.second*std::cos(t),ring.second*std::sin(t),ring.first});}
+    for(size_t y=0;y+1<profile.size();++y)for(int x=0;x<seg;++x){uint32_t a0=uint32_t(y*seg+x),b=uint32_t(y*seg+(x+1)%seg),c=uint32_t((y+1)*seg+(x+1)%seg),d=uint32_t((y+1)*seg+x);append_triangle(*m,a0,b,c);append_triangle(*m,a0,c,d);}
+    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+  });
+  auto path_mesh = [](void *p,dslvm::Args&a,bool arrow) {
+    auto *scene=static_cast<Scene*>(p); if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");
+    for(const auto &v:a)if(!std::isfinite(v.f))throw dslvm::Error("path coordinates and radius must be finite");
+    const double x0=a[0].f,y0=a[1].f,z0=a[2].f,x1=a[3].f,y1=a[4].f,z1=a[5].f,r=a[6].f;
+    if(r<=0||r>1000||std::abs(x0)>1e6||std::abs(y0)>1e6||std::abs(z0)>1e6||std::abs(x1)>1e6||std::abs(y1)>1e6||std::abs(z1)>1e6)throw dslvm::Error("path radius or endpoint outside supported bounds");
+    std::array<double,3>d{x1-x0,y1-y0,z1-z0};double len=std::sqrt(d[0]*d[0]+d[1]*d[1]+d[2]*d[2]);if(len<1e-5)throw dslvm::Error("path endpoints must differ");for(auto &v:d)v/=len;
+    std::array<double,3> ref=std::abs(d[2])<0.9?std::array<double,3>{0,0,1}:std::array<double,3>{0,1,0};
+    std::array<double,3>u{d[1]*ref[2]-d[2]*ref[1],d[2]*ref[0]-d[0]*ref[2],d[0]*ref[1]-d[1]*ref[0]};double ul=std::sqrt(u[0]*u[0]+u[1]*u[1]+u[2]*u[2]);for(auto &v:u)v/=ul;
+    std::array<double,3>v{d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]};
+    auto m=std::make_unique<Mesh>();m->smooth=true;const int sides=16;const double head_len=arrow?std::min(len*0.35,r*5):0.0;const int rings=arrow?3:2;
+    for(int ring=0;ring<rings;++ring){double t=arrow?(ring==0?0.0:ring==1?(len-head_len)/len:1.0):(ring?1.0:0.0);double rr=arrow?(ring==2?0.0:ring==1?r*2.8:r):r;
+      for(int s=0;s<sides;++s){double q=2*M_PI*s/sides;double cs=std::cos(q),sn=std::sin(q);m->vertices.push_back({x0+d[0]*len*t+rr*(u[0]*cs+v[0]*sn),y0+d[1]*len*t+rr*(u[1]*cs+v[1]*sn),z0+d[2]*len*t+rr*(u[2]*cs+v[2]*sn)});}}
+    for(int ring=0;ring+1<rings;++ring)for(int s=0;s<sides;++s){uint32_t a0=ring*sides+s,b=ring*sides+(s+1)%sides,c=(ring+1)*sides+(s+1)%sides,e=(ring+1)*sides+s;append_triangle(*m,a0,b,c);append_triangle(*m,a0,c,e);}
+    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+  };
+  registry.method("Scene","tube_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,false);});
+  registry.method("Scene","arrow_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,true);});
+  registry.method("Scene","ring_arc",{"float","float","float","float","float","float","float","int"},"Mesh",[](void*p,dslvm::Args&a){
+    auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");for(size_t i=0;i<7;++i)if(!std::isfinite(a[i].f))throw dslvm::Error("ring arc values must be finite");
+    const double R=a[3].f,r=a[4].f,start=a[5].f*M_PI/180.0,end=a[6].f*M_PI/180.0;const int seg=int(a[7].i),sides=12;
+    if(R<=r||r<=0||R>10000||std::abs(a[0].f)>1e6||std::abs(a[1].f)>1e6||std::abs(a[2].f)>1e6||end<=start||end-start>2*M_PI+1e-6||seg<8||seg>512)throw dslvm::Error("ring arc requires major>minor>0, ordered angle span <=360 degrees and 8..512 segments");
+    auto m=std::make_unique<Mesh>();m->smooth=true;
+    for(int x=0;x<=seg;++x){double th=start+(end-start)*x/seg;for(int y=0;y<sides;++y){double ph=2*M_PI*y/sides,rr=R+r*std::cos(ph);m->vertices.push_back({a[0].f+rr*std::cos(th),a[1].f+rr*std::sin(th),a[2].f+r*std::sin(ph)});}}
+    for(int x=0;x<seg;++x)for(int y=0;y<sides;++y){uint32_t q=x*sides+y,q1=x*sides+(y+1)%sides,q2=(x+1)*sides+(y+1)%sides,q3=(x+1)*sides+y;append_triangle(*m,q,q1,q2);append_triangle(*m,q,q2,q3);}
+    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene","checkmark",{"float","float","float","float","float"},"Mesh",[](void*p,dslvm::Args&a){
+    auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");for(const auto &v:a)if(!std::isfinite(v.f))throw dslvm::Error("check mark values must be finite");const double x=a[0].f,y=a[1].f,z=a[2].f,s=a[3].f,w=a[4].f;
+    if(s<=0||s>10000||w<=0||w>s*0.4)throw dslvm::Error("check mark size must be positive and stroke width <=40% of size");
+    auto m=std::make_unique<Mesh>();append_prism_segment(*m,{x-s*0.42,y+s*0.02,0},{x-s*0.12,y-s*0.28,0},w,s*0.12);append_prism_segment(*m,{x-s*0.12,y-s*0.28,0},{x+s*0.45,y+s*0.34,0},w,s*0.12);for(auto &vertex:m->vertices)vertex[2]+=z;
+    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene","label",{"string","float","float","float","float"},"Mesh",[](void*p,dslvm::Args&a){
+    auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");if(a[0].s.empty()||a[0].s.size()>64)throw dslvm::Error("label text length must be 1..64 ASCII letters/spaces");
+    for(size_t i=1;i<5;++i)if(!std::isfinite(a[i].f))throw dslvm::Error("label position and size must be finite");const double x=a[1].f,y=a[2].f,z=a[3].f,u=a[4].f;
+    if(u<=0||u>1000||std::abs(x)>1e6||std::abs(y)>1e6||std::abs(z)>1e6)throw dslvm::Error("label size or position outside supported bounds");
+    auto m=std::make_unique<Mesh>();const double thick=u*0.14,step=u/6.0;
+    for(size_t ci=0;ci<a[0].s.size();++ci){auto rows=glyph_rows(a[0].s[ci]);for(int row=0;row<7;++row)for(int col=0;col<5;++col)if(rows[row]&(1u<<(4-col)))append_box(*m,{x+(ci*6+col)*step,y+(6-row)*step,z},{step*0.82,step*0.82,thick});}
+    if(m->vertices.size()>100000)throw dslvm::Error("label geometry exceeds 100,000 vertices");Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+  });
   registry.method("Scene", "camera_look_at", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("camera values must be finite");

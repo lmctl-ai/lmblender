@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
@@ -10,6 +13,10 @@ if ! BUILD_JOBS=2 LMBLENDER_BUILD_DIR="$build" ./test.sh >"$log" 2>&1; then
   cat "$log" >&2
   exit 1
 fi
+LMBLENDER_BUILD_DIR="$build" ./examples/video/run.sh >>"$log" 2>&1 || {
+  cat "$log" >&2
+  exit 1
+}
 exe="$build/lmblender"
 cycle="$build/cycles-static/bin/cycles"
 for binary in "$exe" "$cycle"; do
@@ -64,6 +71,10 @@ qa_image procedural procedural-materials.png '1) two distinct objects are visibl
 qa_image image-texture image-texture.png '1) the textured cube is fully visible; 2) red and yellow regions from the texture appear on multiple faces; 3) the image is not a plain gray cube.'
 qa_image material-maps material-maps.png '1) exactly two smooth spheres sit apart on the ground and both are fully framed; 2) the left orange sphere has visibly irregular normal-map relief and varying metallic/roughness highlights; 3) the right sphere visibly alternates gold and blue from a texture-driven shader mix; 4) neither sphere overlaps or is cropped.'
 qa_image backface-culling backface-culling.png '1) one bright green square panel is clearly visible on the left; 2) the corresponding right panel area is empty gray because the red material is viewed from its culled backface; 3) both left/right regions are unclipped and the distinction is clear.'
+qa_image video-level1 'video/level1-8.png' '1) Coder and Research orb teams both have readable labels; 2) every visible ring and satellite orb is fully inside frame; 3) this peek is closer than video/level1-0.png; 4) the groups remain visibly separate.'
+qa_image video-level2 'video/level2-12.png' '1) one yellow lead and the cyan, green, pink, and purple agents are visible; 2) the CODER, LEAD, and BROWSER labels are readable; 3) message arrows and a red-orange token are visible; 4) the scene is fully framed.'
+qa_image video-level3 'video/level3-12.png' '1) HUMAN, LEAD, TEAM, RESULT cards are all visible in left-to-right order; 2) the text on all cards is readable; 3) arrows connect consecutive cards; 4) a red-orange message token is visible without hiding card labels.'
+qa_image video-level4 'video/level4-23.png' '1) INPUT, BUILD, REVIEW, SHIP labels are visible in order; 2) the green check is large and fully inside frame; 3) the green check belongs at the final SHIP stage; 4) the moving red-orange token is visible near the end.'
 
 size_host=$(stat -c %s "$exe")
 size_cycles=$(stat -c %s "$cycle")
@@ -77,7 +88,7 @@ fi
   printf '# Full-check status\n\n'
 printf 'Generated: %s\n\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf 'Source revision tested: `%s`\n\n' "$tested_revision"
-  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 14 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
+  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 18 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
   while IFS= read -r line; do printf -- '- %s\n' "$line"; done < "$qa_dir/results.txt"
 } > docs/STATUS.md
 cat docs/STATUS.md

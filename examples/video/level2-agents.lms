@@ -1,0 +1,22 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
+out = ARGV.len() > 0 ? ARGV[0] : "build/level2.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+scene.world_color(0.018,0.025,0.055,0.7); scene.ground_plane(-2.0,30.0,0.035,0.05,0.09);
+scene.area_light(0.0,-7.0,8.0,0.0,0.0,0.0,0.62,0.78,1.0,1000.0,5.0);
+let lead=scene.glow_orb(0.0,0.0,0.6,0.95,1.0,0.68,0.15,3.0);
+let a=scene.glow_orb(-3.6,0.0,0.5,0.52,0.12,0.55,1.0,2.5); let b=scene.capsule(0.38,1.25,24,8); b.translate(3.6,0.0,0.5);let bm=scene.material(0.15,0.85,0.48,0.05,0.28,0.0,0.0,0.0,0.0,0.9);b.set_material(bm);
+let c=scene.glow_orb(-2.1,1.8,1.1,0.42,0.85,0.2,0.35,2.1); let d=scene.glow_orb(2.1,1.8,1.1,0.42,0.55,0.24,1.0,2.1);
+let ab=scene.arrow_between(-2.9,0.0,0.5,-0.8,0.0,0.6,0.08); let bb=scene.arrow_between(2.9,0.0,0.5,0.8,0.0,0.6,0.08);
+let cb=scene.arrow_between(-1.6,1.5,1.0,-0.5,0.7,0.7,0.06); let db=scene.arrow_between(1.6,1.5,1.0,0.5,0.7,0.7,0.06);
+let m1=scene.glow_orb(-3.4,-1.2,0.6,0.24,1.0,0.07,0.015,5.0); m1.keyframe_transform(0,-3.4,-1.2,0.6,"linear"); m1.keyframe_transform(23,1.4,-1.2,0.6,"linear");
+let m2=scene.glow_orb(3.4,-1.2,0.6,0.20,0.15,0.35,1.0,4.0); m2.keyframe_transform(0,3.4,-1.2,0.6,"linear"); m2.keyframe_transform(23,-1.4,-1.2,0.6,"linear");
+let white=scene.material(0.82,0.9,1.0,0.0,0.5,0.0,0.0,0.0,0.0,0.5);
+let ll=scene.label("LEAD",-0.40,0.0,0.0,0.22);ll.rotate_x(90.0);ll.translate(0.0,-1.0,-1.25);ll.set_material(white);
+let la=scene.label("CODER",-0.50,0.0,0.0,0.20);la.rotate_x(90.0);la.translate(-4.3,-0.65,-0.55);la.set_material(white);
+let lb=scene.label("BROWSER",-0.80,0.0,0.0,0.16);lb.rotate_x(90.0);lb.translate(3.2,-0.65,-0.55);lb.set_material(white);
+scene.camera_look_at(0.0,-16.0,6.0,0.0,0.0,0.4,43.0); scene.render_preset("draft");scene.render_settings(4,0,true);
+scene.render_sequence("build/video/level2-{frame}.png",0,23,0,640,360);
+end _dsl_
+savedsl(p, out);

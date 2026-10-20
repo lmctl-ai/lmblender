@@ -1,5 +1,7 @@
 # lmblender
 
+**License:** the combined static executable is distributed under GPL-3.0-or-later because it links GPL Blender intern code. Project-authored files are separately marked MIT where noted; see [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md).
+
 On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280×720 studio frame at 64 samples with OIDN in 49.88 seconds (about 1.20 frames/minute). This does not meet a few-seconds target; actual speed depends on scene complexity and hardware.
 
 `lmblender` is a standalone CPU Cycles renderer controlled by `lmscript` DSL bytecode. It is a separate executable from [lmcad](https://github.com/lmctlhq/lmcad); composition happens through files and lmscript programs. The host embeds the pinned DSL v5 VM and schema. Blender's standalone Cycles source is built separately, without Blender, Python, GUI, or GPU backends.
@@ -16,6 +18,14 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 | Mesh input | Partial | OBJ, STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms, PBR base-color factor, and external PNG/JPEG base-color textures; binary PLY and embedded glTF images remain unsupported |
 | Gallery QA | Partial | 12 curated renders pass numeric checks and agy/Gemini visual checklists at 640×480; lmcad compositions are checked separately |
 | Alpha output | Partial | Transparent world film emits RGBA PNG; shadow-catcher composition remains |
+
+## Video examples
+
+`examples/video/` contains four one-second visual language samples for agent teams, message routing, human-to-result flow, and a checked pipeline. Run `examples/video/run.sh` for 24-frame 24 fps PNG sequences and optional MP4s. See its [scene and QA notes](examples/video/README.md). The custom font is a simple extruded 5×7 uppercase ASCII mesh; visual effects are geometry and emission, with no bloom post-process.
+
+## Using from another project on this host
+
+Run `scripts/release.sh` after building to refresh `/home/ubuntu/lmblender-release`. The stable consumer paths are `bin/lmblender`, `schema/lmblender.dsl.json`, `docs/LLM_GUIDE.md`, and `examples/`; `current` follows `latest`, which points at the installed version. A consumer can set `PATH=/home/ubuntu/lmblender-release/bin:$PATH` and pass the schema path to `lmscript`. The script also writes the standalone binary and its checksum beside the tarball under `dist/`.
 
 - The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, `scene.import_stl(path)`, `scene.import_ply(path)`, and `scene.import_gltf(path)`. PLY currently accepts bounded ASCII 1.0 meshes with x/y/z vertices and polygon face indices. glTF 2.0 `.gltf` and `.glb` import traverses the selected scene hierarchy, bakes node transforms into render meshes, preserves TEXCOORD_0, reads metallic/roughness and baseColorFactor, and supports external PNG/JPEG base-color images confined to the glTF directory. Imported meshes expose vertex/triangle counts and bounds. Sparse accessors, non-triangle modes, required extensions, skinning, morph targets, and embedded/data-URI images are rejected with structured glTF errors. Inputs are bounded to 256 MiB glTF containers, 512 MiB aggregate buffers, 64 MiB per texture, 10 million decoded vertices, 20 million triangles, 4096 generated meshes/materials, and 200,000 hierarchy visits. `scene.render_png(path, samples, width, height)` builds Cycles `Scene`, `Mesh`, `Object`, `ShaderGraph`, camera, and light nodes directly through the Cycles C++ API and renders them with an in-process CPU session. The renderer uses a fitted Z-up perspective camera by default, and assigns Cycles emission shaders to direct-light nodes so they participate in the light manager.
 - `scene.render_preset("draft"|"final")` selects 16 samples/4 bounces without denoising, or 64 samples/8 bounces with CPU OIDN. Pass `0` as samples to `render_png` or `render_sequence` to use the preset. Rendering uses up to four host CPU threads. Sequences keep the DSL scene and keyframes in memory, but Cycles currently creates a fresh session for each frame.
