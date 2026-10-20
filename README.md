@@ -4,6 +4,15 @@
 
 ## Current milestone status
 
+| Area | Status | Current support / gap |
+| --- | --- | --- |
+| CPU Cycles render | Done | Static executable, direct C++ scene construction, PNG and EXR, CPU OIDN denoise |
+| Materials and lights | Partial | Principled, checker/noise/image surface textures, point/area/sun/spot and emissive surfaces; HDRI, glass parity, SSS, and volumes remain |
+| World | Partial | Color background and Cycles multiple-scattering sky; HDRI environment mapping remains |
+| Camera and motion | Partial | Perspective/orthographic and fit/look-at; DOF and motion blur remain |
+| Mesh input | Partial | OBJ, STL, ASCII PLY; binary PLY and glTF remain |
+| Gallery QA | Partial | 640×480 sky image with numeric QA and thumbnail; broader gallery resolution/QA pass remains |
+
 - The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, `scene.import_stl(path)`, and `scene.import_ply(path)`; PLY currently accepts bounded ASCII 1.0 meshes with x/y/z vertices and polygon face indices. Imported meshes expose vertex/triangle counts and bounds. `scene.render_png(path, samples, width, height)` builds Cycles `Scene`, `Mesh`, `Object`, `ShaderGraph`, camera, and light nodes directly through the Cycles C++ API and renders them with an in-process CPU session. The renderer uses a fitted Z-up perspective camera by default, and assigns Cycles emission shaders to direct-light nodes so they participate in the light manager. Binary PLY and glTF import remain unsupported.
 - `scene.material(r, g, b, metallic, roughness, transmission, emission_r, emission_g, emission_b, emission_strength)` creates a Principled BSDF material. `scene.checker_material(...)` and `scene.noise_material(...)` connect Cycles procedural nodes into Principled base color. `scene.image_material(path, roughness)` loads a PNG/JPEG/EXR via the static OIIO path, uses per-corner cube-projected UV coordinates, and caps the input at 64 MiB; PNG has a real-render regression fixture. Attach any with `mesh.set_material(material)`. Authored UV maps and texture color-space controls remain planned.
 - Lighting bindings include `scene.world_color(r, g, b, strength)`, point, area, sun, and spot lights. `scene.sky_texture(elevation_degrees, rotation_degrees, intensity)` uses Cycles' multiple-scattering sky node as a world background; `examples/sky-texture.lms` checks a 640x480 vertical luminance gradient (top 188.76, horizon 14.55; clipped pixels below 5%). `scene.area_light(px, py, pz, tx, ty, tz, r, g, b, strength, size)`, `scene.sun_light(dx, dy, dz, r, g, b, strength, angle_degrees)`, and `scene.spot_light(px, py, pz, tx, ty, tz, r, g, b, strength, angle_degrees, blend)` map to Cycles light nodes. `scene.ground_plane(z, size, r, g, b)` adds a diffuse XY floor; `scene.wall_plane_y(y, size, r, g, b)` adds a lightly self-lit backdrop; `scene.fit_camera(fov_degrees)` defers its aspect-aware fit until render dimensions are known, uses transformed non-studio bounds, and compensates the horizontal sensor basis. The automatic point light is omitted when explicit point lights are configured. HDRI environments remain planned.
