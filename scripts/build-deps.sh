@@ -7,6 +7,17 @@ prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix}
 build_root=${LMBLENDER_DEPS_BUILD_DIR:-$repo/build/deps}
 jobs=${BUILD_JOBS:-2}
 cmake=${CMAKE:-cmake}
+c_compiler=${LMBLENDER_CC:-/usr/bin/gcc-14}
+cxx_compiler=${LMBLENDER_CXX:-/usr/bin/g++-14}
+prefix=$(realpath -m "$prefix")
+build_root=$(realpath -m "$build_root")
+compiler_id="$($cxx_compiler --version | head -n 1)"
+state_file="$build_root/.compiler-id"
+if [ -f "$state_file" ] && [ "$(cat "$state_file")" != "$compiler_id" ]; then
+  rm -rf "$build_root" "$prefix"
+fi
+mkdir -p "$build_root" "$prefix"
+printf '%s\n' "$compiler_id" > "$state_file"
 
 for name in tbb imath openexr openimageio tiff; do
   test -f "$src_root/$name/src/external_$name/CMakeLists.txt" || {
@@ -18,6 +29,7 @@ mkdir -p "$prefix" "$build_root"
 build_one() {
   local name=$1 source=$2 build=$3; shift 3
   "$cmake" -S "$source" -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_COMPILER="$c_compiler" -DCMAKE_CXX_COMPILER="$cxx_compiler" \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
     -DBUILD_SHARED_LIBS=OFF "$@"
   "$cmake" --build "$build" --parallel "$jobs"
@@ -57,11 +69,45 @@ build_one opencolorio "$src_root/opencolorio/src/external_opencolorio" "$build_r
   -DOCIO_BUILD_DOCS=OFF -DOCIO_INSTALL_EXT_PACKAGES=ALL \
   -DCMAKE_PREFIX_PATH="$prefix;$deps_install/expat;$deps_install/zlib"
 
+# OCIO's static package config requires its private static dependency targets
+# to exist in the consuming project. OIIO consumes the build-tree dependency
+# bundle directly, so define those imported targets before its project config.
+ocio_ext="$build_root/opencolorio/ext/dist"
+ocio_targets="$build_root/oiio-static-targets.cmake"
+cat > "$ocio_targets" <<EOF
+foreach(_spec IN ITEMS
+    "expat::expat|$ocio_ext/lib/libexpat.a|$ocio_ext/include"
+    "pystring::pystring|$ocio_ext/lib/libpystring.a|$ocio_ext/include/pystring"
+    "yaml-cpp::yaml-cpp|$ocio_ext/lib/libyaml-cpp.a|$ocio_ext/include"
+    "MINIZIP::minizip-ng|$ocio_ext/lib/libminizip-ng.a|$ocio_ext/include")
+  string(REPLACE "|" ";" _parts "\${_spec}")
+  list(GET _parts 0 _target)
+  list(GET _parts 1 _library)
+  list(GET _parts 2 _include)
+  if(NOT TARGET "\${_target}")
+    add_library("\${_target}" UNKNOWN IMPORTED GLOBAL)
+    set_target_properties("\${_target}" PROPERTIES IMPORTED_LOCATION "\${_library}" INTERFACE_INCLUDE_DIRECTORIES "\${_include}")
+  endif()
+endforeach()
+EOF
+
 build_one openimageio "$src_root/openimageio/src/external_openimageio" "$build_root/openimageio" \
   -DOIIO_BUILD_TESTS=OFF -DOIIO_BUILD_TOOLS=OFF -DOIIO_BUILD_DOCS=OFF \
   -DUSE_PYTHON=OFF -DUSE_TBB=ON -DUSE_OPENVDB=OFF -DUSE_FFMPEG=OFF \
   -DUSE_FREETYPE=OFF -DUSE_GIF=OFF -DUSE_LIBRAW=OFF -DUSE_WEBP=OFF \
-  -DUSE_OPENJPEG=OFF -DUSE_OPENCV=OFF -DCMAKE_PREFIX_PATH="$oiio_prefixes"
+  -DUSE_OPENJPEG=OFF -DUSE_OPENCV=OFF -DCMAKE_PREFIX_PATH="$oiio_prefixes" \
+  -Dexpat_ROOT="$build_root/opencolorio/ext/dist" \
+  -Dpystring_ROOT="$build_root/opencolorio/ext/dist" \
+  -Dyaml-cpp_ROOT="$build_root/opencolorio/ext/dist" \
+  -Dminizip-ng_ROOT="$build_root/opencolorio/ext/dist" \
+  -Dexpat_STATIC_LIBRARY=ON \
+  -Dexpat_LIBRARY="$build_root/opencolorio/ext/dist/lib/libexpat.a" \
+  -Dexpat_INCLUDE_DIR="$build_root/opencolorio/ext/dist/include" \
+  -Dpystring_LIBRARY="$build_root/opencolorio/ext/dist/lib/libpystring.a" \
+  -Dpystring_INCLUDE_DIR="$build_root/opencolorio/ext/dist/include/pystring" \
+  -Dyaml-cpp_DIR="$build_root/opencolorio/ext/dist/lib/cmake/yaml-cpp" \
+  -Dminizip-ng_DIR="$build_root/opencolorio/ext/dist/lib/cmake/minizip-ng" \
+  -DCMAKE_PROJECT_INCLUDE="$ocio_targets"
 
 echo "Static dependency prefix: $prefix"
 find "$prefix" -type f -name '*.a' -print | sort
