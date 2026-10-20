@@ -352,6 +352,7 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
 
   void write_render_tile(const Tile &tile) override
   {
+    const auto encode_start = std::chrono::steady_clock::now();
     if (!(tile.size == tile.full_size)) return;
     const int width = tile.size.x, height = tile.size.y;
     const OIIO::ImageSpec spec(width, height, 4, OIIO::TypeDesc::FLOAT);
@@ -369,11 +370,17 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
       output->write_image(OIIO::TypeDesc::FLOAT, pixels.data());
       output->close();
     }
+    encode_ms_ = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     std::chrono::steady_clock::now() - encode_start)
+                     .count();
   }
+
+  int64_t encode_ms() const { return encode_ms_; }
 
  private:
   std::string filepath_;
   const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut_;
+  int64_t encode_ms_ = 0;
 };
 
 class PassOutputDriver final : public ccl::OutputDriver {
@@ -641,6 +648,7 @@ Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base)
 void render_direct(const Scene &source, const std::string &output, int samples, int width, int height, bool emit_passes = false)
 {
   const auto profile_start = std::chrono::steady_clock::now();
+  const bool profile = std::getenv("LMBLENDER_PROFILE") != nullptr;
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
   const std::string extension = std::filesystem::path(output).extension().string();
   if (output.empty() || output.front() == '-' || (!emit_passes && extension != ".png" && extension != ".exr") ||
@@ -675,6 +683,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   const float fit_radius = std::max(0.5f, 0.5f * ccl::len(ccl::make_float3(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2])));
 
   ccl::log_init(nullptr);
+  if (profile) ccl::log_level_set(ccl::LOG_LEVEL_DEBUG);
   ccl::path_init();
   ccl::system_max_open_files_ensure();
   const ccl::vector<ccl::DeviceInfo> devices = ccl::Device::available_devices(1u << ccl::DEVICE_CPU);
@@ -1170,12 +1179,16 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->passes[0]->set_name(ccl::ustring("combined"));
   const auto tmp = output + ".tmp-" + std::to_string(getpid()) + (emit_passes ? ".png" : extension);
   PassOutputDriver *pass_driver = nullptr;
+  ViewTransformOutputDriver *png_driver = nullptr;
   if (emit_passes) {
     auto driver = ccl::make_unique<PassOutputDriver>(output);
     pass_driver = driver.get();
     session->set_output_driver(std::move(driver));
-  } else if (extension == ".png")
-    session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
+  } else if (extension == ".png") {
+    auto driver = ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform);
+    png_driver = driver.get();
+    session->set_output_driver(std::move(driver));
+  }
   else
     session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
   ccl::BufferParams buffers;
@@ -1186,13 +1199,15 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   const auto before_render = std::chrono::steady_clock::now();
   run_session_with_timeout(session.get(), source.render_timeout_seconds, tmp);
   const auto after_render = std::chrono::steady_clock::now();
-  if (std::getenv("LMBLENDER_PROFILE")) {
+  if (profile) {
     const auto setup_ms = std::chrono::duration_cast<std::chrono::milliseconds>(before_reset - profile_start).count();
     const auto reset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(before_render - before_reset).count();
     const auto render_output_ms = std::chrono::duration_cast<std::chrono::milliseconds>(after_render - before_render).count();
+    const int64_t png_encode_ms = png_driver ? png_driver->encode_ms() : 0;
     std::cerr << "LMBLENDER_PROFILE width=" << width << " height=" << height << " spp=" << samples
-              << " threads=" << params.threads << " scene_setup_ms=" << setup_ms << " reset_bvh_ms=" << reset_ms
-              << " render_denoise_output_ms=" << render_output_ms << '\n';
+              << " threads=" << params.threads << " scene_build_ms=" << setup_ms << " bvh_ms=" << reset_ms
+              << " trace_denoise_encode_ms=" << render_output_ms << " png_transform_encode_ms=" << png_encode_ms
+              << " trace_denoise_ms=" << std::max<int64_t>(0, render_output_ms - png_encode_ms) << '\n';
   }
   if (emit_passes && (!pass_driver || !pass_driver->publish()))
     throw dslvm::Error("Cycles did not produce all combined/depth/normal/albedo pass files");
