@@ -1,0 +1,8 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/environment-texture.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.environment_texture("tests/fixtures/environment.png", 22.0, 0.65);
+scene.fit_camera(46.0);
+scene.render_png("build/environment-texture.png", 16, 640, 480);
+end _dsl_
+savedsl(p, out);

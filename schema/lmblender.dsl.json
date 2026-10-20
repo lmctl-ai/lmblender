@@ -18,6 +18,8 @@
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
         "sky_texture": [{"params": ["float", "float", "float"], "returns": "void"}],
+        "environment_texture": [{"params": ["string", "float", "float"], "returns": "void"}],
+        "transparent_background": [{"params": ["bool"], "returns": "void"}],
         "expect_int": [
           {
             "params": ["int", "int"],

@@ -1,0 +1,8 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/transparent-film.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.fit_camera(46.0);
+scene.transparent_background(true);
+scene.render_png("build/transparent-film.png", 16, 640, 480);
+end _dsl_
+savedsl(p, out);

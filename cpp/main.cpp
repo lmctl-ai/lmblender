@@ -114,6 +114,10 @@ struct Scene {
   float sky_elevation = 0.7f;
   float sky_rotation = 0.0f;
   float sky_intensity = 1.0f;
+  std::string environment_image;
+  float environment_rotation = 0.0f;
+  float environment_strength = 1.0f;
+  bool transparent_background = false;
   bool custom_camera = false;
   CameraConfig camera;
   int render_timeout_seconds = 3600;
@@ -559,6 +563,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   ccl::BackgroundNode *background = world_graph->create_node<ccl::BackgroundNode>();
   background->set_color(ccl::make_float3(source.world_color[0], source.world_color[1], source.world_color[2]));
   background->set_strength(source.world_strength * (source.sky_enabled ? source.sky_intensity : 1.0f));
+  scene->background->set_transparent(source.transparent_background);
+  scene->background->tag_update(scene);
   if (source.sky_enabled) {
     ccl::SkyTextureNode *sky = world_graph->create_node<ccl::SkyTextureNode>();
     sky->set_sky_type(ccl::NODE_SKY_MULTIPLE_SCATTERING);
@@ -566,6 +572,16 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     sky->set_sun_rotation(source.sky_rotation);
     sky->set_sun_intensity(source.sky_intensity);
     world_graph->connect(sky->output("Color"), background->input("Color"));
+  } else if (!source.environment_image.empty()) {
+    ccl::TextureCoordinateNode *coordinates = world_graph->create_node<ccl::TextureCoordinateNode>();
+    ccl::EnvironmentTextureNode *environment = world_graph->create_node<ccl::EnvironmentTextureNode>();
+    environment->set_filename(ccl::ustring(source.environment_image));
+    environment->set_projection(ccl::NODE_ENVIRONMENT_EQUIRECTANGULAR);
+    environment->set_interpolation(ccl::INTERPOLATION_LINEAR);
+    environment->set_tex_mapping_rotation(ccl::make_float3(0.0f, 0.0f, source.environment_rotation));
+    world_graph->connect(coordinates->output("Reflection"), environment->input("Vector"));
+    world_graph->connect(environment->output("Color"), background->input("Color"));
+    background->set_strength(source.environment_strength);
   }
   world_graph->connect(background->output("Background"), world_graph->output()->input("Surface"));
   world->set_graph(std::move(world_graph));
@@ -1057,10 +1073,41 @@ dslvm::Registry make_registry() {
     for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("sky parameters must be finite");
     if (a[0].f < 0.0 || a[0].f > 90.0 || std::abs(a[1].f) > 360.0 || a[2].f < 0.0 || a[2].f > 100.0)
       throw dslvm::Error("sky elevation must be 0..90 degrees, rotation +/-360 degrees, intensity 0..100");
+    if (!scene->environment_image.empty()) throw dslvm::Error("sky_texture and environment_texture are mutually exclusive");
     scene->sky_enabled = true;
     scene->sky_elevation = float(a[0].f * M_PI / 180.0);
     scene->sky_rotation = float(a[1].f * M_PI / 180.0);
     scene->sky_intensity = float(a[2].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "environment_texture", {"string", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->sky_enabled) throw dslvm::Error("environment_texture and sky_texture are mutually exclusive");
+    const std::string &path = a[0].s;
+    if (path.empty() || path.front() == '-') throw dslvm::Error("environment texture path must not be empty or begin with '-'");
+    const std::string ext = std::filesystem::path(path).extension().string();
+    if (ext != ".png" && ext != ".exr" && ext != ".hdr") throw dslvm::Error("environment texture must be PNG, EXR, or HDR");
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec) || ec) throw dslvm::Error("environment texture must be a readable regular file");
+    const uintmax_t size = std::filesystem::file_size(path, ec);
+    if (ec || size == 0 || size > 64u * 1024u * 1024u) throw dslvm::Error("environment texture must be non-empty and at most 64 MiB");
+    if (!std::isfinite(a[1].f) || std::abs(a[1].f) > 360.0 || !std::isfinite(a[2].f) || a[2].f < 0 || a[2].f > 100.0)
+      throw dslvm::Error("environment rotation must be +/-360 degrees and strength 0..100");
+    std::unique_ptr<OIIO::ImageInput> input = OIIO::ImageInput::open(path);
+    if (!input) throw dslvm::Error("environment texture could not be decoded by OpenImageIO");
+    const OIIO::ImageSpec spec = input->spec();
+    input->close();
+    if (spec.width < 1 || spec.height < 1 || uint64_t(spec.width) * uint64_t(spec.height) > 64'000'000)
+      throw dslvm::Error("environment texture dimensions exceed the 64 megapixel limit");
+    const auto full = std::filesystem::absolute(path, ec);
+    if (ec) throw dslvm::Error("could not resolve environment texture path");
+    scene->environment_image = full.string();
+    scene->environment_rotation = float(a[1].f * M_PI / 180.0);
+    scene->environment_strength = float(a[2].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "transparent_background", {"bool"}, "void", [](void *p, dslvm::Args &a) {
+    static_cast<Scene *>(p)->transparent_background = a[0].b;
     return dslvm::Value::none();
   });
   registry.method("Scene", "point_light", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
