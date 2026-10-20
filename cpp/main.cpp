@@ -179,6 +179,104 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
   const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut_;
 };
 
+class PassOutputDriver final : public ccl::OutputDriver {
+ public:
+  explicit PassOutputDriver(std::string prefix) : prefix_(std::move(prefix)) {}
+  ~PassOutputDriver() override
+  {
+    if (!published_) for (const auto &item : outputs_) { std::error_code ec; std::filesystem::remove(item.first, ec); }
+  }
+
+  void write_render_tile(const Tile &tile) override
+  {
+    if (!(tile.size == tile.full_size) || wrote_) return;
+    const int width = tile.size.x, height = tile.size.y;
+    if (!write_pass(tile, "combined", 4, width, height) ||
+        !write_pass(tile, "depth", 1, width, height) ||
+        !write_pass(tile, "normal", 3, width, height) ||
+        !write_pass(tile, "albedo", 3, width, height)) {
+      failed_ = true;
+      return;
+    }
+    wrote_ = true;
+  }
+
+  bool publish()
+  {
+    if (failed_ || !wrote_) return false;
+    for (const auto &item : outputs_) {
+      std::error_code ec;
+      std::filesystem::rename(item.first, item.second, ec);
+      if (ec) return false;
+    }
+    published_ = true;
+    return true;
+  }
+
+ private:
+  bool write_pass(const Tile &tile, const std::string &name, const int channels, const int width, const int height)
+  {
+    const size_t count = size_t(width) * height * channels;
+    std::vector<float> values(count);
+    if (!tile.get_pass_pixels(name, channels, values.data())) return false;
+    std::vector<float> ordered(count);
+    for (int y = 0; y < height; ++y)
+      std::copy_n(values.data() + size_t(height - 1 - y) * width * channels,
+                  size_t(width) * channels,
+                  ordered.data() + size_t(y) * width * channels);
+    const std::string final_exr = prefix_ + "-" + name + ".exr";
+    const std::string final_png = prefix_ + "-" + name + ".png";
+    const std::string suffix = ".tmp-" + std::to_string(getpid());
+    const std::string temp_exr = prefix_ + "-" + name + suffix + ".exr";
+    const std::string temp_png = prefix_ + "-" + name + suffix + ".png";
+    outputs_.push_back({temp_exr, final_exr});
+    outputs_.push_back({temp_png, final_png});
+
+    auto exr = std::unique_ptr<OIIO::ImageOutput>(OIIO::ImageOutput::create(temp_exr));
+    if (!exr) return false;
+    OIIO::ImageSpec exr_spec(width, height, channels, OIIO::TypeDesc::FLOAT);
+    if (!exr->open(temp_exr, exr_spec) || !exr->write_image(OIIO::TypeDesc::FLOAT, ordered.data())) return false;
+    exr->close();
+
+    std::vector<uint8_t> bytes(count);
+    if (name == "depth") {
+      float near_depth = std::numeric_limits<float>::infinity(), far_depth = 0.0f;
+      for (float value : values) if (std::isfinite(value) && value > 0.0f && value < 1.0e9f) {
+        near_depth = std::min(near_depth, value); far_depth = std::max(far_depth, value);
+      }
+      if (!std::isfinite(near_depth)) return false;
+      const float range = std::max(1.0e-20f, far_depth - near_depth);
+      for (size_t i = 0; i < count; ++i) {
+        const float value = ordered[i];
+        const float normalized = std::isfinite(value) && value > 0.0f && value < 1.0e9f ?
+            1.0f - (value - near_depth) / range : 0.0f;
+        bytes[i] = uint8_t(std::lround(std::clamp(normalized, 0.0f, 1.0f) * 255.0f));
+      }
+    } else {
+      for (size_t pixel = 0; pixel < size_t(width) * height; ++pixel) {
+        for (int channel = 0; channel < channels; ++channel) {
+          float value = ordered[pixel * channels + channel];
+          if (name == "combined" && channel < 3) value = apply_view_lut(view_luts::kAgX, ordered[pixel * channels], ordered[pixel * channels + 1], ordered[pixel * channels + 2])[channel];
+          else if (name == "normal") value = value * 0.5f + 0.5f;
+          bytes[pixel * channels + channel] = uint8_t(std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f));
+        }
+      }
+    }
+    auto png = std::unique_ptr<OIIO::ImageOutput>(OIIO::ImageOutput::create(temp_png));
+    if (!png) return false;
+    OIIO::ImageSpec png_spec(width, height, channels, OIIO::TypeDesc::UINT8);
+    if (!png->open(temp_png, png_spec) || !png->write_image(OIIO::TypeDesc::UINT8, bytes.data())) return false;
+    png->close();
+    return true;
+  }
+
+  std::string prefix_;
+  std::vector<std::pair<std::string, std::string>> outputs_;
+  bool wrote_ = false;
+  bool failed_ = false;
+  bool published_ = false;
+};
+
 std::array<float, 3> fitted_camera_position(const ccl::float3 center,
                                            const float radius,
                                            const float fov,
@@ -339,12 +437,13 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   }
 }
 
-void render_direct(const Scene &source, const std::string &output, int samples, int width, int height)
+void render_direct(const Scene &source, const std::string &output, int samples, int width, int height, bool emit_passes = false)
 {
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
   const std::string extension = std::filesystem::path(output).extension().string();
-  if (output.empty() || output.front() == '-' || (extension != ".png" && extension != ".exr"))
-    throw dslvm::Error("render output must be a PNG or EXR path that does not begin with '-'");
+  if (output.empty() || output.front() == '-' || (!emit_passes && extension != ".png" && extension != ".exr") ||
+      (emit_passes && extension.size()))
+    throw dslvm::Error("render output must be a PNG or EXR path, or a pass prefix without an extension, and must not begin with '-'");
   if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
       uint64_t(width) * uint64_t(height) > 16'000'000)
     throw dslvm::Error("render_png samples or dimensions exceed supported limits");
@@ -634,10 +733,30 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->integrator->set_seed(source.render_seed);
   scene->integrator->set_use_denoise(source.denoise);
 
+  if (emit_passes) {
+    auto add_pass = [scene](const ccl::PassType type, const char *name) {
+      auto pass = ccl::make_unique<ccl::Pass>();
+      pass->set_type(type);
+      pass->set_mode(ccl::PassMode::NOISY);
+      pass->set_name(ccl::ustring(name));
+      pass->set_owner(scene);
+      scene->passes.push_back(std::move(pass));
+    };
+    add_pass(ccl::PASS_DEPTH, "depth");
+    add_pass(ccl::PASS_NORMAL, "normal");
+    add_pass(ccl::PASS_DIFFUSE_COLOR, "albedo");
+    scene->film->update_passes(scene);
+  }
+
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
-  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
-  if (extension == ".png")
+  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + (emit_passes ? ".png" : extension);
+  PassOutputDriver *pass_driver = nullptr;
+  if (emit_passes) {
+    auto driver = ccl::make_unique<PassOutputDriver>(output);
+    pass_driver = driver.get();
+    session->set_output_driver(std::move(driver));
+  } else if (extension == ".png")
     session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
   else
     session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
@@ -646,11 +765,15 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   buffers.height = buffers.full_height = height;
   session->reset(params, buffers);
   run_session_with_timeout(session.get(), source.render_timeout_seconds, tmp);
+  if (emit_passes && (!pass_driver || !pass_driver->publish()))
+    throw dslvm::Error("Cycles did not produce all combined/depth/normal/albedo pass files");
   session.reset();
-  std::filesystem::rename(tmp, output, ec);
-  if (ec) {
-    std::filesystem::remove(tmp);
-    throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
+  if (!emit_passes) {
+    std::filesystem::rename(tmp, output, ec);
+    if (ec) {
+      std::filesystem::remove(tmp);
+      throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
+    }
   }
 }
 
@@ -1074,6 +1197,16 @@ dslvm::Registry make_registry() {
     if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
       throw dslvm::Error("render_exr samples and dimensions are outside supported bounds");
     render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_passes", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<const Scene *>(p);
+    if (a[0].s.empty() || !std::filesystem::path(a[0].s).extension().empty())
+      throw dslvm::Error("render_passes requires an output prefix without a file extension");
+    if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096 ||
+        uint64_t(a[2].i) * uint64_t(a[3].i) > 16'000'000)
+      throw dslvm::Error("render_passes samples and dimensions are outside supported bounds");
+    render_direct(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i), true);
     return dslvm::Value::none();
   });
   for (const char *field : {"vertex_count", "triangle_count"}) {

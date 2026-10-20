@@ -1,0 +1,10 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/render-passes.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let ramp = scene.import_obj("tests/fixtures/depth-ramp.obj");
+let matte = scene.material(0.45, 0.52, 0.63, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
+ramp.set_material(matte);
+scene.world_color(0.04, 0.04, 0.04, 0.3);
+scene.camera_look_at(0.0, -5.0, 4.0, 0.0, 2.0, 0.0, 48.0);
+scene.render_passes("build/passes-ramp", 16, 128, 128);
+end _dsl_
+savedsl(p, out);

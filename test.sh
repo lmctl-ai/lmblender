@@ -22,6 +22,7 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/orthographic-camera.lms "$build/orthographic-camera.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/image-texture.lms "$build/image-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/display-transforms.lms "$build/display-transforms.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
@@ -35,6 +36,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
 "$exe" --dsl "$build/image-texture.dslb" >"$build/image-texture-result.json"
 "$exe" --dsl "$build/display-transforms.dslb" >"$build/display-transforms-result.json"
+"$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
   echo "render-timeout test unexpectedly completed" >&2
@@ -60,6 +62,10 @@ test -s "$build/image-texture.png"
 test -s "$build/display-standard.png"
 test -s "$build/display-filmic.png"
 test -s "$build/display-agx.png"
+for pass in combined depth normal albedo; do
+  test -s "$build/passes-ramp-$pass.exr"
+  test -s "$build/passes-ramp-$pass.png"
+done
 test -s "$build/perspective-reference.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
@@ -88,16 +94,18 @@ if [ -n "$blender" ]; then
   python3 tests/display_transform_quality.py \
     "$build/display-standard.png" "$build/display-filmic.png" "$build/display-agx.png" \
     "$build/blender-standard.png" "$build/blender-filmic.png" "$build/blender-agx.png"
+  "$blender" --background --factory-startup --python tests/render_passes_quality.py -- "$build/passes-ramp" >"$build/render-passes-quality.log" 2>&1
+  tail -n 1 "$build/render-passes-quality.log"
 else
-  echo "SKIP: set BLENDERCLI_BLENDER to run display transform numeric goldens"
+  echo "SKIP: set BLENDERCLI_BLENDER to run Blender-based display-transform and pass numeric tests"
 fi
 python3 tests/png_compare.py "$build/imported-mesh.png" "$build/imported-mesh-xml.png"
 diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
-python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" <<'PY'
+python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" <<'PY'
 import json,sys
 for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result
-print('DSL v5 runner, mesh import, direct Cycles rendering, material/light/camera bindings, XML oracle comparison, and embedded schema pass')
+print('DSL v5 runner, mesh import, direct Cycles rendering, display transforms, render passes, and embedded schema pass')
 PY
 for binary in "$exe" "$build/cycles-static/bin/cycles"; do
   [ ! -x "$binary" ] && continue
