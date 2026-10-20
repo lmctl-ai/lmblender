@@ -250,6 +250,14 @@
             "returns": "Mesh"
           }
         ],
+        "import_gltf": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Mesh"
+          }
+        ],
         "instance_mesh": [
           {
             "params": [

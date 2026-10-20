@@ -2,6 +2,15 @@
 
 All feature-gallery outputs are 640×480 CPU Cycles PNGs. Numeric checks run from `test.sh`; checks are based on image pixels and reject missing/clipped subjects, flat outputs, fireflies, and the expected effect being absent.
 
+## glTF JSON and GLB mesh import
+
+`examples/gltf-import.lms` and `examples/glb-import.lms` load the same fixture: two nodes reference one textured vertical quad mesh, translated to opposite sides. Both produce a 640×480 Cycles render with the external PNG checker multiplied by the glTF base-color factor. The numeric gate checks at least 2,500 colored surface pixels, at least 800 pixels on each side, a left/right subject centroid gap above 100 px, and at least three quantized color bins. Current results for each format: 32,869 subject pixels, 171.6 px centroid gap, and 39 color bins. `tests/gltf-invalid.lms` additionally asserts malformed GLB JSON returns structured `GLTF_INVALID` with a readable message.
+
+| Fixture | Size | Colored subject pixels | Node centroid gap | Color bins | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `docs/img/gltf-node-texture-import.png` (`.gltf` + external `.bin`/PNG) | 640×480 | 32,869 | 171.6 px | 39 | PASS |
+| `docs/img/glb-node-texture-import.png` (GLB + external PNG) | 640×480 | 32,869 | 171.6 px | 39 | PASS |
+
 ## Built-in primitives (`examples/primitives-gallery.lms`)
 
 The gallery creates a red cube, blue smooth UV sphere, green smooth cylinder, yellow cone, and magenta smooth torus directly through the DSL, plus a checker floor and area lights. The 96-sample render uses OIDN. `tests/primitives_quality.py` checks five distinct color masks, minimum silhouette area, image-edge margins, left-to-right ordering, and no silhouette overlap. The denoised row shows all five forms and their contact shadows; no OBJ fixture is used.

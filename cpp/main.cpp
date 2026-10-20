@@ -20,7 +20,9 @@
 #include <limits>
 #include <cmath>
 #include <chrono>
+#include <set>
 #include <unistd.h>
+#include <nlohmann/json.hpp>
 
 #include "device/device.h"
 #include "scene/background.h"
@@ -77,6 +79,7 @@ struct Material {
   std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
   float texture_scale = 5.0f;
   std::string image_path;
+  bool image_factor_enabled = false;
 };
 struct PointLightData {
   std::array<float, 3> position{};
@@ -141,6 +144,8 @@ struct Scene {
   bool denoise = false;
   std::string view_transform = "Standard";
 };
+
+#include "gltf_import.hpp"
 
 const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &view_lut(const std::string &name)
 {
@@ -562,7 +567,16 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       image->set_interpolation(ccl::INTERPOLATION_LINEAR);
       image->set_extension(ccl::EXTENSION_REPEAT);
       graph->connect(coordinates->output("UV"), image->input("Vector"));
-      graph->connect(image->output("Color"), principled->input("Base Color"));
+      if (material.image_factor_enabled) {
+        ccl::MixColorNode *multiply = graph->create_node<ccl::MixColorNode>();
+        multiply->set_blend_type(ccl::NODE_MIX_MUL);
+        multiply->set_fac(1.0f);
+        multiply->set_a(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+        graph->connect(image->output("Color"), multiply->input("B"));
+        graph->connect(multiply->output("Result"), principled->input("Base Color"));
+      } else {
+        graph->connect(image->output("Color"), principled->input("Base Color"));
+      }
     }
     if (material.volume_only) {
       ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
@@ -1426,6 +1440,9 @@ dslvm::Registry make_registry() {
     Mesh *result = mesh.get();
     scene->meshes.push_back(std::move(mesh));
     return dslvm::Value::object("Mesh", result);
+  });
+  registry.method("Scene", "import_gltf", {"string"}, "Mesh", [](void *p, dslvm::Args &a) {
+    return dslvm::Value::object("Mesh", gltf_import::read(*static_cast<Scene *>(p), a[0].s));
   });
   registry.method("Mesh", "set_material", {"Material"}, "void", [](void *p, dslvm::Args &a) {
     auto *mesh = static_cast<Mesh *>(p);

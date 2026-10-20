@@ -1,0 +1,5 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/gltf-invalid.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let broken = scene.import_gltf("tests/fixtures/gltf/malformed-json.glb");
+end _dsl_
+savedsl(p, out);

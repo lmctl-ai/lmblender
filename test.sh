@@ -11,6 +11,9 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/import-mesh.lms "$build/import-mesh.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/import-ply.lms "$build/import-ply.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/gltf-import.lms "$build/gltf-import.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/glb-import.lms "$build/glb-import.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/gltf-invalid.lms "$build/gltf-invalid.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/sky-texture.lms "$build/sky-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/environment-texture.lms "$build/environment-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/transparent-film.lms "$build/transparent-film.dslb" >/dev/null
@@ -36,6 +39,18 @@ done
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
+"$exe" --dsl "$build/gltf-import.dslb" >"$build/gltf-import-result.json"
+"$exe" --dsl "$build/glb-import.dslb" >"$build/glb-import-result.json"
+if "$exe" --dsl "$build/gltf-invalid.dslb" >"$build/gltf-invalid-result.json"; then
+  echo "malformed GLB unexpectedly imported" >&2; exit 1
+fi
+python3 - "$build/gltf-invalid-result.json" <<'PYERR'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r.get("ok") is False and r.get("code")=="GLTF_INVALID", r
+assert "GLB JSON chunk is malformed" in r.get("message", ""), r
+print("glTF malformed-GLB structured error passed")
+PYERR
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
@@ -71,6 +86,8 @@ assert 'timed out' in r.get('message',''), r
 PY
 test -s "$build/imported-mesh.png"
 test -s "$build/import-ply.png"
+test -s "$build/import-gltf-gltf.png"
+test -s "$build/import-gltf-glb.png"
 test -s "$build/sky-texture.png"
 test -s "$build/environment-texture.png"
 test -s "$build/transparent-film.png"
@@ -101,6 +118,8 @@ file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
 python3 tests/png_metrics.py "$build/imported-mesh.png"
 python3 tests/png_metrics.py "$build/import-ply.png"
+python3 tests/gltf_quality.py "$build/import-gltf-gltf.png"
+python3 tests/gltf_quality.py "$build/import-gltf-glb.png"
 python3 tests/sky_quality.py "$build/sky-texture.png"
 python3 tests/environment_quality.py "$build/environment-texture.png"
 python3 tests/transparent_alpha_quality.py "$build/transparent-film.png"

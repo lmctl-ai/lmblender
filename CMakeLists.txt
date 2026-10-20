@@ -31,7 +31,7 @@ endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
   "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
 add_executable(lmblender cpp/main.cpp)
-target_include_directories(lmblender PRIVATE cpp "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(lmblender PRIVATE -Wall -Wextra -Wpedantic)
 if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
   set(CYCLES_SOURCE "${BLENDER_SOURCE_TREE}/intern/cycles")
