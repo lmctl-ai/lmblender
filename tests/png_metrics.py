@@ -55,16 +55,21 @@ def decode(path):
     return width, height, channels, rows
 
 
-w, h, channels, rows = decode(sys.argv[1])
-luma = []
-for row in rows:
-    for x in range(0, w * channels, channels):
-        r, g, b = row[x:x + 3]
-        luma.append((r * 2126 + g * 7152 + b * 722) / 10000)
-mean = sum(luma) / len(luma)
-variance = sum((value - mean) ** 2 for value in luma) / len(luma)
-stddev = variance ** 0.5
-distinct = len(set(int(value) for value in luma))
-print(f"PNG {w}x{h}: luminance stddev={stddev:.2f}/255, distinct levels={distinct}")
-if w < 16 or h < 16 or stddev < 5 or distinct < 16:
-    raise SystemExit("rendered PNG is blank or has insufficient visible pixel variation")
+def main(path):
+    w, h, channels, rows = decode(path)
+    luma = []
+    for row in rows:
+        for x in range(0, w * channels, channels):
+            r, g, b = row[x:x + 3]
+            luma.append((r * 2126 + g * 7152 + b * 722) / 10000)
+    mean = sum(luma) / len(luma)
+    variance = sum((value - mean) ** 2 for value in luma) / len(luma)
+    stddev = variance ** 0.5
+    distinct = len(set(int(value) for value in luma))
+    print(f"PNG {w}x{h}: luminance stddev={stddev:.2f}/255, distinct levels={distinct}")
+    if w < 16 or h < 16 or stddev < 5 or distinct < 16:
+        raise SystemExit("rendered PNG is blank or has insufficient visible pixel variation")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

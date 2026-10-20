@@ -1,0 +1,6 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/render-mesh-xml.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.render_png("build/imported-mesh-xml.png", 32, 256, 192);
+end _dsl_
+savedsl(p, out);

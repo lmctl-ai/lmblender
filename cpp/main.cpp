@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <limits>
@@ -28,6 +29,7 @@
 #include "scene/shader.h"
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
+#include "scene/attribute.h"
 #include "session/buffers.h"
 #include "session/session.h"
 #include "app/oiio_output_driver.h"
@@ -35,6 +37,7 @@
 #include "util/log.h"
 #include "util/path.h"
 #include "util/system.h"
+#include "util/transform.h"
 
 namespace {
 struct Mesh {
@@ -43,7 +46,7 @@ struct Mesh {
 };
 struct Scene { std::vector<std::unique_ptr<Mesh>> meshes; };
 
-void render_png(const Scene &source, const std::string &output, int samples, int width, int height)
+void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
 {
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
   if (output.empty() || output.front() == '-' || std::filesystem::path(output).extension() != ".png")
@@ -130,6 +133,145 @@ void render_png(const Scene &source, const std::string &output, int samples, int
     std::filesystem::remove(tmp);
     throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
   }
+}
+
+void render_png_direct(const Scene &source, const std::string &output, int samples, int width, int height)
+{
+  if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
+  if (output.empty() || output.front() == '-' || std::filesystem::path(output).extension() != ".png")
+    throw dslvm::Error("render_png output must be a PNG path that does not begin with '-'");
+  if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
+      uint64_t(width) * uint64_t(height) > 16'000'000)
+    throw dslvm::Error("render_png samples or dimensions exceed supported limits");
+  const auto parent = std::filesystem::path(output).parent_path();
+  std::error_code ec;
+  if (!parent.empty() && !std::filesystem::is_directory(parent, ec))
+    throw dslvm::Error("render_png output directory does not exist");
+
+  std::array<double, 3> lo{std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
+  std::array<double, 3> hi{-lo[0], -lo[1], -lo[2]};
+  size_t triangle_count = 0;
+  for (const auto &mesh : source.meshes) {
+    if (mesh->vertices.size() > 10'000'000 || mesh->triangles.size() > 20'000'000)
+      throw dslvm::Error("render_png mesh exceeds Cycles geometry budget");
+    triangle_count += mesh->triangles.size();
+    if (triangle_count > 20'000'000) throw dslvm::Error("render_png combined triangle budget exceeded");
+    for (const auto &v : mesh->vertices) for (size_t axis = 0; axis < 3; ++axis) {
+      lo[axis] = std::min(lo[axis], v[axis]);
+      hi[axis] = std::max(hi[axis], v[axis]);
+    }
+  }
+  const ccl::float3 center = ccl::make_float3(float((lo[0] + hi[0]) * 0.5), float((lo[1] + hi[1]) * 0.5), float((lo[2] + hi[2]) * 0.5));
+  const float radius = std::max(0.5f, float(std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]})) * 0.5f);
+
+  ccl::log_init(nullptr);
+  ccl::path_init();
+  ccl::system_max_open_files_ensure();
+  const ccl::vector<ccl::DeviceInfo> devices = ccl::Device::available_devices(1u << ccl::DEVICE_CPU);
+  if (devices.empty()) throw dslvm::Error("Cycles CPU device is unavailable");
+  ccl::SessionParams params;
+  params.device = devices.front();
+  params.background = true;
+  params.headless = true;
+  params.samples = samples;
+  params.threads = 2;
+  ccl::SceneParams scene_params;
+  auto session = ccl::make_unique<ccl::Session>(params, scene_params);
+  ccl::Scene *scene = session->scene.get();
+  scene->params.bvh_type = ccl::BVH_TYPE_STATIC;
+
+  auto make_emission_shader = [scene](const ccl::float3 color, const float strength) {
+    ccl::Shader *shader = scene->create_node<ccl::Shader>();
+    auto graph = ccl::make_unique<ccl::ShaderGraph>();
+    ccl::EmissionNode *emission = graph->create_node<ccl::EmissionNode>();
+    emission->set_color(color);
+    emission->set_strength(strength);
+    graph->connect(emission->output("Emission"), graph->output()->input("Surface"));
+    shader->set_graph(std::move(graph));
+    shader->tag_update(scene);
+    return shader;
+  };
+  ccl::Shader *surface = make_emission_shader(ccl::make_float3(0.62f, 0.66f, 0.72f), 1.0f);
+  ccl::Shader *world = scene->default_background;
+  auto world_graph = ccl::make_unique<ccl::ShaderGraph>();
+  ccl::BackgroundNode *background = world_graph->create_node<ccl::BackgroundNode>();
+  background->set_color(ccl::make_float3(0.16f, 0.18f, 0.22f));
+  background->set_strength(0.45f);
+  world_graph->connect(background->output("Background"), world_graph->output()->input("Surface"));
+  world->set_graph(std::move(world_graph));
+  world->tag_update(scene);
+
+  ccl::array<ccl::Node *> used_shaders;
+  used_shaders.push_back_slow(surface);
+  for (const auto &source_mesh : source.meshes) {
+    ccl::Mesh *mesh = scene->create_node<ccl::Mesh>();
+    mesh->resize_mesh(int(source_mesh->vertices.size()), int(source_mesh->triangles.size()));
+    ccl::packed_float3 *positions = mesh->get_position_for_write();
+    for (size_t i = 0; i < source_mesh->vertices.size(); ++i) {
+      const auto &v = source_mesh->vertices[i];
+      positions[i] = ccl::make_float3(float(v[0]), float(v[1]), float(v[2]));
+    }
+    ccl::array<int> &tris = mesh->get_triangles();
+    for (size_t i = 0; i < source_mesh->triangles.size(); ++i)
+      for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(source_mesh->triangles[i][j]);
+    std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
+    std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), false);
+    mesh->set_used_shaders(used_shaders);
+    mesh->tag_triangles_modified();
+    mesh->tag_shader_modified();
+    mesh->tag_smooth_modified();
+    ccl::Object *object = scene->create_node<ccl::Object>();
+    object->set_geometry(mesh);
+    object->set_tfm(ccl::transform_identity());
+  }
+
+  ccl::PointLight *point = scene->create_node<ccl::PointLight>();
+  point->set_strength(ccl::make_float3(550.0f, 550.0f, 550.0f));
+  point->set_radius(0.0f);
+  ccl::Object *light_object = scene->create_node<ccl::Object>();
+  light_object->set_geometry(point);
+  ccl::Transform light_tfm = ccl::transform_identity();
+  light_tfm.x.w = center.x - radius * 2.5f;
+  light_tfm.y.w = center.y - radius * 3.2f;
+  light_tfm.z.w = center.z + radius * 4.0f;
+  light_object->set_tfm(light_tfm);
+
+  scene->camera->set_full_width(width);
+  scene->camera->set_full_height(height);
+  scene->camera->set_fov(0.8f);
+  scene->camera->set_camera_type(ccl::CAMERA_PERSPECTIVE);
+  scene->camera->set_nearclip(0.01f);
+  scene->camera->set_farclip(10000.0f);
+  ccl::Transform camera_tfm = ccl::transform_translate(center.x, center.y - radius * 4.0f, center.z) *
+                              ccl::transform_rotate(M_PI_F, ccl::make_float3(0.0f, 0.70710678f, 0.70710678f));
+  scene->camera->set_matrix(camera_tfm);
+  scene->camera->need_flags_update = true;
+  scene->camera->update(scene);
+
+  if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
+  scene->passes[0]->set_name(ccl::ustring("combined"));
+  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + ".png";
+  session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
+  ccl::BufferParams buffers;
+  buffers.width = buffers.full_width = width;
+  buffers.height = buffers.full_height = height;
+  session->reset(params, buffers);
+  session->start();
+  session->wait();
+  session.reset();
+  std::filesystem::rename(tmp, output, ec);
+  if (ec) {
+    std::filesystem::remove(tmp);
+    throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
+  }
+}
+
+void render_png(const Scene &source, const std::string &output, int samples, int width, int height)
+{
+  if (std::getenv("LMBLENDER_TEST_XML_ORACLE"))
+    render_png_xml_oracle(source, output, samples, width, height);
+  else
+    render_png_direct(source, output, samples, width, height);
 }
 
 Mesh read_obj(const std::string &path) {
