@@ -34,11 +34,34 @@ for entry in source.iterdir():
         subprocess.run(["patch", "--batch", "-p1", "-i", str(patch_file)], cwd=output, check=True)
         motion_patch = Path(__file__).resolve().parent.parent / "patches/cycles-motion-vectorizer.patch"
         subprocess.run(["patch", "--batch", "-p1", "-i", str(motion_patch)], cwd=output, check=True)
+        transform_header = output / "intern/cycles/util/transform.h"
+        transform_text = transform_header.read_text()
+        interpolation_start = """ccl_device void transform_motion_array_interpolate(ccl_private Transform *tfm,
+                                                   const ccl_global DecomposedTransform *motion,
+                                                   const int numsteps,
+                                                   const float time)
+{
+  /* Figure out which steps we need to interpolate. */"""
+        interpolation_guard = """ccl_device void transform_motion_array_interpolate(ccl_private Transform *tfm,
+                                                   const ccl_global DecomposedTransform *motion,
+                                                   const int numsteps,
+                                                   const float time)
+{
+  /* A single sample is a constant transform. The interpolation below needs a
+   * pair and otherwise computes motion - 1 as an array index. */
+  if (numsteps <= 1) {
+    transform_compose(tfm, motion);
+    return;
+  }
+  /* Figure out which steps we need to interpolate. */"""
+        if interpolation_start not in transform_text:
+            raise RuntimeError("Cycles motion interpolation guard insertion point is missing")
+        transform_header.write_text(transform_text.replace(interpolation_start, interpolation_guard, 1))
         cpu_cmake = output / "intern/cycles/kernel/device/cpu/CMakeLists.txt"
         cpu_text = cpu_cmake.read_text()
         cpu_marker = "cycles_set_solution_folder(cycles_kernel_cpu)"
         cpu_workaround = (
-            "# GCC 14 aarch64 also vectorizes the inline camera interpolation in the CPU kernel.\n"
+            "# Keep this target's inline motion interpolation off the GCC14 tree vectorizer.\n"
             "if(CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\" AND CMAKE_SYSTEM_PROCESSOR MATCHES \"aarch64|arm64\")\n"
             "  target_compile_options(cycles_kernel_cpu PRIVATE -fno-tree-vectorize)\n"
             "endif()\n"

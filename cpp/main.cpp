@@ -46,6 +46,7 @@
 #include "session/session.h"
 #include "app/oiio_output_driver.h"
 #include <OpenImageIO/imageio.h>
+#include <OpenImageIO/imagebuf.h>
 #include "app/cycles_xml.h"
 #include "util/log.h"
 #include "util/openimagedenoise.h"
@@ -1043,6 +1044,89 @@ void render_image(const Scene &source, const std::string &output, int samples, i
 {
   if (std::getenv("LMBLENDER_TEST_XML_ORACLE"))
     render_xml_oracle(source, output, samples, width, height);
+  else if (source.motion_blur && (!source.camera_keys.empty() || std::any_of(source.meshes.begin(), source.meshes.end(), [](const auto &m) { return !m->transform_keys.empty(); }))) {
+    /* Cycles' aarch64 CPU motion-time interpolation can receive an invalid ray
+     * time under GCC 14. Render shutter samples as ordinary static scenes and
+     * average their PNGs. This gives deterministic transform blur without
+     * entering the unstable per-ray interpolation path. */
+    Scene &scene = const_cast<Scene &>(source);
+    const bool old_motion = scene.motion_blur;
+    const int old_frame = scene.render_frame;
+    const auto old_camera_position = scene.camera.position;
+    const auto old_camera_target = scene.camera.target;
+    std::vector<std::array<float,3>> old_transforms;
+    old_transforms.reserve(scene.meshes.size());
+    for (const auto &mesh : scene.meshes) old_transforms.push_back(mesh->translation);
+    std::vector<std::array<float,3>> old_colors;
+    old_colors.reserve(scene.materials.size());
+    for (const auto &material : scene.materials) old_colors.push_back(material->color);
+    std::vector<std::string> temporaries;
+    const std::string staged = output + ".motion-" + std::to_string(getpid()) + ".png";
+    try {
+      scene.motion_blur = false;
+      constexpr int temporal_samples = 9;
+      for (int i = 0; i < temporal_samples; ++i) {
+        const double frame = double(old_frame) + scene.motion_shutter * (double(i) / (temporal_samples - 1) - 0.5);
+        for (size_t m = 0; m < scene.meshes.size(); ++m)
+          scene.meshes[m]->translation = sample_keys<Mesh::TransformKey, std::array<float,3>>(
+              scene.meshes[m]->transform_keys, frame, old_transforms[m]);
+        for (size_t m = 0; m < scene.materials.size(); ++m)
+          scene.materials[m]->color = sample_keys<Material::ColorKey, std::array<float,3>>(
+              scene.materials[m]->color_keys, frame, old_colors[m]);
+        if (!scene.camera_keys.empty()) {
+          const auto camera = sample_keys<Scene::CameraKey, std::array<float,6>>(
+              scene.camera_keys, frame,
+              {old_camera_position[0],old_camera_position[1],old_camera_position[2],
+               old_camera_target[0],old_camera_target[1],old_camera_target[2]});
+          scene.camera.position={camera[0],camera[1],camera[2]};
+          scene.camera.target={camera[3],camera[4],camera[5]};
+        }
+        const std::string temp = output + ".shutter-" + std::to_string(getpid()) + "-" + std::to_string(i) + ".png";
+        temporaries.push_back(temp);
+        scene.render_frame = old_frame;
+        render_direct(scene, temp, samples, width, height);
+      }
+      OIIO::ImageSpec spec;
+      std::vector<float> accumulated;
+      for (size_t i = 0; i < temporaries.size(); ++i) {
+        auto input = OIIO::ImageInput::open(temporaries[i]);
+        if (!input) throw dslvm::Error("could not read a Cycles shutter sample for motion blur");
+        if (i == 0) {
+          spec = input->spec();
+          if (spec.width != width || spec.height != height || spec.nchannels < 3 || spec.nchannels > 4)
+            throw dslvm::Error("Cycles shutter sample has unexpected image dimensions or channels");
+          accumulated.assign(size_t(width) * size_t(height) * size_t(spec.nchannels), 0.0f);
+        }
+        std::vector<float> pixels(accumulated.size());
+        if (!input->read_image(0, 0, 0, spec.nchannels, OIIO::TypeDesc::FLOAT, pixels.data()))
+          throw dslvm::Error("could not decode a Cycles shutter sample for motion blur");
+        input->close();
+        for (size_t p = 0; p < pixels.size(); ++p) accumulated[p] += pixels[p] / float(temporaries.size());
+      }
+      spec.format = OIIO::TypeDesc::FLOAT;
+      auto writer = OIIO::ImageOutput::create(staged);
+      if (!writer || !writer->open(staged, spec) || !writer->write_image(OIIO::TypeDesc::FLOAT, accumulated.data()))
+        throw dslvm::Error("could not write the temporally sampled motion-blur PNG");
+      writer->close();
+      std::error_code ec;
+      std::filesystem::rename(staged, output, ec);
+      if (ec) { std::filesystem::remove(staged); throw dslvm::Error("could not atomically publish motion-blur PNG"); }
+    }
+    catch (...) {
+      scene.motion_blur = old_motion; scene.render_frame = old_frame;
+      scene.camera.position = old_camera_position; scene.camera.target = old_camera_target;
+      for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->translation = old_transforms[i];
+      for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->color = old_colors[i];
+      { std::error_code ec; std::filesystem::remove(staged, ec); }
+      for (const auto &temp : temporaries) { std::error_code ec; std::filesystem::remove(temp, ec); }
+      throw;
+    }
+    scene.motion_blur = old_motion; scene.render_frame = old_frame;
+    scene.camera.position = old_camera_position; scene.camera.target = old_camera_target;
+    for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->translation = old_transforms[i];
+    for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->color = old_colors[i];
+    for (const auto &temp : temporaries) { std::error_code ec; std::filesystem::remove(temp, ec); }
+  }
   else
     render_direct(source, output, samples, width, height);
 }
@@ -1977,7 +2061,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender 0.2.0 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
+    return dslvm::Value::string("lmblender 0.2.1 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
@@ -1985,7 +2069,7 @@ dslvm::Registry make_registry() {
 
 int main(int argc, char **argv) {
   if (argc == 2 && std::string(argv[1]) == "--version") {
-    std::cout << "lmblender 0.2.0 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+    std::cout << "lmblender 0.2.1 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE
     std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
 #else

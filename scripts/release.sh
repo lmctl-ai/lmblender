@@ -2,7 +2,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-version=${RELEASE_VERSION:-0.2.0}
+version=${RELEASE_VERSION:-0.2.1}
 binary=${LMBLENDER_BINARY:-$root/build/lmblender}
 if [[ ! -x "$binary" ]]; then echo "release binary missing: $binary" >&2; exit 2; fi
 ldd_output=$(ldd "$binary" 2>&1 || true)

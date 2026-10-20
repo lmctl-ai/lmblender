@@ -1,15 +1,15 @@
 # Full-check status
 
-Generated: 2026-10-20 18:16 UTC
+Generated: 2026-10-20 19:31 UTC
 
-Source revision tested: `f845657 plus tested worktree changes`
+Source revision tested: `21dd463 plus tested worktree changes`
 
 ## Results
 
 - `BUILD_JOBS=2 ./test.sh`: PASS.
 - Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.
 - Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).
-- Binary sizes: `lmblender` 80930712 bytes; standalone Cycles 79138952 bytes.
+- Binary sizes: `lmblender` 80997264 bytes; standalone Cycles 79138952 bytes.
 - QA provider `agy/gemini-4-argon-medium`: PASS on all 14 named images; exact responses follow.
 
 ## QA responses
