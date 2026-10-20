@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 source_tree=${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}

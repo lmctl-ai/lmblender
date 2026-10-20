@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Create a symlink view of Blender sources with only the unused startup LFS gate satisfied."""
 import argparse
 from pathlib import Path
