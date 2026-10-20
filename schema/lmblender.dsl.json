@@ -51,6 +51,7 @@
         "render_exr": [{"params": ["string", "int", "int", "int"], "returns": "void"}],
         "render_timeout": [{"params": ["int"], "returns": "void"}],
         "render_settings": [{"params": ["int", "int", "bool"], "returns": "void"}],
+        "set_view_transform": [{"params": ["string"], "returns": "void"}],
         "version": [
           {
             "params": [],

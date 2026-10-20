@@ -1,5 +1,6 @@
 #include "dslvm.hpp"
 #include "schema_embedded.hpp"
+#include "view_luts.h"
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -36,6 +37,7 @@
 #include "session/buffers.h"
 #include "session/session.h"
 #include "app/oiio_output_driver.h"
+#include <OpenImageIO/imageio.h>
 #include "app/cycles_xml.h"
 #include "util/log.h"
 #include "util/path.h"
@@ -113,6 +115,68 @@ struct Scene {
   int max_bounces = 12;
   int render_seed = 0;
   bool denoise = false;
+  std::string view_transform = "Standard";
+};
+
+const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &view_lut(const std::string &name)
+{
+  if (name == "Standard") return view_luts::kStandard;
+  if (name == "Filmic") return view_luts::kFilmic;
+  return view_luts::kAgX;
+}
+
+std::array<float, 3> apply_view_lut(const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut,
+                                    float r, float g, float b)
+{
+  auto coordinate = [](float value) {
+    value = std::clamp(value, 0.0f, 16.0f);
+    return std::log1p(value) / view_luts::kLogRange * float(view_luts::kSize - 1);
+  };
+  const std::array<float, 3> c{coordinate(r), coordinate(g), coordinate(b)};
+  std::array<int, 3> lo{}, hi{};
+  std::array<float, 3> f{};
+  for (int i = 0; i < 3; ++i) {
+    lo[i] = int(std::floor(c[i])); hi[i] = std::min(lo[i] + 1, view_luts::kSize - 1); f[i] = c[i] - lo[i];
+  }
+  std::array<float, 3> result{};
+  for (int dr = 0; dr <= 1; ++dr) for (int dg = 0; dg <= 1; ++dg) for (int db = 0; db <= 1; ++db) {
+    const int ri = dr ? hi[0] : lo[0], gi = dg ? hi[1] : lo[1], bi = db ? hi[2] : lo[2];
+    const float weight = (dr ? f[0] : 1.0f-f[0]) * (dg ? f[1] : 1.0f-f[1]) * (db ? f[2] : 1.0f-f[2]);
+    const size_t index = (size_t(ri) * view_luts::kSize * view_luts::kSize + size_t(gi) * view_luts::kSize + bi) * 3;
+    for (int channel = 0; channel < 3; ++channel) result[channel] += lut[index + channel] * weight;
+  }
+  return result;
+}
+
+class ViewTransformOutputDriver final : public ccl::OutputDriver {
+ public:
+  ViewTransformOutputDriver(std::string filepath, const std::string &view)
+      : filepath_(std::move(filepath)), lut_(view_lut(view)) {}
+
+  void write_render_tile(const Tile &tile) override
+  {
+    if (!(tile.size == tile.full_size)) return;
+    const int width = tile.size.x, height = tile.size.y;
+    const OIIO::ImageSpec spec(width, height, 4, OIIO::TypeDesc::FLOAT);
+    std::vector<float> source(size_t(width) * height * 4), pixels(source.size());
+    if (!tile.get_pass_pixels("combined", 4, source.data())) return;
+    for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
+      const size_t src = (size_t(height - y - 1) * width + x) * 4;
+      const size_t dst = (size_t(y) * width + x) * 4;
+      const auto mapped = apply_view_lut(lut_, source[src], source[src + 1], source[src + 2]);
+      pixels[dst] = mapped[0]; pixels[dst + 1] = mapped[1]; pixels[dst + 2] = mapped[2];
+      pixels[dst + 3] = std::clamp(source[src + 3], 0.0f, 1.0f);
+    }
+    std::unique_ptr<OIIO::ImageOutput> output(OIIO::ImageOutput::create(filepath_));
+    if (output && output->open(filepath_, spec)) {
+      output->write_image(OIIO::TypeDesc::FLOAT, pixels.data());
+      output->close();
+    }
+  }
+
+ private:
+  std::string filepath_;
+  const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut_;
 };
 
 std::array<float, 3> fitted_camera_position(const ccl::float3 center,
@@ -258,7 +322,10 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   scene->passes[0]->set_name(ccl::ustring("combined"));
 
   const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
-  session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
+  if (extension == ".png")
+    session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
+  else
+    session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
   ccl::BufferParams buffers;
   buffers.width = buffers.full_width = width;
   buffers.height = buffers.full_height = height;
@@ -570,7 +637,10 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
   const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
-  session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
+  if (extension == ".png")
+    session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
+  else
+    session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
   ccl::BufferParams buffers;
   buffers.width = buffers.full_width = width;
   buffers.height = buffers.full_height = height;
@@ -760,6 +830,12 @@ dslvm::Registry make_registry() {
     scene->max_bounces = int(a[0].i);
     scene->render_seed = int(a[1].i);
     scene->denoise = a[2].b;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "set_view_transform", {"string"}, "void", [](void *p, dslvm::Args &a) {
+    if (a[0].s != "Standard" && a[0].s != "Filmic" && a[0].s != "AgX")
+      throw dslvm::Error("view transform must be Standard, Filmic, or AgX");
+    static_cast<Scene *>(p)->view_transform = a[0].s;
     return dslvm::Value::none();
   });
   registry.method("Scene", "world_color", {"float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
