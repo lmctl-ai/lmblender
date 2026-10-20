@@ -4,10 +4,10 @@
 
 ## Current milestone status
 
-- The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, and `scene.import_stl(path)`; imported meshes expose vertex/triangle counts and bounds. It remains a static executable.
+- The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, and `scene.import_stl(path)`; imported meshes expose vertex/triangle counts and bounds. `scene.render_png(path, samples, width, height)` renders imported meshes with the in-process CPU Cycles session. The output path is published from a temporary file, and the current renderer uses a simple default material/light/camera setup.
 - A standalone static Cycles executable has been built at `build/cycles-static/bin/cycles` on the development host. It renders XML scenes to PNG with no `LD_LIBRARY_PATH` or `OCIO` environment and passes the `ldd: not a dynamic executable` check.
 - A Cornell-box-style XML smoke scene rendered identically with static and dynamic Cycles at 128x128 and 16 samples (RGB MAD 0/255). The fixture uses emissive room panels and a blue box to check geometry/XML/image output; it is not a lighting parity fixture.
-- Imported mesh handles are not yet added to a Cycles scene. Direct Cycles C++ scene construction/rendering, including usable OBJ/STL rendering, remains to be implemented.
+- OBJ/STL mesh handles can now reach a PNG render without launching another process. The current vertical slice writes a bounded Cycles XML scene and loads it through Cycles' native in-process XML reader before rendering with the C++ session API. Direct per-object scene construction through Cycles C++ node APIs remains future work; it needs follow-up on the initial API path, which built but rendered only the background.
 
 ## Build and test
 
@@ -28,6 +28,8 @@ ldd build/cycles-static/bin/cycles
 `build-deps.sh` builds static TBB, Imath, OpenEXR, TIFF, OpenColorIO, and OpenImageIO. `configure-cycles-static.sh` configures the standalone Cycles target with Blender/Python/GUI/GPU, OpenVDB, OpenSubdiv, OIDN, OSL, USD, and Hydra disabled. It uses a build-only source overlay with a placeholder for the unavailable Git LFS `startup.blend`; the Blender source checkout remains clean.
 
 The final Cycles ELF is fully static according to `file` and `ldd` (28,145,984 bytes in the current build). GNU ld warns that static glibc `getpwuid` and OIIO's plugin loader `dlopen` need shared libraries if those code paths are used. The verified PNG render works with `LD_LIBRARY_PATH` and `OCIO` unset; plugin loading beyond that path has not been tested.
+
+The lmblender host is statically linked too (`ldd build/lmblender` reports “not a dynamic executable”; current host size is 28,140,248 bytes). `./test.sh` compiles the host, runs the DSL examples and validates a decoded PNG has visible pixel variation. The proper four-face tetra renders at 256x192 with 32 Cycles samples; the decoded RGB luminance standard deviation is 41.14/255. The in-process XML bridge is a temporary integration step; DSL mesh import, scene/material authoring and render settings will move to direct Cycles API bindings incrementally.
 
 ## Dependencies
 

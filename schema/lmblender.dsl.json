@@ -22,6 +22,12 @@
             "returns": "Mesh"
           }
         ],
+        "render_png": [
+          {
+            "params": ["string", "int", "int", "int"],
+            "returns": "void"
+          }
+        ],
         "version": [
           {
             "params": [],

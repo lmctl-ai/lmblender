@@ -1,3 +1,4 @@
 build/
 *.dslb
 *.png
+__pycache__/
