@@ -1,0 +1,27 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/turntable-mug.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+let mug = scene.import_stl("build/compose-input/build/mug.stl");
+mug.rotate_x(90.0);
+mug.translate(0.0, 0.0, 7.0);
+mug.scale(1.2, 1.2, 1.0);
+let ceramic = scene.material(0.08, 0.28, 0.42, 0.0, 0.22, 0.0, 0.0, 0.0, 0.0, 0.0);
+mug.set_material(ceramic);
+scene.ground_plane(-0.08, 200.0, 0.42, 0.44, 0.48);
+scene.world_color(0.30, 0.32, 0.37, 0.9);
+scene.area_light(-12.0, -16.0, 22.0, 0.0, 0.0, 3.0, 1.0, 0.88, 0.76, 7600.0, 14.0);
+scene.area_light(11.0, -11.0, 13.0, 0.0, 0.0, 5.0, 0.72, 0.84, 1.0, 3600.0, 18.0);
+scene.sun_light(0.25, -0.35, -1.0, 0.82, 0.88, 1.0, 0.35, 0.16);
+for (i in range(0, 8)) {
+  let px = 14.0; let py = -18.0;
+  if (i == 1) { px = 23.0; py = -5.0; }
+  if (i == 2) { px = 18.0; py = 14.0; }
+  if (i == 3) { px = 5.0; py = 23.0; }
+  if (i == 4) { px = -14.0; py = 18.0; }
+  if (i == 5) { px = -23.0; py = 5.0; }
+  if (i == 6) { px = -18.0; py = -14.0; }
+  if (i == 7) { px = -5.0; py = -23.0; }
+  scene.camera_look_at(px, py, 12.0, 0.0, 0.0, 7.0, 45.0);
+  scene.render_png("build/compose-mug-angle-" + str(i) + ".png", 128, 128, 96);
+}
+end _dsl_
+savedsl(p, out);

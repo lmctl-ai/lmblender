@@ -32,4 +32,9 @@ for view in front side rear; do
   python3 "$root/tests/png_metrics.py" "$root/build/compose-bracket-$view.png"
   python3 "$root/tests/compose_bracket_quality.py" "$root/build/compose-bracket-$view.png" "$view"
 done
-echo "Wrote $root/build/compose-mug.png and compose-plate.png"
+for item in turntable-mug turntable-bracket; do
+  "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item.lms" "$out/$item.dslb" >/dev/null
+  "$host_bin" --dsl "$out/$item.dslb"
+done
+python3 "$root/tests/turntable_quality.py" "$root/build"
+echo "Wrote mug/plate/bracket compositions and eight-angle mug/bracket turntable image sets under $root/build/"

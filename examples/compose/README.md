@@ -1,10 +1,10 @@
 # lmcad to lmblender composition
 
-`./examples/compose/run.sh` builds three solids with lmcad, exports STL, imports those files into lmblender, and renders them with CPU Cycles. It writes mug and plate renders plus three bracket camera views (`build/compose-bracket-{front,side,rear}.png`).
+`./examples/compose/run.sh` builds three solids with lmcad, exports STL, imports those files into lmblender, and renders them with CPU Cycles. It writes mug and plate renders, three bracket camera studies, plus eight-angle mug and bracket sets (`build/compose-{mug,bracket}-angle-0.png` through `-7.png`). `tests/turntable_quality.py` checks every image's dimensions, nonuniform content, visible object coverage, and distinct adjacent camera views.
 
 Set `LMCAD_SOURCE`, `LMCAD_BIN`, or `LMBLENDER_BIN` to override this host's defaults. The default lmcad executable is the static `/home/ubuntu/lmcad-poc-build/lmcad-build/lmcad`; no new OCCT build is required if it is already available.
 
-STL transfers tessellated triangles only. STL has no material or object-name channel, so lmblender assigns a new material after import. Coordinates are interpreted in the source model's exported units; this demo assumes lmcad coordinates map directly to Cycles world units. `mug-render.lms`, `plate-render.lms`, and `bracket-render.lms` show the lmblender side of the pipeline. The bracket is a three-view static camera set, not an animated turntable.
+STL transfers tessellated triangles only. STL has no material or object-name channel, so lmblender assigns a new material after import. Coordinates are interpreted in the source model's exported units; this demo assumes lmcad coordinates map directly to Cycles world units. `mug-render.lms`, `plate-render.lms`, and `bracket-render.lms` show the lmblender side of the pipeline. The turntable examples use eight sequential camera poses, rendered as individual stills rather than an encoded animation.
 
 ## Composition QA and coordinates
 
