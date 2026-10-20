@@ -12,6 +12,9 @@ for cad in mug plate-with-holes; do
   ( cd "$out" && "$cad_bin" --dsl "$out/$cad.dslb" )
 done
 
+"${LMSCRIPT:-lmscript}" "$root/examples/compose/bracket-cad.lms" "$out/bracket-cad.dslb" >/dev/null
+( cd "$out" && "$cad_bin" --dsl "$out/bracket-cad.dslb" )
+
 for item in mug plate; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item-render.lms" "$out/$item-render.dslb" >/dev/null
   "$host_bin" --dsl "$out/$item-render.dslb"
@@ -21,5 +24,12 @@ for item in mug plate; do
   else
     python3 "$root/tests/compose_plate_quality.py" "$root/build/compose-plate.png"
   fi
+done
+
+"${LMSCRIPT:-lmscript}" "$root/examples/compose/bracket-render.lms" "$out/bracket-render.dslb" >/dev/null
+"$host_bin" --dsl "$out/bracket-render.dslb"
+for view in front side rear; do
+  python3 "$root/tests/png_metrics.py" "$root/build/compose-bracket-$view.png"
+  python3 "$root/tests/compose_bracket_quality.py" "$root/build/compose-bracket-$view.png" "$view"
 done
 echo "Wrote $root/build/compose-mug.png and compose-plate.png"

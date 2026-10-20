@@ -10,5 +10,5 @@
 | Image output | Partial | PNG and linear EXR. Separate depth/normal/albedo passes and Standard/Filmic/AgX display transforms remain. |
 | CPU denoising | Not linked | Static prefix contains no OIDN archive; host installation provides shared OIDN `.so` files only. A static-friendly OIDN rebuild or documented dynamic optional mode is needed. |
 | Instance geometry sharing | Pending | Current renderer builds one Cycles mesh node per object. Prototype reuse rendered a blank frame and was reverted; memory-saving sharing needs a verified scene-node ownership/geometry-manager path. |
-| lmcad composition gallery | Partial | Mug and plate-with-holes compose examples have numeric and visual QA in `docs/MILESTONE3-QA.md`. Bracket and multi-angle turntable compositions remain. |
+| lmcad composition gallery | Partial | Mug, plate-with-holes, and a three-angle U-channel bracket compose examples have numeric and visual QA in `docs/MILESTONE3-QA.md`. Bracket views are separate still renders, not an animated turntable. |
 | Static XML oracle | Test-only | Retained to compare output against direct Cycles construction; production rendering uses the C++ node API. |

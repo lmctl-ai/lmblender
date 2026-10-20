@@ -1,0 +1,18 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/bracket-render.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+let bracket = scene.import_stl("build/compose-input/build/bracket.stl");
+let steel = scene.material(0.42, 0.48, 0.56, 0.32, 0.42, 0.0, 0.0, 0.0, 0.0, 0.0);
+bracket.set_material(steel);
+scene.ground_plane(-0.05, 30.0, 0.28, 0.30, 0.33);
+scene.world_color(0.25, 0.28, 0.34, 0.8);
+scene.area_light(-8.0, -8.0, 13.0, 0.0, 0.0, 2.0, 1.0, 0.88, 0.72, 3700.0, 9.0);
+scene.area_light(8.0, -4.0, 8.0, 0.0, 0.0, 2.0, 0.70, 0.82, 1.0, 1800.0, 11.0);
+scene.camera_look_at(13.0, -15.0, 13.0, 0.0, 0.0, 2.3, 45.0);
+scene.render_settings(10, 23, false);
+scene.render_png("build/compose-bracket-front.png", 256, 512, 384);
+scene.camera_look_at(17.0, -9.0, 17.0, 0.0, 0.0, 2.3, 45.0);
+scene.render_png("build/compose-bracket-side.png", 256, 512, 384);
+scene.camera_look_at(-13.0, -15.0, 18.0, 0.0, 0.0, 2.3, 45.0);
+scene.render_png("build/compose-bracket-rear.png", 256, 512, 384);
+end _dsl_
+savedsl(p, out);
