@@ -37,6 +37,7 @@
             "returns": "void"
           }
         ],
+        "render_exr": [{"params": ["string", "int", "int", "int"], "returns": "void"}],
         "render_timeout": [{"params": ["int"], "returns": "void"}],
         "version": [
           {

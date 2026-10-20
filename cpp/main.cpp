@@ -100,11 +100,12 @@ template<typename SessionType> void run_session_with_timeout(SessionType *sessio
   }
 }
 
-void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
+void render_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
 {
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
-  if (output.empty() || output.front() == '-' || std::filesystem::path(output).extension() != ".png")
-    throw dslvm::Error("render_png output must be a PNG path that does not begin with '-'");
+  const std::string extension = std::filesystem::path(output).extension().string();
+  if (output.empty() || output.front() == '-' || (extension != ".png" && extension != ".exr"))
+    throw dslvm::Error("render output must be a PNG or EXR path that does not begin with '-'");
   if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
       uint64_t(width) * uint64_t(height) > 16'000'000)
     throw dslvm::Error("render_png samples or dimensions exceed supported limits");
@@ -173,7 +174,7 @@ void render_png_xml_oracle(const Scene &source, const std::string &output, int s
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
 
-  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + ".png";
+  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
   session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
   ccl::BufferParams buffers;
   buffers.width = buffers.full_width = width;
@@ -188,11 +189,12 @@ void render_png_xml_oracle(const Scene &source, const std::string &output, int s
   }
 }
 
-void render_png_direct(const Scene &source, const std::string &output, int samples, int width, int height)
+void render_direct(const Scene &source, const std::string &output, int samples, int width, int height)
 {
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
-  if (output.empty() || output.front() == '-' || std::filesystem::path(output).extension() != ".png")
-    throw dslvm::Error("render_png output must be a PNG path that does not begin with '-'");
+  const std::string extension = std::filesystem::path(output).extension().string();
+  if (output.empty() || output.front() == '-' || (extension != ".png" && extension != ".exr"))
+    throw dslvm::Error("render output must be a PNG or EXR path that does not begin with '-'");
   if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
       uint64_t(width) * uint64_t(height) > 16'000'000)
     throw dslvm::Error("render_png samples or dimensions exceed supported limits");
@@ -341,7 +343,7 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
 
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
-  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + ".png";
+  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
   session->set_output_driver(ccl::make_unique<ccl::OIIOOutputDriver>(tmp, "combined", [](const ccl::string &) {}));
   ccl::BufferParams buffers;
   buffers.width = buffers.full_width = width;
@@ -356,12 +358,12 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
   }
 }
 
-void render_png(const Scene &source, const std::string &output, int samples, int width, int height)
+void render_image(const Scene &source, const std::string &output, int samples, int width, int height)
 {
   if (std::getenv("LMBLENDER_TEST_XML_ORACLE"))
-    render_png_xml_oracle(source, output, samples, width, height);
+    render_xml_oracle(source, output, samples, width, height);
   else
-    render_png_direct(source, output, samples, width, height);
+    render_direct(source, output, samples, width, height);
 }
 
 Mesh read_obj(const std::string &path) {
@@ -552,9 +554,18 @@ dslvm::Registry make_registry() {
   });
   registry.method("Scene", "render_png", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     const auto *scene = static_cast<const Scene *>(p);
+    if (std::filesystem::path(a[0].s).extension() != ".png") throw dslvm::Error("render_png output must use the .png extension");
     if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
       throw dslvm::Error("render_png samples and dimensions are outside supported bounds");
-    render_png(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_exr", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (std::filesystem::path(a[0].s).extension() != ".exr") throw dslvm::Error("render_exr output must use the .exr extension");
+    if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
+      throw dslvm::Error("render_exr samples and dimensions are outside supported bounds");
+    render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
     return dslvm::Value::none();
   });
   for (const char *field : {"vertex_count", "triangle_count"}) {
