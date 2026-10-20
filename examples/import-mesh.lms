@@ -1,0 +1,13 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/import-mesh.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.expect_int(mesh.vertex_count(), 4);
+scene.expect_int(mesh.triangle_count(), 2);
+let stl = scene.import_stl("tests/fixtures/one-triangle.stl");
+scene.expect_int(stl.vertex_count(), 3);
+scene.expect_int(stl.triangle_count(), 1);
+let binary_stl = scene.import_stl("tests/fixtures/one-triangle-binary.stl");
+scene.expect_int(binary_stl.vertex_count(), 3);
+scene.expect_int(binary_stl.triangle_count(), 1);
+end _dsl_
+savedsl(p, out);

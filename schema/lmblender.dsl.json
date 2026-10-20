@@ -4,12 +4,42 @@
   "types": {
     "Scene": {
       "methods": {
+        "expect_int": [
+          {
+            "params": ["int", "int"],
+            "returns": "void"
+          }
+        ],
+        "import_obj": [
+          {
+            "params": ["string"],
+            "returns": "Mesh"
+          }
+        ],
+        "import_stl": [
+          {
+            "params": ["string"],
+            "returns": "Mesh"
+          }
+        ],
         "version": [
           {
             "params": [],
             "returns": "string"
           }
         ]
+      }
+    },
+    "Mesh": {
+      "methods": {
+        "vertex_count": [{"params": [], "returns": "int"}],
+        "triangle_count": [{"params": [], "returns": "int"}],
+        "min_x": [{"params": [], "returns": "float"}],
+        "min_y": [{"params": [], "returns": "float"}],
+        "min_z": [{"params": [], "returns": "float"}],
+        "max_x": [{"params": [], "returns": "float"}],
+        "max_y": [{"params": [], "returns": "float"}],
+        "max_z": [{"params": [], "returns": "float"}]
       }
     }
   },

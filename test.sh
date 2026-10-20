@@ -7,21 +7,20 @@ cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STAT
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
 exe="$build/lmblender"
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
-"${LMSCRIPT:-lmscript}" examples/version.lms "$tmp/version.dslb" >/dev/null
-"$exe" --dsl "$tmp/version.dslb" >"$tmp/result.json"
-"${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$tmp/compiler-signatures"
-"$exe" --dsl-signatures >"$tmp/host-signatures"
-diff -u "$tmp/compiler-signatures" "$tmp/host-signatures"
-python3 - "$tmp/result.json" <<'PY'
+"${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/import-mesh.lms "$build/import-mesh.dslb" >/dev/null
+"$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
+"$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
+diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
+python3 - "$build/version-result.json" "$build/import-mesh-result.json" <<'PY'
 import json,sys
-r=json.load(open(sys.argv[1])); assert r.get('success') is True, r
-print('DSL v5 runner and embedded schema pass')
+for path in sys.argv[1:]:
+    result=json.load(open(path)); assert result.get('ok') is True, result
+print('DSL v5 runner, OBJ import, ASCII/binary STL import, and embedded schema pass')
 PY
-if ldd "$exe" >"$tmp/ldd" 2>&1; then
-  if grep -q 'not a dynamic executable' "$tmp/ldd"; then :; else echo 'expected ldd to report static binary' >&2; cat "$tmp/ldd" >&2; exit 1; fi
-else
-  grep -q 'not a dynamic executable' "$tmp/ldd" || { cat "$tmp/ldd" >&2; exit 1; }
-fi
+for binary in "$exe" "$build/cycles-static/bin/cycles"; do
+  [ ! -x "$binary" ] && continue
+  ldd "$binary" >"$build/ldd-check.txt" 2>&1 || true
+  grep -q 'not a dynamic executable' "$build/ldd-check.txt" || { cat "$build/ldd-check.txt" >&2; exit 1; }
+done

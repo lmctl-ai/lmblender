@@ -4,10 +4,10 @@
 
 ## Current milestone status
 
-- The `lmblender` DSL host currently exposes `scene.version()` and is a static executable.
+- The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, and `scene.import_stl(path)`; imported meshes expose vertex/triangle counts and bounds. It remains a static executable.
 - A standalone static Cycles executable has been built at `build/cycles-static/bin/cycles` on the development host. It renders XML scenes to PNG with no `LD_LIBRARY_PATH` or `OCIO` environment and passes the `ldd: not a dynamic executable` check.
 - A Cornell-box-style XML smoke scene rendered identically with static and dynamic Cycles at 128x128 and 16 samples (RGB MAD 0/255). The fixture uses emissive room panels and a blue box to check geometry/XML/image output; it is not a lighting parity fixture.
-- DSL bindings that construct and render scenes directly through the Cycles C++ API, including the first OBJ/STL import binding, remain to be implemented.
+- Imported mesh handles are not yet added to a Cycles scene. Direct Cycles C++ scene construction/rendering, including usable OBJ/STL rendering, remains to be implemented.
 
 ## Build and test
 
