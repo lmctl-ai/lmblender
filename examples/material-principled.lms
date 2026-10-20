@@ -1,6 +1,8 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-principled.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.world_color(0.08, 0.42, 0.12, 0.5);
+scene.point_light(-4.0, -3.0, 7.0, 1.0, 0.82, 0.62, 550.0);
 let blue = scene.material(0.08, 0.18, 0.85, 0.1, 0.32, 0.0, 0.08, 0.18, 0.85, 2.0);
 mesh.set_material(blue);
 scene.render_png("build/material-principled.png", 32, 256, 192);

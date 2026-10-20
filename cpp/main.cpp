@@ -53,9 +53,17 @@ struct Material {
   float transmission = 0.0f;
   float emission_strength = 0.0f;
 };
+struct PointLightData {
+  std::array<float, 3> position{};
+  std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+  float strength = 100.0f;
+};
 struct Scene {
   std::vector<std::unique_ptr<Mesh>> meshes;
   std::vector<std::unique_ptr<Material>> materials;
+  std::vector<PointLightData> point_lights;
+  std::array<float, 3> world_color{0.16f, 0.18f, 0.22f};
+  float world_strength = 0.45f;
 };
 
 void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
@@ -222,8 +230,8 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
   ccl::Shader *world = scene->default_background;
   auto world_graph = ccl::make_unique<ccl::ShaderGraph>();
   ccl::BackgroundNode *background = world_graph->create_node<ccl::BackgroundNode>();
-  background->set_color(ccl::make_float3(0.16f, 0.18f, 0.22f));
-  background->set_strength(0.45f);
+  background->set_color(ccl::make_float3(source.world_color[0], source.world_color[1], source.world_color[2]));
+  background->set_strength(source.world_strength);
   world_graph->connect(background->output("Background"), world_graph->output()->input("Surface"));
   world->set_graph(std::move(world_graph));
   world->tag_update(scene);
@@ -253,16 +261,23 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
     object->set_tfm(ccl::transform_identity());
   }
 
-  ccl::PointLight *point = scene->create_node<ccl::PointLight>();
-  point->set_strength(ccl::make_float3(550.0f, 550.0f, 550.0f));
-  point->set_radius(0.0f);
-  ccl::Object *light_object = scene->create_node<ccl::Object>();
-  light_object->set_geometry(point);
-  ccl::Transform light_tfm = ccl::transform_identity();
-  light_tfm.x.w = center.x - radius * 2.5f;
-  light_tfm.y.w = center.y - radius * 3.2f;
-  light_tfm.z.w = center.z + radius * 4.0f;
-  light_object->set_tfm(light_tfm);
+  auto add_point_light = [scene](const ccl::float3 position, const ccl::float3 color, const float strength) {
+    ccl::PointLight *point = scene->create_node<ccl::PointLight>();
+    point->set_strength(color * strength);
+    point->set_radius(0.0f);
+    ccl::Object *object = scene->create_node<ccl::Object>();
+    object->set_geometry(point);
+    ccl::Transform tfm = ccl::transform_translate(position);
+    object->set_tfm(tfm);
+  };
+  if (source.point_lights.empty()) {
+    add_point_light(ccl::make_float3(center.x - radius * 2.5f, center.y - radius * 3.2f, center.z + radius * 4.0f),
+                    ccl::make_float3(1.0f, 1.0f, 1.0f), 550.0f);
+  } else {
+    for (const PointLightData &light : source.point_lights)
+      add_point_light(ccl::make_float3(light.position[0], light.position[1], light.position[2]),
+                      ccl::make_float3(light.color[0], light.color[1], light.color[2]), light.strength);
+  }
 
   scene->camera->set_full_width(width);
   scene->camera->set_full_height(height);
@@ -405,6 +420,32 @@ Mesh read_stl(const std::string &path) {
 dslvm::Registry make_registry() {
   dslvm::Registry registry;
   registry.context("scene", "Scene");
+  registry.method("Scene", "world_color", {"float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("world color values must be finite");
+    for (size_t i = 0; i < 3; ++i)
+      if (a[i].f < 0.0 || a[i].f > 1.0) throw dslvm::Error("world color channels must be in [0,1]");
+    if (a[3].f < 0.0 || a[3].f > 10000.0) throw dslvm::Error("world strength must be in [0,10000]");
+    scene->world_color = {float(a[0].f), float(a[1].f), float(a[2].f)};
+    scene->world_strength = float(a[3].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "point_light", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->point_lights.size() >= 1024) throw dslvm::Error("point light limit exceeded (1024)");
+    for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("point light values must be finite");
+    for (size_t i = 0; i < 3; ++i) {
+      if (std::abs(a[i].f) > 1'000'000.0) throw dslvm::Error("point light position exceeds scene bounds");
+      if (a[i + 3].f < 0.0 || a[i + 3].f > 1.0) throw dslvm::Error("point light color channels must be in [0,1]");
+    }
+    if (a[6].f < 0.0 || a[6].f > 1'000'000.0) throw dslvm::Error("point light strength must be in [0,1000000]");
+    PointLightData light;
+    light.position = {float(a[0].f), float(a[1].f), float(a[2].f)};
+    light.color = {float(a[3].f), float(a[4].f), float(a[5].f)};
+    light.strength = float(a[6].f);
+    scene->point_lights.push_back(light);
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "material", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     if (scene->materials.size() >= 4096) throw dslvm::Error("material limit exceeded (4096)");
