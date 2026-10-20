@@ -1,0 +1,28 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+out = ARGV.len() > 0 ? ARGV[0] : "build/animation-visibility-optics.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let hidden = scene.uv_sphere(0.75, 24, 12, true);
+let matte = scene.material(0.08, 0.32, 0.92, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
+hidden.set_material(matte); hidden.translate(-2.0, 0.0, 0.0);
+hidden.keyframe_visible(0, true, "linear"); hidden.keyframe_visible(1, false, "linear"); hidden.keyframe_visible(2, true, "linear");
+let lamp = scene.uv_sphere(0.65, 24, 12, true);
+let glow = scene.material(0.08, 0.08, 0.08, 0.0, 0.3, 1.0, 0.12, 0.02, 0.0, 1.0);
+lamp.set_material(glow); lamp.translate(0.0, 0.0, 0.0);
+glow.keyframe_emission_strength(0, 0.5, "linear"); glow.keyframe_emission_strength(1, 50.0, "linear"); glow.keyframe_emission_strength(2, 0.5, "linear");
+let still = scene.uv_sphere(0.75, 24, 12, true);
+let white = scene.material(0.8, 0.8, 0.8, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.0);
+still.set_material(white); still.translate(2.0, 0.0, 0.0);
+scene.point_light(0.0, -4.0, 5.0, 1.0, 0.9, 0.8, 80.0);
+scene.point_light_keyframe(0, 0, 80.0, "linear");
+scene.point_light_keyframe(0, 1, 600.0, "linear");
+scene.point_light_keyframe(0, 2, 80.0, "linear");
+scene.camera_look_at(0.0, -9.0, 2.4, 0.0, 0.0, 0.0, 42.0);
+scene.camera_optics_keyframe(0, 42.0, 8.0, "linear");
+scene.camera_optics_keyframe(1, 70.0, 8.0, "linear");
+scene.camera_optics_keyframe(2, 42.0, 8.0, "linear");
+scene.world_color(0.12, 0.15, 0.2, 0.5);
+scene.render_settings(8, 0, true);
+scene.render_sequence("build/animation-visibility-{frame}.png", 0, 2, 8, 480, 270);
+end _dsl_
+savedsl(p, out);

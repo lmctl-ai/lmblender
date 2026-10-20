@@ -69,8 +69,11 @@ struct Mesh {
   std::array<float, 3> scale{1.0f, 1.0f, 1.0f};
   bool ground_plane = false;
   bool smooth = false;
+  bool visible = true;
   struct TransformKey { int frame; std::array<float,3> value; std::string interpolation; };
   std::vector<TransformKey> transform_keys;
+  struct VisibilityKey { int frame; bool value; };
+  std::vector<VisibilityKey> visibility_keys;
 };
 struct Material {
   std::array<float, 3> color{0.8f, 0.8f, 0.8f};
@@ -100,11 +103,15 @@ struct Material {
   float bump_strength = 0.35f, bump_distance = 0.12f, bump_scale = 18.0f;
   struct ColorKey { int frame; std::array<float,3> value; std::string interpolation; };
   std::vector<ColorKey> color_keys;
+  struct StrengthKey { int frame; float value; std::string interpolation; };
+  std::vector<StrengthKey> emission_keys;
 };
 struct PointLightData {
   std::array<float, 3> position{};
   std::array<float, 3> color{1.0f, 1.0f, 1.0f};
   float strength = 100.0f;
+  struct StrengthKey { int frame; float value; std::string interpolation; };
+  std::vector<StrengthKey> strength_keys;
 };
 struct AreaLightData {
   std::array<float, 3> position{};
@@ -171,8 +178,15 @@ struct Scene {
   std::string view_transform = "Standard";
   struct CameraKey { int frame; std::array<float,6> value; std::string interpolation; };
   std::vector<CameraKey> camera_keys;
+  struct CameraOpticsKey { int frame; std::array<float,2> value; std::string interpolation; };
+  std::vector<CameraOpticsKey> camera_optics_keys;
   int render_frame = 0;
 };
+
+template<typename Key, typename Value>
+Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base);
+bool sample_visibility(const std::vector<Mesh::VisibilityKey> &keys, int frame, bool base);
+template<typename Key> float sample_scalar_keys(const std::vector<Key> &keys, double frame, float base);
 
 #include "gltf_import.hpp"
 
@@ -449,6 +463,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
       << "<background color=\"0.16 0.18 0.22\" strength=\"0.45\"/>\n";
   size_t total_triangles = 0;
   for (const auto &source_mesh : source.meshes) {
+    if (!source_mesh->visible) continue;
     const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
     if (mesh_data->vertices.size() > 10'000'000 || mesh_data->triangles.size() > 20'000'000)
       throw dslvm::Error("render_png mesh exceeds Cycles geometry budget");
@@ -764,6 +779,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
 
   std::map<std::tuple<const Mesh *, const Material *, bool>, ccl::Mesh *> geometry_cache;
   for (const auto &source_mesh : source.meshes) {
+    if (!source_mesh->visible) continue;
     const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
     const Material *material = source_mesh->material ? source_mesh->material : mesh_data->material;
     const bool object_transform = !(material && material->texture_kind == 3);
@@ -1070,9 +1086,13 @@ void render_image(const Scene &source, const std::string &output, int samples, i
     std::vector<std::array<float,3>> old_transforms;
     old_transforms.reserve(scene.meshes.size());
     for (const auto &mesh : scene.meshes) old_transforms.push_back(mesh->translation);
+    std::vector<bool> old_visibility; for (const auto &mesh : scene.meshes) old_visibility.push_back(mesh->visible);
     std::vector<std::array<float,3>> old_colors;
     old_colors.reserve(scene.materials.size());
     for (const auto &material : scene.materials) old_colors.push_back(material->color);
+    std::vector<float> old_emissions; for (const auto &material : scene.materials) old_emissions.push_back(material->emission_strength);
+    std::vector<float> old_light_strengths; for (const auto &light : scene.point_lights) old_light_strengths.push_back(light.strength);
+    const float old_fov = scene.camera.fov_radians, old_ortho = scene.camera.ortho_scale;
     std::vector<std::string> temporaries;
     const std::string staged = output + ".motion-" + std::to_string(getpid()) + ".png";
     try {
@@ -1083,9 +1103,20 @@ void render_image(const Scene &source, const std::string &output, int samples, i
         for (size_t m = 0; m < scene.meshes.size(); ++m)
           scene.meshes[m]->translation = sample_keys<Mesh::TransformKey, std::array<float,3>>(
               scene.meshes[m]->transform_keys, frame, old_transforms[m]);
+        for (size_t m = 0; m < scene.meshes.size(); ++m)
+          scene.meshes[m]->visible = sample_visibility(scene.meshes[m]->visibility_keys, int(std::lround(frame)), old_visibility[m]);
         for (size_t m = 0; m < scene.materials.size(); ++m)
           scene.materials[m]->color = sample_keys<Material::ColorKey, std::array<float,3>>(
               scene.materials[m]->color_keys, frame, old_colors[m]);
+        for (size_t m = 0; m < scene.materials.size(); ++m)
+          scene.materials[m]->emission_strength = sample_scalar_keys(scene.materials[m]->emission_keys, frame, old_emissions[m]);
+        for (size_t l = 0; l < scene.point_lights.size(); ++l)
+          scene.point_lights[l].strength = sample_scalar_keys(scene.point_lights[l].strength_keys, frame, old_light_strengths[l]);
+        if (!scene.camera_optics_keys.empty()) {
+          const auto optics = sample_keys<Scene::CameraOpticsKey, std::array<float, 2>>(
+              scene.camera_optics_keys, frame, {old_fov, old_ortho});
+          scene.camera.fov_radians = optics[0]; scene.camera.ortho_scale = optics[1];
+        }
         if (!scene.camera_keys.empty()) {
           const auto camera = sample_keys<Scene::CameraKey, std::array<float,6>>(
               scene.camera_keys, frame,
@@ -1129,7 +1160,11 @@ void render_image(const Scene &source, const std::string &output, int samples, i
       scene.motion_blur = old_motion; scene.render_frame = old_frame;
       scene.camera.position = old_camera_position; scene.camera.target = old_camera_target;
       for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->translation = old_transforms[i];
+      for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->visible = old_visibility[i];
       for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->color = old_colors[i];
+      for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->emission_strength = old_emissions[i];
+      for (size_t i = 0; i < scene.point_lights.size(); ++i) scene.point_lights[i].strength = old_light_strengths[i];
+      scene.camera.fov_radians = old_fov; scene.camera.ortho_scale = old_ortho;
       { std::error_code ec; std::filesystem::remove(staged, ec); }
       for (const auto &temp : temporaries) { std::error_code ec; std::filesystem::remove(temp, ec); }
       throw;
@@ -1137,7 +1172,11 @@ void render_image(const Scene &source, const std::string &output, int samples, i
     scene.motion_blur = old_motion; scene.render_frame = old_frame;
     scene.camera.position = old_camera_position; scene.camera.target = old_camera_target;
     for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->translation = old_transforms[i];
+    for (size_t i = 0; i < scene.meshes.size(); ++i) scene.meshes[i]->visible = old_visibility[i];
     for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->color = old_colors[i];
+    for (size_t i = 0; i < scene.materials.size(); ++i) scene.materials[i]->emission_strength = old_emissions[i];
+    for (size_t i = 0; i < scene.point_lights.size(); ++i) scene.point_lights[i].strength = old_light_strengths[i];
+    scene.camera.fov_radians = old_fov; scene.camera.ortho_scale = old_ortho;
     for (const auto &temp : temporaries) { std::error_code ec; std::filesystem::remove(temp, ec); }
   }
   else
@@ -1160,6 +1199,85 @@ Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base)
   for (size_t i = 0; i < result.size(); ++i)
     result[i] = typename Value::value_type(a.value[i] + (b.value[i] - a.value[i]) * t);
   return result;
+}
+
+bool sample_visibility(const std::vector<Mesh::VisibilityKey> &keys, int frame, bool base)
+{
+  if (keys.empty()) return base;
+  auto hi = std::lower_bound(keys.begin(), keys.end(), frame,
+                             [](const auto &key, int f) { return key.frame < f; });
+  if (hi == keys.begin()) return hi->value;
+  if (hi == keys.end()) return keys.back().value;
+  if (hi->frame == frame) return hi->value;
+  return (hi - 1)->value;
+}
+
+template<typename Key>
+float sample_scalar_keys(const std::vector<Key> &keys, double frame, float base)
+{
+  if (keys.empty()) return base;
+  auto hi = std::lower_bound(keys.begin(), keys.end(), frame,
+                             [](const Key &key, double f) { return key.frame < f; });
+  if (hi == keys.begin()) return hi->value;
+  if (hi == keys.end()) return keys.back().value;
+  if (hi->frame == frame) return hi->value;
+  const Key &a = *(hi - 1), &b = *hi;
+  double t = double(frame - a.frame) / double(b.frame - a.frame);
+  if (a.interpolation == "ease") t = t * t * (3.0 - 2.0 * t);
+  return float(a.value + (b.value - a.value) * t);
+}
+
+struct AnimationBase {
+  std::vector<std::array<float, 3>> translations, colors;
+  std::vector<bool> visibility;
+  std::vector<float> emissions, point_strengths;
+  std::array<float, 6> camera{};
+  std::array<float, 2> optics{};
+};
+
+AnimationBase capture_animation(const Scene &scene)
+{
+  AnimationBase base;
+  for (const auto &mesh : scene.meshes) { base.translations.push_back(mesh->translation); base.visibility.push_back(mesh->visible); }
+  for (const auto &material : scene.materials) { base.colors.push_back(material->color); base.emissions.push_back(material->emission_strength); }
+  for (const auto &light : scene.point_lights) base.point_strengths.push_back(light.strength);
+  base.camera = {scene.camera.position[0], scene.camera.position[1], scene.camera.position[2],
+                 scene.camera.target[0], scene.camera.target[1], scene.camera.target[2]};
+  base.optics = {scene.camera.fov_radians, scene.camera.ortho_scale};
+  return base;
+}
+
+void apply_animation(Scene &scene, int frame, const AnimationBase &base)
+{
+  scene.render_frame = frame;
+  for (size_t i = 0; i < scene.meshes.size(); ++i) {
+    scene.meshes[i]->translation = sample_keys<Mesh::TransformKey, std::array<float, 3>>(scene.meshes[i]->transform_keys, frame, base.translations[i]);
+    scene.meshes[i]->visible = sample_visibility(scene.meshes[i]->visibility_keys, frame, base.visibility[i]);
+  }
+  for (size_t i = 0; i < scene.materials.size(); ++i) {
+    scene.materials[i]->color = sample_keys<Material::ColorKey, std::array<float, 3>>(scene.materials[i]->color_keys, frame, base.colors[i]);
+    scene.materials[i]->emission_strength = sample_scalar_keys(scene.materials[i]->emission_keys, frame, base.emissions[i]);
+  }
+  for (size_t i = 0; i < scene.point_lights.size(); ++i)
+    scene.point_lights[i].strength = sample_scalar_keys(scene.point_lights[i].strength_keys, frame, base.point_strengths[i]);
+  if (!scene.camera_keys.empty()) {
+    const auto c = sample_keys<Scene::CameraKey, std::array<float, 6>>(scene.camera_keys, frame, base.camera);
+    for (size_t j = 0; j < 3; ++j) { scene.camera.position[j] = c[j]; scene.camera.target[j] = c[j + 3]; }
+  }
+  if (!scene.camera_optics_keys.empty()) {
+    const auto optics = sample_keys<Scene::CameraOpticsKey, std::array<float, 2>>(scene.camera_optics_keys, frame, base.optics);
+    scene.camera.fov_radians = optics[0]; scene.camera.ortho_scale = optics[1];
+  }
+}
+
+void restore_animation(Scene &scene, const AnimationBase &base)
+{
+  for (size_t i = 0; i < scene.meshes.size(); ++i) { scene.meshes[i]->translation = base.translations[i]; scene.meshes[i]->visible = base.visibility[i]; }
+  for (size_t i = 0; i < scene.materials.size(); ++i) { scene.materials[i]->color = base.colors[i]; scene.materials[i]->emission_strength = base.emissions[i]; }
+  for (size_t i = 0; i < scene.point_lights.size(); ++i) scene.point_lights[i].strength = base.point_strengths[i];
+  scene.camera.position = {base.camera[0], base.camera[1], base.camera[2]};
+  scene.camera.target = {base.camera[3], base.camera[4], base.camera[5]};
+  scene.camera.fov_radians = base.optics[0]; scene.camera.ortho_scale = base.optics[1];
 }
 
 std::string sequence_path(std::string pattern, int frame)
@@ -1568,6 +1686,19 @@ dslvm::Registry make_registry() {
     std::array<float,6> value{};for(size_t i=0;i<6;++i){if(!std::isfinite(a[i+1].f)||std::abs(a[i+1].f)>1'000'000)throw dslvm::Error("camera keyframe coordinates must be finite and bounded");value[i]=float(a[i+1].f);}double dx=value[3]-value[0],dy=value[4]-value[1],dz=value[5]-value[2];if(dx*dx+dy*dy+dz*dz<1e-12)throw dslvm::Error("camera keyframe position and target must differ");
     auto &keys=scene->camera_keys;auto it=std::find_if(keys.begin(),keys.end(),[&](const auto&k){return k.frame==a[0].i;});Scene::CameraKey key{int(a[0].i),value,a[7].s};if(it==keys.end())keys.push_back(key);else *it=key;std::sort(keys.begin(),keys.end(),[](const auto&x,const auto&y){return x.frame<y.frame;});scene->custom_camera=true;scene->camera.fit_to_geometry=false;return dslvm::Value::none();
   });
+  registry.method("Scene", "camera_optics_keyframe", {"int", "float", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (a[0].i < 0 || a[0].i > 1'000'000) throw dslvm::Error("camera optics keyframe must be in [0,1000000]");
+    if (a[3].s != "linear" && a[3].s != "ease") throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    if (!std::isfinite(a[1].f) || a[1].f < 5 || a[1].f > 170 || !std::isfinite(a[2].f) || a[2].f < 0.01 || a[2].f > 1'000'000)
+      throw dslvm::Error("camera optics keyframe requires vertical FOV 5..170 degrees and orthographic vertical span 0.01..1000000");
+    auto &keys = scene->camera_optics_keys;
+    Scene::CameraOpticsKey key{int(a[0].i), {float(a[1].f * M_PI / 180.0), float(a[2].f)}, a[3].s};
+    auto it = std::find_if(keys.begin(), keys.end(), [&](const auto &entry) { return entry.frame == a[0].i; });
+    if (it == keys.end()) keys.push_back(key); else *it = key;
+    std::sort(keys.begin(), keys.end(), [](const auto &x, const auto &y) { return x.frame < y.frame; });
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "camera_dof", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     if (!std::isfinite(a[0].f) || !std::isfinite(a[1].f) || a[0].f < 0.0 || a[0].f > 10.0 || a[1].f < 0.1 || a[1].f > 1'000'000.0)
@@ -1762,6 +1893,19 @@ dslvm::Registry make_registry() {
     light.color = {float(a[3].f), float(a[4].f), float(a[5].f)};
     light.strength = float(a[6].f);
     scene->point_lights.push_back(light);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "point_light_keyframe", {"int", "int", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (a[0].i < 0 || size_t(a[0].i) >= scene->point_lights.size()) throw dslvm::Error("point_light_keyframe index is outside the existing point lights");
+    if (a[1].i < 0 || a[1].i > 1'000'000) throw dslvm::Error("light keyframe must be in [0,1000000]");
+    if (!std::isfinite(a[2].f) || a[2].f < 0 || a[2].f > 1'000'000) throw dslvm::Error("keyframed point light strength must be in [0,1000000]");
+    if (a[3].s != "linear" && a[3].s != "ease") throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    auto &keys = scene->point_lights[size_t(a[0].i)].strength_keys;
+    PointLightData::StrengthKey key{int(a[1].i), float(a[2].f), a[3].s};
+    auto it = std::find_if(keys.begin(), keys.end(), [&](const auto &entry) { return entry.frame == a[1].i; });
+    if (it == keys.end()) keys.push_back(key); else *it = key;
+    std::sort(keys.begin(), keys.end(), [](const auto &x, const auto &y) { return x.frame < y.frame; });
     return dslvm::Value::none();
   });
   registry.method("Scene", "area_light", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
@@ -2075,6 +2219,17 @@ dslvm::Registry make_registry() {
     std::sort(keys.begin(),keys.end(),[](const auto &x,const auto &y){return x.frame<y.frame;});
     return dslvm::Value::none();
   });
+  registry.method("Mesh", "keyframe_visible", {"int", "bool", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    if (a[0].i < 0 || a[0].i > 1'000'000) throw dslvm::Error("visibility keyframe must be in [0,1000000]");
+    if (a[2].s != "linear" && a[2].s != "ease") throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    auto &keys = mesh->visibility_keys;
+    auto it = std::find_if(keys.begin(), keys.end(), [&](const auto &key) { return key.frame == a[0].i; });
+    Mesh::VisibilityKey key{int(a[0].i), a[1].b};
+    if (it == keys.end()) keys.push_back(key); else *it = key;
+    std::sort(keys.begin(), keys.end(), [](const auto &x, const auto &y) { return x.frame < y.frame; });
+    return dslvm::Value::none();
+  });
   registry.method("Material", "keyframe_color", {"int", "float", "float", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
     auto *material=static_cast<Material *>(p);
     if(a[0].i<0||a[0].i>1'000'000)throw dslvm::Error("keyframe frame must be in [0,1000000]");
@@ -2086,6 +2241,18 @@ dslvm::Registry make_registry() {
     Material::ColorKey key{int(a[0].i),value,a[4].s};
     if(it==keys.end())keys.push_back(key);else *it=key;
     std::sort(keys.begin(),keys.end(),[](const auto &x,const auto &y){return x.frame<y.frame;});
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "keyframe_emission_strength", {"int", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *material = static_cast<Material *>(p);
+    if (a[0].i < 0 || a[0].i > 1'000'000) throw dslvm::Error("emission keyframe must be in [0,1000000]");
+    if (a[2].s != "linear" && a[2].s != "ease") throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    if (!std::isfinite(a[1].f) || a[1].f < 0 || a[1].f > 1'000'000) throw dslvm::Error("keyframed emission strength must be in [0,1000000]");
+    auto &keys = material->emission_keys;
+    auto it = std::find_if(keys.begin(), keys.end(), [&](const auto &key) { return key.frame == a[0].i; });
+    Material::StrengthKey key{int(a[0].i), float(a[1].f), a[2].s};
+    if (it == keys.end()) keys.push_back(key); else *it = key;
+    std::sort(keys.begin(), keys.end(), [](const auto &x, const auto &y) { return x.frame < y.frame; });
     return dslvm::Value::none();
   });
   registry.method("Mesh", "rotate_x", {"float"}, "void", [](void *p, dslvm::Args &a) {
@@ -2131,22 +2298,14 @@ dslvm::Registry make_registry() {
     if(a[3].i<0||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)
       throw dslvm::Error("render_sequence sample, dimension, or total-pixel budget exceeded");
     const int sequence_samples = a[3].i == 0 ? scene->preset_samples : int(a[3].i);
-    std::vector<std::array<float,3>> mesh_base, material_base;
-    std::array<float,6> camera_base{scene->camera.position[0],scene->camera.position[1],scene->camera.position[2],scene->camera.target[0],scene->camera.target[1],scene->camera.target[2]};
-    for(const auto &m:scene->meshes)mesh_base.push_back(m->translation);
-    for(const auto &m:scene->materials)material_base.push_back(m->color);
+    const AnimationBase base = capture_animation(*scene);
     try {
       for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){
-        scene->render_frame=frame;
-        for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=sample_keys<Mesh::TransformKey,std::array<float,3>>(scene->meshes[i]->transform_keys,frame,mesh_base[i]);
-        for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=sample_keys<Material::ColorKey,std::array<float,3>>(scene->materials[i]->color_keys,frame,material_base[i]);
-        if(!scene->camera_keys.empty()){auto c=sample_keys<Scene::CameraKey,std::array<float,6>>(scene->camera_keys,frame,camera_base);for(size_t j=0;j<3;++j){scene->camera.position[j]=c[j];scene->camera.target[j]=c[j+3];}}
+        apply_animation(*scene, frame, base);
         render_image(*scene,sequence_path(a[0].s,frame),sequence_samples,int(a[4].i),int(a[5].i));
       }
-    } catch (...) { for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};throw; }
-    for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];
-    for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];
-    scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};
+    } catch (...) { restore_animation(*scene, base); throw; }
+    restore_animation(*scene, base);
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_apng", {"string", "int", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
@@ -2154,12 +2313,12 @@ dslvm::Registry make_registry() {
     if(std::filesystem::path(a[0].s).extension()!=".apng"||a[0].s.empty()||a[0].s.front()=='-')throw dslvm::Error("render_apng output must be a .apng path not beginning with '-'");
     if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239||a[6].i<1||a[6].i>240)throw dslvm::Error("render_apng frame range must contain 1..240 frames and fps must be 1..240");
     if(a[3].i<1||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)throw dslvm::Error("render_apng sample, dimension, or total-pixel budget exceeded");
-    std::vector<std::array<float,3>> mesh_base,material_base;std::array<float,6> camera_base{scene->camera.position[0],scene->camera.position[1],scene->camera.position[2],scene->camera.target[0],scene->camera.target[1],scene->camera.target[2]};for(const auto&m:scene->meshes)mesh_base.push_back(m->translation);for(const auto&m:scene->materials)material_base.push_back(m->color);
+    const AnimationBase base = capture_animation(*scene);
     std::string tmpdir="/tmp/lmblender-apng-XXXXXX";std::vector<char> tmpbuf(tmpdir.begin(),tmpdir.end());tmpbuf.push_back('\0');char *made=::mkdtemp(tmpbuf.data());if(!made)throw dslvm::Error("could not create APNG staging directory");
     std::vector<std::string> frames;
-    try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){scene->render_frame=frame;for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=sample_keys<Mesh::TransformKey,std::array<float,3>>(scene->meshes[i]->transform_keys,frame,mesh_base[i]);for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=sample_keys<Material::ColorKey,std::array<float,3>>(scene->materials[i]->color_keys,frame,material_base[i]);if(!scene->camera_keys.empty()){auto c=sample_keys<Scene::CameraKey,std::array<float,6>>(scene->camera_keys,frame,camera_base);for(size_t j=0;j<3;++j){scene->camera.position[j]=c[j];scene->camera.target[j]=c[j+3];}}std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
-    catch(...){for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
-    for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};std::error_code ec;std::filesystem::remove_all(made,ec);return dslvm::Value::none();
+    try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){apply_animation(*scene,frame,base);std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
+    catch(...){restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
+    restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);return dslvm::Value::none();
   });
   registry.method("Scene", "render_exr", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);

@@ -48,6 +48,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/denoise-quality.lms "$build/denoise-quality.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/animation-tween.lms "$build/animation-tween.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/animation-visibility-optics.lms "$build/animation-visibility-optics.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/motion-blur.lms "$build/motion-blur.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes.lms "$build/material-nodes.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
@@ -97,6 +98,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
 "$exe" --dsl "$build/denoise-quality.dslb" >"$build/denoise-quality-result.json" 2>"$build/denoise-quality.log"
 "$exe" --dsl "$build/animation-tween.dslb" >"$build/animation-tween-result.json"
+"$exe" --dsl "$build/animation-visibility-optics.dslb" >"$build/animation-visibility-optics-result.json"
 "$exe" --dsl "$build/motion-blur.dslb" >"$build/motion-blur-result.json"
 "$exe" --dsl "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
 "$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
@@ -152,11 +154,13 @@ test -s "$build/material-maps-control.png"
 test -s "$build/material-mix-factor.png"
 test -s "$build/backface-culling.png"
 test -s "$build/motion-blur-2.png"
+for frame in 0 1 2; do test -s "$build/animation-visibility-$frame.png"; done
 test -s "$build/motion-control.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
 python3 tests/png_metrics.py "$build/imported-mesh.png"
 python3 tests/png_metrics.py "$build/import-ply.png"
+python3 tests/animation_visibility_quality.py "$build/animation-visibility-0.png" "$build/animation-visibility-1.png" "$build/animation-visibility-2.png"
 python3 tests/gltf_quality.py "$build/import-gltf-gltf.png"
 python3 tests/gltf_quality.py "$build/import-gltf-glb.png"
 python3 tests/sky_quality.py "$build/sky-texture.png"
