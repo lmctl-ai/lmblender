@@ -32,6 +32,21 @@ for entry in source.iterdir():
                 intern_target.symlink_to(intern_entry, target_is_directory=intern_entry.is_dir())
         patch_file = Path(__file__).resolve().parent.parent / "patches/cycles-bvh2-instance-sharing.patch"
         subprocess.run(["patch", "--batch", "-p1", "-i", str(patch_file)], cwd=output, check=True)
+        motion_patch = Path(__file__).resolve().parent.parent / "patches/cycles-motion-vectorizer.patch"
+        subprocess.run(["patch", "--batch", "-p1", "-i", str(motion_patch)], cwd=output, check=True)
+        cpu_cmake = output / "intern/cycles/kernel/device/cpu/CMakeLists.txt"
+        cpu_text = cpu_cmake.read_text()
+        cpu_marker = "cycles_set_solution_folder(cycles_kernel_cpu)"
+        cpu_workaround = (
+            "# GCC 14 aarch64 also vectorizes the inline camera interpolation in the CPU kernel.\n"
+            "if(CMAKE_CXX_COMPILER_ID STREQUAL \"GNU\" AND CMAKE_SYSTEM_PROCESSOR MATCHES \"aarch64|arm64\")\n"
+            "  target_compile_options(cycles_kernel_cpu PRIVATE -fno-tree-vectorize)\n"
+            "endif()\n"
+        )
+        if cpu_marker not in cpu_text:
+            raise RuntimeError("Cycles CPU kernel CMake insertion point is missing")
+        if cpu_workaround not in cpu_text:
+            cpu_cmake.write_text(cpu_text.replace(cpu_marker, cpu_workaround + cpu_marker, 1))
         continue
     if entry.name != "release":
         if not target.exists() and not target.is_symlink():

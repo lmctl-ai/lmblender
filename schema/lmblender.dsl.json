@@ -489,6 +489,15 @@
             ],
             "returns": "Material"
           }
+        ],
+        "motion_blur": [
+          {
+            "params": [
+              "bool",
+              "float"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },

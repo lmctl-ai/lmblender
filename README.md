@@ -9,8 +9,8 @@
 | CPU Cycles render | Done | Static executable, direct C++ scene construction, PNG and EXR, CPU OIDN denoise |
 | Materials and lights | Partial | Principled, checker/noise/ramp/bump/image textures, emission, point/area/sun/spot; glass, subsurface, and volume have paired numeric render regressions; roughness/metallic maps, layered shaders, and arbitrary node graphs remain unsupported |
 | World | Partial | Color background, Cycles multiple-scattering sky, and equirectangular PNG/EXR/HDR environment node with rotation/strength |
-| Camera and motion | Partial | Perspective/orthographic, look-at/fitting, and Cycles aperture/focus DOF; animated-transform motion blur is not implemented (direct CCL motion prototype crashed in BVH motion interpolation) |
-| Animation | Partial | Keyed mesh translation, camera position/target, and material base color with linear/ease interpolation; deterministic PNG sequences and atomic APNG (rational 1/fps delay); mesh rotation/scale, other material parameters, and motion blur remain unsupported |
+| Camera and motion | Partial | Perspective/orthographic, look-at/fitting, Cycles aperture/focus DOF, and transform motion blur from keyed mesh translations and camera transforms (0.1–2 frame shutter) |
+| Animation | Partial | Keyed mesh translation, camera position/target, and material base color with linear/ease interpolation; deterministic PNG sequences, atomic APNG (rational 1/fps delay), and Cycles transform blur; mesh rotation/scale and other material parameters remain unsupported |
 | Mesh input | Partial | OBJ, STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms, PBR base-color factor, and external PNG/JPEG base-color textures; binary PLY and embedded glTF images remain unsupported |
 | Gallery QA | Partial | 12 curated renders pass numeric checks and agy/Gemini visual checklists at 640×480; lmcad compositions are checked separately |
 | Alpha output | Partial | Transparent world film emits RGBA PNG; shadow-catcher composition remains |

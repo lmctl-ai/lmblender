@@ -1,0 +1,21 @@
+--- a/intern/cycles/bvh/CMakeLists.txt
++++ b/intern/cycles/bvh/CMakeLists.txt
+@@ -75,3 +75,8 @@
+ include_directories(SYSTEM ${INC_SYS})
+ 
+ cycles_add_library(cycles_bvh "${LIB}" ${SRC} ${SRC_HEADERS})
++# GCC 14 on aarch64 miscompiles Cycles' motion-transform interpolation path
++# with tree vectorization enabled; keep the workaround scoped to Cycles targets.
++if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
++  target_compile_options(cycles_bvh PRIVATE -fno-tree-vectorize)
++endif()
+--- a/intern/cycles/scene/CMakeLists.txt
++++ b/intern/cycles/scene/CMakeLists.txt
+@@ -121,3 +121,7 @@
+ include_directories(SYSTEM ${INC_SYS})
+ 
+ cycles_add_library(cycles_scene "${LIB}" ${SRC} ${SRC_HEADERS})
++# Object::compute_bounds also interpolates decomposed motion transforms.
++if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
++  target_compile_options(cycles_scene PRIVATE -fno-tree-vectorize)
++endif()

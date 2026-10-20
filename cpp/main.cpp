@@ -152,6 +152,8 @@ struct Scene {
   float clamp_indirect = 0.0f;
   int render_seed = 0;
   bool denoise = false;
+  bool motion_blur = false;
+  float motion_shutter = 1.0f;
   std::string view_transform = "Standard";
   struct CameraKey { int frame; std::array<float,6> value; std::string interpolation; };
   std::vector<CameraKey> camera_keys;
@@ -751,6 +753,19 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
             ccl::transform_scale(source_mesh->scale[0], source_mesh->scale[1], source_mesh->scale[2]) :
         ccl::transform_identity();
     object->set_tfm(object_tfm);
+    if (source.motion_blur && !source_mesh->transform_keys.empty()) {
+      ccl::array<ccl::Transform> motion;
+      motion.resize(3);
+      for (int step = 0; step < 3; ++step) {
+        const double frame = double(source.render_frame) + 0.5 * (step - 1);
+        const auto position = sample_keys<Mesh::TransformKey, std::array<float, 3>>(
+            source_mesh->transform_keys, frame, source_mesh->translation);
+        motion[step] = ccl::transform_translate(position[0], position[1], position[2]) *
+                       ccl::transform_scale(source_mesh->scale[0], source_mesh->scale[1], source_mesh->scale[2]);
+      }
+      object->set_motion(motion);
+      object->update_motion();
+    }
     object->tag_update(scene);
   }
 
@@ -835,7 +850,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->camera->set_farclip(10000.0f);
   scene->camera->set_aperturesize(source.camera_aperture);
   scene->camera->set_focaldistance(source.camera_focus_distance);
-  scene->camera->set_shuttertime(0.5f);
+  scene->camera->set_shuttertime(source.motion_blur ? source.motion_shutter : 0.5f);
   ccl::Transform camera_tfm;
   if (!source.custom_camera) {
     const float distance = radius * 1.85f / std::tan(0.8f * 0.5f);
@@ -868,6 +883,27 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
                                      right.z, up.z, forward.z, p[2]);
   }
     scene->camera->set_matrix(camera_tfm);
+  if (source.motion_blur && !source.camera_keys.empty()) {
+    ccl::array<ccl::Transform> motion;
+    motion.resize(3);
+    for (int step = 0; step < 3; ++step) {
+      const double frame = double(source.render_frame) + 0.5 * (step - 1);
+      const auto c = sample_keys<Scene::CameraKey, std::array<float, 6>>(source.camera_keys, frame,
+          {source.camera.position[0], source.camera.position[1], source.camera.position[2],
+           source.camera.target[0], source.camera.target[1], source.camera.target[2]});
+      const ccl::float3 p = ccl::make_float3(c[0], c[1], c[2]);
+      const ccl::float3 target = ccl::make_float3(c[3], c[4], c[5]);
+      const ccl::float3 forward = ccl::normalize(target - p);
+      ccl::float3 right = ccl::cross(forward, ccl::make_float3(0.0f, 0.0f, 1.0f));
+      if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
+      right = ccl::normalize(right) * (float(height) / float(width) * 0.88f);
+      const ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
+      motion[step] = ccl::make_transform(right.x, up.x, forward.x, p.x,
+                                         right.y, up.y, forward.y, p.y,
+                                         right.z, up.z, forward.z, p.z);
+    }
+    scene->camera->set_motion(motion);
+  }
   scene->camera->need_flags_update = true;
   scene->camera->update(scene);
   scene->integrator->set_max_bounce(source.max_bounces);
@@ -875,6 +911,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->integrator->set_sample_clamp_indirect(source.clamp_indirect);
   scene->integrator->set_seed(source.render_seed);
   scene->integrator->set_use_denoise(source.denoise);
+  scene->integrator->set_motion_blur(source.motion_blur);
 
   if (emit_passes) {
     auto add_pass = [scene](const ccl::PassType type, const char *name) {
@@ -1251,6 +1288,14 @@ dslvm::Registry make_registry() {
       throw dslvm::Error("camera DOF aperture must be 0..10 and focus distance 0.1..1000000");
     scene->camera_aperture = float(a[0].f);
     scene->camera_focus_distance = float(a[1].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "motion_blur", {"bool", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (!std::isfinite(a[1].f) || a[1].f < 0.1 || a[1].f > 2.0)
+      throw dslvm::Error("motion shutter must be within [0.1,2] frames");
+    scene->motion_blur = a[0].b;
+    scene->motion_shutter = float(a[1].f);
     return dslvm::Value::none();
   });
   registry.method("Scene", "light_clamp", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {

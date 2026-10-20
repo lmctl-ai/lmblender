@@ -40,6 +40,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/denoise-quality.lms "$build/denoise-quality.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/animation-tween.lms "$build/animation-tween.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/motion-blur.lms "$build/motion-blur.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes.lms "$build/material-nodes.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes-control.lms "$build/material-nodes-control.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
@@ -79,6 +80,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
 "$exe" --dsl "$build/denoise-quality.dslb" >"$build/denoise-quality-result.json" 2>"$build/denoise-quality.log"
 "$exe" --dsl "$build/animation-tween.dslb" >"$build/animation-tween-result.json"
+"$exe" --dsl "$build/motion-blur.dslb" >"$build/motion-blur-result.json"
 "$exe" --dsl "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
 "$exe" --dsl "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
 rm -f "$build/render-timeout.png"
@@ -123,6 +125,8 @@ for pass in combined depth normal albedo; do
   test -s "$build/passes-ramp-$pass.png"
 done
 test -s "$build/perspective-reference.png"
+test -s "$build/motion-blur-2.png"
+test -s "$build/motion-control.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
 python3 tests/png_metrics.py "$build/imported-mesh.png"
@@ -151,6 +155,7 @@ python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" 
 python3 tests/image_texture_quality.py "$build/image-texture.png"
 python3 tests/denoise_quality.py "$build/denoise-noisy.png" "$build/denoise-filtered.png" "$build/denoise-reference.png"
 python3 tests/animation_quality.py "$build"
+python3 tests/motion_blur_quality.py "$build"
 python3 tests/material_nodes_quality.py "$build/material-nodes.png" "$build/material-nodes-control.png"
 if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
   blender="$BLENDERCLI_BLENDER"
@@ -171,11 +176,11 @@ else
 fi
 python3 tests/png_compare.py "$build/imported-mesh.png" "$build/imported-mesh-xml.png"
 diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
-python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" "$build/animation-tween-result.json" "$build/material-nodes-result.json" "$build/material-nodes-control-result.json" <<'PY'
+python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" "$build/animation-tween-result.json" "$build/motion-blur-result.json" "$build/material-nodes-result.json" "$build/material-nodes-control-result.json" <<'PY'
 import json,sys
 for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result
-print('DSL v5 runner, mesh import, direct Cycles rendering, display transforms, render passes, and embedded schema pass')
+print('DSL v5 runner, mesh import, direct Cycles rendering, motion blur, display transforms, render passes, and embedded schema pass')
 PY
 for binary in "$exe" "$build/cycles-static/bin/cycles"; do
   [ ! -x "$binary" ] && continue

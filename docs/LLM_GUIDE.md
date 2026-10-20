@@ -35,6 +35,7 @@ method Scene.camera_dof(float, float) -> void
 method Scene.camera_keyframe(int, float, float, float, float, float, float, string) -> void
 method Scene.camera_look_at(float, float, float, float, float, float, float) -> void
 method Scene.camera_orthographic(float, float, float, float, float, float, float) -> void
+method Scene.motion_blur(bool, float) -> void
 method Scene.checker_ground(float, float) -> void
 method Scene.checker_material(float, float, float, float, float, float, float, float) -> Material
 method Scene.cone(float, float, int, bool) -> Mesh
@@ -92,6 +93,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `camera_look_at(px,py,pz,tx,ty,tz,fov_degrees)` | Perspective camera, FOV 5..170 degrees. |
 | `camera_orthographic(px,py,pz,tx,ty,tz,width)` | Orthographic camera width in scene units. |
 | `camera_dof(aperture,focus_distance)` | Aperture 0..10; focus distance in scene units. |
+| `motion_blur(enabled,shutter_frames)` | Cycles transform blur for keyed mesh translations and camera keys; shutter is 0.1..2 frames. |
 | `world_color(r,g,b,strength)`, `sky_texture(elevation_degrees,rotation_degrees,intensity)` | Linear RGB world or built-in procedural sky. |
 | `render_settings(max_bounces,seed,denoise)` | Max bounces 0..64; seed is a nonnegative 32-bit integer. |
 | `render_png/exr(path,samples,width,height)` | Single frame, samples 1..65536, dimensions and total pixel bounds apply. |
