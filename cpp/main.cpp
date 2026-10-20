@@ -46,6 +46,9 @@ struct Mesh {
   std::vector<std::array<double, 3>> vertices;
   std::vector<std::array<uint32_t, 3>> triangles;
   struct Material *material = nullptr;
+  Mesh *geometry_source = nullptr;
+  std::array<float, 3> translation{0.0f, 0.0f, 0.0f};
+  std::array<float, 3> scale{1.0f, 1.0f, 1.0f};
 };
 struct Material {
   std::array<float, 3> color{0.8f, 0.8f, 0.8f};
@@ -148,16 +151,18 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
       << "<background color=\"0.16 0.18 0.22\" strength=\"0.45\"/>\n";
   size_t total_triangles = 0;
   for (const auto &source_mesh : source.meshes) {
-    if (source_mesh->vertices.size() > 10'000'000 || source_mesh->triangles.size() > 20'000'000)
+    const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
+    if (mesh_data->vertices.size() > 10'000'000 || mesh_data->triangles.size() > 20'000'000)
       throw dslvm::Error("render_png mesh exceeds Cycles geometry budget");
-    total_triangles += source_mesh->triangles.size();
+    total_triangles += mesh_data->triangles.size();
     if (total_triangles > 20'000'000) throw dslvm::Error("render_png combined triangle budget exceeded");
     xml << "<state shader=\"surface\"><mesh P=\"";
-    for (const auto &v : source_mesh->vertices) xml << v[0] << " " << v[1] << " " << v[2] << " ";
+    for (const auto &v : mesh_data->vertices) for (size_t axis = 0; axis < 3; ++axis)
+      xml << v[axis] * source_mesh->scale[axis] + source_mesh->translation[axis] << " ";
     xml << "\" verts=\"";
-    for (const auto &triangle : source_mesh->triangles) xml << triangle[0] << " " << triangle[1] << " " << triangle[2] << " ";
+    for (const auto &triangle : mesh_data->triangles) xml << triangle[0] << " " << triangle[1] << " " << triangle[2] << " ";
     xml << "\" nverts=\"";
-    for (size_t i = 0; i < source_mesh->triangles.size(); ++i) xml << "3 ";
+    for (size_t i = 0; i < mesh_data->triangles.size(); ++i) xml << "3 ";
     xml << "\"/></state>\n";
   }
   xml << "</cycles>\n";
@@ -207,13 +212,15 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   std::array<double, 3> hi{-lo[0], -lo[1], -lo[2]};
   size_t triangle_count = 0;
   for (const auto &mesh : source.meshes) {
-    if (mesh->vertices.size() > 10'000'000 || mesh->triangles.size() > 20'000'000)
+    const Mesh *mesh_data = mesh->geometry_source ? mesh->geometry_source : mesh.get();
+    if (mesh_data->vertices.size() > 10'000'000 || mesh_data->triangles.size() > 20'000'000)
       throw dslvm::Error("render_png mesh exceeds Cycles geometry budget");
-    triangle_count += mesh->triangles.size();
+    triangle_count += mesh_data->triangles.size();
     if (triangle_count > 20'000'000) throw dslvm::Error("render_png combined triangle budget exceeded");
-    for (const auto &v : mesh->vertices) for (size_t axis = 0; axis < 3; ++axis) {
-      lo[axis] = std::min(lo[axis], v[axis]);
-      hi[axis] = std::max(hi[axis], v[axis]);
+    for (const auto &v : mesh_data->vertices) for (size_t axis = 0; axis < 3; ++axis) {
+      const double position = v[axis] * mesh->scale[axis] + mesh->translation[axis];
+      lo[axis] = std::min(lo[axis], position);
+      hi[axis] = std::max(hi[axis], position);
     }
   }
   const ccl::float3 center = ccl::make_float3(float((lo[0] + hi[0]) * 0.5), float((lo[1] + hi[1]) * 0.5), float((lo[2] + hi[2]) * 0.5));
@@ -272,19 +279,22 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   world->tag_update(scene);
 
   for (const auto &source_mesh : source.meshes) {
-    ccl::Shader *surface = source_mesh->material ? make_principled_shader(*source_mesh->material) : default_surface;
+    const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
+    ccl::Shader *surface = mesh_data->material ? make_principled_shader(*mesh_data->material) : default_surface;
     ccl::array<ccl::Node *> used_shaders;
     used_shaders.push_back_slow(surface);
     ccl::Mesh *mesh = scene->create_node<ccl::Mesh>();
-    mesh->resize_mesh(int(source_mesh->vertices.size()), int(source_mesh->triangles.size()));
+    mesh->resize_mesh(int(mesh_data->vertices.size()), int(mesh_data->triangles.size()));
     ccl::packed_float3 *positions = mesh->get_position_for_write();
-    for (size_t i = 0; i < source_mesh->vertices.size(); ++i) {
-      const auto &v = source_mesh->vertices[i];
-      positions[i] = ccl::make_float3(float(v[0]), float(v[1]), float(v[2]));
+    for (size_t i = 0; i < mesh_data->vertices.size(); ++i) {
+      const auto &v = mesh_data->vertices[i];
+      positions[i] = ccl::make_float3(float(v[0] * source_mesh->scale[0] + source_mesh->translation[0]),
+                                      float(v[1] * source_mesh->scale[1] + source_mesh->translation[1]),
+                                      float(v[2] * source_mesh->scale[2] + source_mesh->translation[2]));
     }
     ccl::array<int> &tris = mesh->get_triangles();
-    for (size_t i = 0; i < source_mesh->triangles.size(); ++i)
-      for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(source_mesh->triangles[i][j]);
+    for (size_t i = 0; i < mesh_data->triangles.size(); ++i)
+      for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(mesh_data->triangles[i][j]);
     std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
     std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), false);
     mesh->set_used_shaders(used_shaders);
@@ -551,6 +561,49 @@ dslvm::Registry make_registry() {
     if (!a[0].obj) throw dslvm::Error("set_material requires a material created by this scene");
     mesh->material = static_cast<Material *>(a[0].obj);
     return dslvm::Value::none();
+  });
+  registry.method("Mesh", "translate", {"float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    std::array<float, 3> proposed;
+    for (size_t i = 0; i < 3; ++i) {
+      if (!std::isfinite(a[i].f) || std::abs(a[i].f) > 1'000'000.0) throw dslvm::Error("mesh translation must be finite and within scene bounds");
+      proposed[i] = mesh->translation[i] + float(a[i].f);
+      if (std::abs(proposed[i]) > 1'000'000.0f) throw dslvm::Error("mesh translation exceeds scene bounds");
+    }
+    mesh->translation = proposed;
+    return dslvm::Value::none();
+  });
+  registry.method("Mesh", "scale", {"float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    std::array<float, 3> proposed;
+    for (size_t i = 0; i < 3; ++i) {
+      if (!std::isfinite(a[i].f) || std::abs(a[i].f) < 0.001 || std::abs(a[i].f) > 1000.0)
+        throw dslvm::Error("mesh scale components must have magnitude in [0.001,1000]");
+      proposed[i] = mesh->scale[i] * float(a[i].f);
+      if (std::abs(proposed[i]) < 0.001f || std::abs(proposed[i]) > 1000.0f) throw dslvm::Error("combined mesh scale is outside [0.001,1000]");
+    }
+    mesh->scale = proposed;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "instance_mesh", {"Mesh", "float", "float", "float", "float", "float", "float"}, "Mesh", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    auto *source = static_cast<Mesh *>(a[0].obj);
+    const auto owned = std::find_if(scene->meshes.begin(), scene->meshes.end(), [source](const auto &item) { return item.get() == source; });
+    if (owned == scene->meshes.end()) throw dslvm::Error("instance_mesh source must belong to this scene");
+    if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    auto instance = std::make_unique<Mesh>();
+    instance->geometry_source = source->geometry_source ? source->geometry_source : source;
+    instance->material = instance->geometry_source->material;
+    for (size_t i = 0; i < 6; ++i) if (!std::isfinite(a[i + 1].f)) throw dslvm::Error("instance transform must be finite");
+    for (size_t i = 0; i < 3; ++i) {
+      if (std::abs(a[i + 1].f) > 1'000'000.0) throw dslvm::Error("instance position exceeds scene bounds");
+      if (std::abs(a[i + 4].f) < 0.001 || std::abs(a[i + 4].f) > 1000.0) throw dslvm::Error("instance scale must have magnitude in [0.001,1000]");
+      instance->translation[i] = float(a[i + 1].f);
+      instance->scale[i] = float(a[i + 4].f);
+    }
+    Mesh *result = instance.get();
+    scene->meshes.push_back(std::move(instance));
+    return dslvm::Value::object("Mesh", result);
   });
   registry.method("Scene", "render_png", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     const auto *scene = static_cast<const Scene *>(p);

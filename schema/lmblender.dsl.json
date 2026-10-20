@@ -25,6 +25,7 @@
             "returns": "Mesh"
           }
         ],
+        "instance_mesh": [{"params": ["Mesh", "float", "float", "float", "float", "float", "float"], "returns": "Mesh"}],
         "material": [
           {
             "params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float"],
@@ -50,6 +51,8 @@
     "Mesh": {
       "methods": {
         "set_material": [{"params": ["Material"], "returns": "void"}],
+        "translate": [{"params": ["float", "float", "float"], "returns": "void"}],
+        "scale": [{"params": ["float", "float", "float"], "returns": "void"}],
         "vertex_count": [{"params": [], "returns": "int"}],
         "triangle_count": [{"params": [], "returns": "int"}],
         "min_x": [{"params": [], "returns": "float"}],
