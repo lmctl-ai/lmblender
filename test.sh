@@ -23,6 +23,7 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/image-texture.lms "$build/image-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/display-transforms.lms "$build/display-transforms.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/denoise-quality.lms "$build/denoise-quality.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
@@ -37,6 +38,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/image-texture.dslb" >"$build/image-texture-result.json"
 "$exe" --dsl "$build/display-transforms.dslb" >"$build/display-transforms-result.json"
 "$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
+"$exe" --dsl "$build/denoise-quality.dslb" >"$build/denoise-quality-result.json" 2>"$build/denoise-quality.log"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
   echo "render-timeout test unexpectedly completed" >&2
@@ -55,6 +57,9 @@ test -s "$build/material-principled.png"
 test -s "$build/camera-look-at.png"
 test -s "$build/imported-mesh.exr"
 test -s "$build/mesh-instances.png"
+test -s "$build/denoise-noisy.png"
+test -s "$build/denoise-filtered.png"
+test -s "$build/denoise-reference.png"
 test -s "$build/render-settings.png"
 test -s "$build/procedural-materials.png"
 test -s "$build/orthographic-camera.png"
@@ -82,6 +87,7 @@ python3 tests/png_metrics.py "$build/render-settings.png"
 python3 tests/procedural_materials_quality.py "$build/procedural-materials.png"
 python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" "$build/orthographic-camera.png"
 python3 tests/image_texture_quality.py "$build/image-texture.png"
+python3 tests/denoise_quality.py "$build/denoise-noisy.png" "$build/denoise-filtered.png" "$build/denoise-reference.png"
 if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
   blender="$BLENDERCLI_BLENDER"
 elif [ -x /home/ubuntu/blender-install/blender ]; then

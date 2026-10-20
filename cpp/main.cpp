@@ -40,6 +40,7 @@
 #include <OpenImageIO/imageio.h>
 #include "app/cycles_xml.h"
 #include "util/log.h"
+#include "util/openimagedenoise.h"
 #include "util/path.h"
 #include "util/system.h"
 #include "util/transform.h"
@@ -948,7 +949,8 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "render_settings", {"int", "int", "bool"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].i < 0 || a[0].i > 64) throw dslvm::Error("max bounces must be in [0,64]");
     if (a[1].i < 0 || a[1].i > 2'147'483'647) throw dslvm::Error("render seed must be in [0,2147483647]");
-    if (a[2].b) throw dslvm::Error("denoising is unsupported in this standalone Cycles build; pass false");
+    if (a[2].b && !ccl::openimagedenoise_supported())
+      throw dslvm::Error("denoising is unavailable: Cycles was built without CPU OpenImageDenoise");
     auto *scene = static_cast<Scene *>(p);
     scene->max_bounces = int(a[0].i);
     scene->render_seed = int(a[1].i);

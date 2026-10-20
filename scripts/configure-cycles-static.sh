@@ -18,6 +18,36 @@ ocio_ext="$deps_build/opencolorio/ext/dist"
 openjph_archive="$deps_build/openexr/external/OpenJPH/src/core/libopenjph.a"
 openjph_include="$deps_build/openexr/external/OpenJPH/src/core"
 test -f "$openjph_archive"
+# Blender's FindOpenImageDenoise module expects legacy `common` / `dnnl_cpu`
+# archive names. OIDN 2.x's static CMake package instead exposes core and CPU
+# device archives as transitive targets, so provide those names as symlinks in
+# a build-only prefix. The upstream source tree is not changed.
+oidn_install=${OIDN_INSTALL_PREFIX:-$repo/build/oidn-static-install}
+oidn_find_root="$build/oidn-find-prefix"
+host_libdir=${BLENDER_LIBDIR:-/home/ubuntu/lib/linux_aarch64}
+cycles_libdir="$build/libdir-with-static-oidn"
+if [[ -f "$oidn_install/lib/libOpenImageDenoise.a" && \
+      -f "$oidn_install/lib/libOpenImageDenoise_core.a" && \
+      -f "$oidn_install/lib/libOpenImageDenoise_device_cpu.a" ]]; then
+  mkdir -p "$oidn_find_root/lib" "$oidn_find_root/include"
+  ln -sfn "$oidn_install/include/OpenImageDenoise" "$oidn_find_root/include/OpenImageDenoise"
+  ln -sfn "$oidn_install/lib/libOpenImageDenoise.a" "$oidn_find_root/lib/libOpenImageDenoise.a"
+  ln -sfn "$oidn_install/lib/libOpenImageDenoise_core.a" "$oidn_find_root/lib/libcommon.a"
+  ln -sfn "$oidn_install/lib/libOpenImageDenoise_core.a" "$oidn_find_root/lib/libdnnl_common.a"
+  ln -sfn "$oidn_install/lib/libOpenImageDenoise_device_cpu.a" "$oidn_find_root/lib/libdnnl_cpu.a"
+else
+  echo "Static OIDN archives missing; run scripts/build-oidn-static.sh first" >&2
+  exit 1
+fi
+# Blender's legacy cache migration logic switches .a to a shared OIDN library
+# whenever it sees one under LIBDIR. Use a build-only LIBDIR view that keeps
+# the other host packages but omits that shared OIDN directory.
+mkdir -p "$cycles_libdir"
+for entry in "$host_libdir"/*; do
+  [[ -e "$entry" ]] || continue
+  [[ $(basename "$entry") == openimagedenoise ]] && continue
+  ln -sfn "$entry" "$cycles_libdir/$(basename "$entry")"
+done
 static_targets="$build/static-dependency-targets.cmake"
 cat > "$static_targets" <<EOF
 foreach(_spec IN ITEMS
@@ -60,19 +90,28 @@ cmake -S "$source_overlay" -B "$build" -G Ninja \
   -DPNG_PNG_INCLUDE_DIR="$deps_install/png/include" \
   -DCMAKE_PROJECT_INCLUDE="$static_targets" \
   -DCMAKE_EXE_LINKER_FLAGS='-static -static-libstdc++ -static-libgcc' \
+  -DOPENIMAGEDENOISE_ROOT_DIR="$oidn_find_root" \
+  -DOPENIMAGEDENOISE_INCLUDE_DIR="$oidn_find_root/include" \
+  -DOPENIMAGEDENOISE_LIBRARY="$oidn_find_root/lib/libOpenImageDenoise.a" \
+  -DOPENIMAGEDENOISE_OPENIMAGEDENOISE_LIBRARY="$oidn_find_root/lib/libOpenImageDenoise.a" \
+  -DOPENIMAGEDENOISE_COMMON_LIBRARY="$oidn_find_root/lib/libcommon.a" \
+  -DOPENIMAGEDENOISE_DNNL_CPU_LIBRARY="$oidn_find_root/lib/libdnnl_cpu.a" \
   -DBUILD_SHARED_LIBS=OFF \
   -DWITH_BLENDER=OFF -DWITH_CYCLES=OFF -DWITH_CYCLES_STANDALONE=ON \
   -DWITH_CYCLES_STANDALONE_GUI=OFF -DWITH_PYTHON=OFF \
   -DWITH_CYCLES_OSL=OFF -DWITH_CYCLES_TEST_OSL=OFF -DWITH_LLVM=OFF \
   -DWITH_CYCLES_EMBREE=OFF -DWITH_CYCLES_PATH_GUIDING=OFF \
   -DWITH_OPENVDB=OFF -DWITH_OPENSUBDIV=OFF \
-  -DWITH_OPENIMAGEDENOISE=OFF -DWITH_TBB=ON -DWITH_TBB_MALLOC_PROXY=OFF \
+  -DWITH_OPENIMAGEDENOISE=ON -DWITH_TBB=ON -DWITH_TBB_MALLOC_PROXY=OFF \
   -DWITH_USD=OFF -DWITH_HYDRA=OFF -DWITH_CYCLES_HYDRA_RENDER_DELEGATE=OFF \
   -DWITH_CYCLES_DEVICE_CUDA=OFF -DWITH_CYCLES_DEVICE_HIP=OFF \
   -DWITH_CYCLES_DEVICE_OPTIX=OFF -DWITH_CYCLES_DEVICE_ONEAPI=OFF \
   -DWITH_CYCLES_DEVICE_METAL=OFF -DWITH_CUDA_DYNLOAD=OFF \
   -DWITH_GHOST=OFF -DWITH_X11=OFF -DWITH_OPENGL=OFF \
-  -DLIBDIR="${BLENDER_LIBDIR:-/home/ubuntu/lib/linux_aarch64}"
+  -DLIBDIR="$cycles_libdir"
+if [[ ${CYCLES_CONFIGURE_ONLY:-0} == 1 ]]; then
+  exit 0
+fi
 cmake --build "$build" --target cycles --parallel "$jobs"
 file "$build/bin/cycles"
 ldd "$build/bin/cycles" 2>&1 | tee "$build/ldd.txt"

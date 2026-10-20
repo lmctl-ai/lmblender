@@ -21,8 +21,15 @@ endforeach()
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/schema_embedded.hpp"
   "#pragma once\n#include <cstddef>\nnamespace lmblender { inline constexpr unsigned char embedded_schema[] = {${LMBLENDER_SCHEMA_INITIALIZER}}; inline constexpr std::size_t embedded_schema_size = sizeof(embedded_schema); }\n")
+set(LMBLENDER_CYCLES_DEFINES "")
+if(EXISTS "${CYCLES_BUILD_DIR}/CMakeCache.txt")
+  file(STRINGS "${CYCLES_BUILD_DIR}/CMakeCache.txt" _cycles_oidn_config REGEX "^WITH_OPENIMAGEDENOISE:BOOL=ON$")
+  if(_cycles_oidn_config)
+    string(APPEND LMBLENDER_CYCLES_DEFINES "#define WITH_OPENIMAGEDENOISE 1\n")
+  endif()
+endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
-  "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n")
+  "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(lmblender PRIVATE -Wall -Wextra -Wpedantic)
@@ -35,6 +42,9 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
     "/home/ubuntu/lib/linux_aarch64/sse2neon"
     "${BLENDER_DEPS_INSTALL}/pugixml/include"
     "${LMBLENDER_STATIC_PREFIX}/include")
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install/include/OpenImageDenoise/oidn.hpp")
+    target_include_directories(lmblender PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install/include")
+  endif()
   target_compile_options(lmblender PRIVATE -march=armv8.2-a+dotprod+fp16+lse -include "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h")
   target_compile_definitions(lmblender PRIVATE WITH_CYCLES_DEVICE_CPU WITH_TBB WITH_OCIO WITH_PUGIXML WITH_SSE2NEON WITH_SYSTEM_PUGIXML OIIO_STATIC_DEFINE=1 OpenColorIO_SKIP_IMPORTS _FILE_OFFSET_BITS=64 _LARGEFILE64_SOURCE _LARGEFILE_SOURCE __LITTLE_ENDIAN__)
   set(CYCLES_LIB "${CYCLES_BUILD_DIR}/lib")
@@ -67,6 +77,16 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
     "${BLENDER_DEPS_INSTALL}/zstd/lib/libzstd.a"
     "${BLENDER_DEPS_INSTALL}/fmt/lib/libfmt.a"
     "${BLENDER_DEPS_INSTALL}/pugixml/lib/libpugixml.a")
+  if(EXISTS "${CYCLES_BUILD_DIR}/CMakeCache.txt")
+    file(STRINGS "${CYCLES_BUILD_DIR}/CMakeCache.txt" _cycles_oidn_config REGEX "^WITH_OPENIMAGEDENOISE:BOOL=ON$")
+    if(_cycles_oidn_config)
+      set(OIDN_STATIC_INSTALL "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install" CACHE PATH "Static CPU OIDN prefix used by Cycles")
+      list(APPEND STATIC_DEPS
+        "${OIDN_STATIC_INSTALL}/lib/libOpenImageDenoise.a"
+        "${OIDN_STATIC_INSTALL}/lib/libOpenImageDenoise_core.a"
+        "${OIDN_STATIC_INSTALL}/lib/libOpenImageDenoise_device_cpu.a")
+    endif()
+  endif()
   foreach(_archive IN LISTS CYCLES_ARCHIVES STATIC_DEPS)
     if(NOT EXISTS "${_archive}")
       message(FATAL_ERROR "Missing static Cycles dependency: ${_archive}; build Cycles first")
