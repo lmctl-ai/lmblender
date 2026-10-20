@@ -54,6 +54,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/sequence-budget.lms "$build/sequence-budget.dslb" >/dev/null
 mkdir -p "$build/video"
 for video in level1-teams level2-agents level3-flow level4-pipeline; do
   "${LMSCRIPT:-lmscript}" "examples/video/$video.lms" "$build/video/$video.dslb" >/dev/null
@@ -104,6 +105,18 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
 "$exe" --dsl "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
 "$exe" --dsl "$build/quality-preset.dslb" >"$build/quality-preset-result.json"
+if "$exe" --dsl "$build/sequence-budget.dslb" >"$build/sequence-budget-result.json"; then
+  echo "sequence budget test unexpectedly rendered" >&2
+  exit 1
+fi
+test ! -e "$build/should-not-render-0.png"
+python3 - "$build/sequence-budget-result.json" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r.get('ok') is False and r.get('code') == 'RUN_HOST', r
+m=r.get('message','')
+assert '64,000,000' in m and '240 frames' in m and '960x540' in m and '<= 123 frames' in m, r
+PY
 "$exe" --dsl "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then

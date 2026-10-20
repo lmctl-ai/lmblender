@@ -166,6 +166,7 @@ struct Scene {
   bool custom_camera = false;
   CameraConfig camera;
   int render_timeout_seconds = 3600;
+  int render_threads = 4;
   int max_bounces = 12;
   float clamp_direct = 0.0f;
   float clamp_indirect = 0.0f;
@@ -444,7 +445,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   params.background = true;
   params.headless = true;
   params.samples = samples;
-  params.threads = std::min(4, int(std::max(1u, std::thread::hardware_concurrency())));
+  params.threads = std::min(source.render_threads, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
@@ -515,6 +516,7 @@ Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base)
 
 void render_direct(const Scene &source, const std::string &output, int samples, int width, int height, bool emit_passes = false)
 {
+  const auto profile_start = std::chrono::steady_clock::now();
   if (source.meshes.empty()) throw dslvm::Error("render_png requires at least one imported mesh");
   const std::string extension = std::filesystem::path(output).extension().string();
   if (output.empty() || output.front() == '-' || (!emit_passes && extension != ".png" && extension != ".exr") ||
@@ -558,7 +560,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   params.background = true;
   params.headless = true;
   params.samples = samples;
-  params.threads = std::min(4, int(std::max(1u, std::thread::hardware_concurrency())));
+  params.threads = std::min(source.render_threads, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
@@ -1055,8 +1057,19 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   ccl::BufferParams buffers;
   buffers.width = buffers.full_width = width;
   buffers.height = buffers.full_height = height;
+  const auto before_reset = std::chrono::steady_clock::now();
   session->reset(params, buffers);
+  const auto before_render = std::chrono::steady_clock::now();
   run_session_with_timeout(session.get(), source.render_timeout_seconds, tmp);
+  const auto after_render = std::chrono::steady_clock::now();
+  if (std::getenv("LMBLENDER_PROFILE")) {
+    const auto setup_ms = std::chrono::duration_cast<std::chrono::milliseconds>(before_reset - profile_start).count();
+    const auto reset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(before_render - before_reset).count();
+    const auto render_output_ms = std::chrono::duration_cast<std::chrono::milliseconds>(after_render - before_render).count();
+    std::cerr << "LMBLENDER_PROFILE width=" << width << " height=" << height << " spp=" << samples
+              << " threads=" << params.threads << " scene_setup_ms=" << setup_ms << " reset_bvh_ms=" << reset_ms
+              << " render_denoise_output_ms=" << render_output_ms << '\n';
+  }
   if (emit_passes && (!pass_driver || !pass_driver->publish()))
     throw dslvm::Error("Cycles did not produce all combined/depth/normal/albedo pass files");
   session.reset();
@@ -1792,6 +1805,11 @@ dslvm::Registry make_registry() {
     static_cast<Scene *>(p)->render_timeout_seconds = int(a[0].i);
     return dslvm::Value::none();
   });
+  registry.method("Scene", "set_threads", {"int"}, "void", [](void *p, dslvm::Args &a) {
+    if (a[0].i < 1 || a[0].i > 64) throw dslvm::Error("render thread count must be in [1,64]");
+    static_cast<Scene *>(p)->render_threads = int(a[0].i);
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "render_settings", {"int", "int", "bool"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].i < 0 || a[0].i > 64) throw dslvm::Error("max bounces must be in [0,64]");
     if (a[1].i < 0 || a[1].i > 2'147'483'647) throw dslvm::Error("render seed must be in [0,2147483647]");
@@ -1806,8 +1824,8 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "render_preset", {"string"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     if (a[0].s == "draft") {
-      scene->preset_samples = 16;
-      scene->preset_bounces = 4;
+      scene->preset_samples = 8;
+      scene->preset_bounces = 2;
       scene->denoise = false;
     } else if (a[0].s == "final") {
       if (!ccl::openimagedenoise_supported())
@@ -2294,31 +2312,51 @@ dslvm::Registry make_registry() {
   });
   registry.method("Scene", "render_sequence", {"string", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene=static_cast<Scene *>(p);
-    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239)throw dslvm::Error("render_sequence requires an ordered frame range of at most 240 frames");
-    if(a[3].i<0||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)
-      throw dslvm::Error("render_sequence sample, dimension, or total-pixel budget exceeded");
+    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239)throw dslvm::Error("render_sequence frame range must be ordered, non-negative, and contain at most 240 frames");
+    if(a[3].i<0||a[3].i>65536)throw dslvm::Error("render_sequence samples must be 0 (use preset) or within [1,65536]");
+    if(a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096)throw dslvm::Error("render_sequence dimensions must each be within [16,4096]");
+    const uint64_t pixels_per_frame=uint64_t(a[4].i)*uint64_t(a[5].i);
+    if(pixels_per_frame>16'000'000)throw dslvm::Error("render_sequence per-frame pixel budget is 16,000,000; requested "+std::to_string(pixels_per_frame)+" pixels per frame; lower width or height");
+    const uint64_t frame_count=uint64_t(a[2].i-a[1].i)+1;
+    const uint64_t total_pixels=pixels_per_frame*frame_count;
+    if(total_pixels>64'000'000) {
+      const uint64_t max_frames=64'000'000/pixels_per_frame;
+      throw dslvm::Error("render_sequence total-pixel budget is 64,000,000; requested "+std::to_string(frame_count)+" frames at "+std::to_string(a[4].i)+"x"+std::to_string(a[5].i)+" = "+std::to_string(total_pixels)+" pixels; use <= "+std::to_string(max_frames)+" frames per call");
+    }
     const int sequence_samples = a[3].i == 0 ? scene->preset_samples : int(a[3].i);
     const AnimationBase base = capture_animation(*scene);
+    const int old_timeout=scene->render_timeout_seconds;
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(old_timeout);
     try {
       for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){
+        const auto remaining=std::chrono::duration_cast<std::chrono::seconds>(deadline-std::chrono::steady_clock::now()).count();
+        if(remaining<1)throw dslvm::Error("RENDER_TIMEOUT","render_sequence exceeded its total "+std::to_string(old_timeout)+" second time budget before frame "+std::to_string(frame));
+        scene->render_timeout_seconds=int(remaining);
         apply_animation(*scene, frame, base);
         render_image(*scene,sequence_path(a[0].s,frame),sequence_samples,int(a[4].i),int(a[5].i));
       }
-    } catch (...) { restore_animation(*scene, base); throw; }
+    } catch (...) { scene->render_timeout_seconds=old_timeout; restore_animation(*scene, base); throw; }
+    scene->render_timeout_seconds=old_timeout;
     restore_animation(*scene, base);
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_apng", {"string", "int", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene=static_cast<Scene *>(p);
     if(std::filesystem::path(a[0].s).extension()!=".apng"||a[0].s.empty()||a[0].s.front()=='-')throw dslvm::Error("render_apng output must be a .apng path not beginning with '-'");
-    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239||a[6].i<1||a[6].i>240)throw dslvm::Error("render_apng frame range must contain 1..240 frames and fps must be 1..240");
-    if(a[3].i<1||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)throw dslvm::Error("render_apng sample, dimension, or total-pixel budget exceeded");
+    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239||a[6].i<1||a[6].i>240)throw dslvm::Error("render_apng frame range must be ordered, non-negative, and contain at most 240 frames; fps must be in [1,240]");
+    if(a[3].i<1||a[3].i>65536)throw dslvm::Error("render_apng samples must be within [1,65536]");
+    if(a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096)throw dslvm::Error("render_apng dimensions must each be within [16,4096]");
+    const uint64_t apng_pixels=uint64_t(a[4].i)*uint64_t(a[5].i), apng_frames=uint64_t(a[2].i-a[1].i)+1;
+    if(apng_pixels>16'000'000)throw dslvm::Error("render_apng per-frame pixel budget is 16,000,000; requested "+std::to_string(apng_pixels)+" pixels per frame; lower width or height");
+    if(apng_pixels*apng_frames>64'000'000)throw dslvm::Error("render_apng total-pixel budget is 64,000,000; requested "+std::to_string(apng_frames)+" frames x "+std::to_string(apng_pixels)+" pixels/frame = "+std::to_string(apng_pixels*apng_frames)+" pixels; use at most "+std::to_string(64'000'000/apng_pixels)+" frames per call");
     const AnimationBase base = capture_animation(*scene);
+    const int old_timeout=scene->render_timeout_seconds;
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(old_timeout);
     std::string tmpdir="/tmp/lmblender-apng-XXXXXX";std::vector<char> tmpbuf(tmpdir.begin(),tmpdir.end());tmpbuf.push_back('\0');char *made=::mkdtemp(tmpbuf.data());if(!made)throw dslvm::Error("could not create APNG staging directory");
     std::vector<std::string> frames;
-    try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){apply_animation(*scene,frame,base);std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
-    catch(...){restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
-    restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);return dslvm::Value::none();
+    try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){const auto remaining=std::chrono::duration_cast<std::chrono::seconds>(deadline-std::chrono::steady_clock::now()).count();if(remaining<1)throw dslvm::Error("RENDER_TIMEOUT","render_apng exceeded its total "+std::to_string(old_timeout)+" second time budget before frame "+std::to_string(frame));scene->render_timeout_seconds=int(remaining);apply_animation(*scene,frame,base);std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
+    catch(...){scene->render_timeout_seconds=old_timeout;restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
+    scene->render_timeout_seconds=old_timeout;restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);return dslvm::Value::none();
   });
   registry.method("Scene", "render_exr", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);

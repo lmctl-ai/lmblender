@@ -647,6 +647,14 @@
             ],
             "returns": "void"
           }
+        ],
+        "set_threads": [
+          {
+            "params": [
+              "int"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },
