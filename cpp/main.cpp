@@ -61,6 +61,12 @@ struct Material {
   float metallic = 0.0f;
   float roughness = 0.5f;
   float transmission = 0.0f;
+  float subsurface = 0.0f;
+  std::array<float, 3> subsurface_radius{1.0f, 0.2f, 0.1f};
+  float subsurface_scale = 0.1f;
+  int volume_kind = 0; /* 1 absorption, 2 scatter */
+  float volume_density = 0.0f;
+  std::array<float, 3> volume_color{1.0f, 1.0f, 1.0f};
   float emission_strength = 0.0f;
   int texture_kind = 0;
   std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
@@ -518,6 +524,10 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_metallic(material.metallic);
     principled->set_roughness(material.roughness);
     principled->set_transmission_weight(material.transmission);
+    principled->set_subsurface_weight(material.subsurface);
+    principled->set_subsurface_method(ccl::CLOSURE_BSSRDF_BURLEY_ID);
+    principled->set_subsurface_radius(ccl::make_float3(material.subsurface_radius[0], material.subsurface_radius[1], material.subsurface_radius[2]));
+    principled->set_subsurface_scale(material.subsurface_scale);
     principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
     principled->set_emission_strength(material.emission_strength);
     if (material.texture_kind == 1) {
@@ -546,6 +556,18 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       graph->connect(image->output("Color"), principled->input("Base Color"));
     }
     graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
+    if (material.volume_kind == 1) {
+      ccl::AbsorptionVolumeNode *volume = graph->create_node<ccl::AbsorptionVolumeNode>();
+      volume->set_color(ccl::make_float3(material.volume_color[0], material.volume_color[1], material.volume_color[2]));
+      volume->set_density(material.volume_density);
+      graph->connect(volume->output("Volume"), graph->output()->input("Volume"));
+    } else if (material.volume_kind == 2) {
+      ccl::ScatterVolumeNode *volume = graph->create_node<ccl::ScatterVolumeNode>();
+      volume->set_color(ccl::make_float3(material.volume_color[0], material.volume_color[1], material.volume_color[2]));
+      volume->set_density(material.volume_density);
+      volume->set_anisotropy(0.0f);
+      graph->connect(volume->output("Volume"), graph->output()->input("Volume"));
+    }
     shader->set_graph(std::move(graph));
     shader->tag_update(scene);
     return shader;
@@ -1227,6 +1249,27 @@ dslvm::Registry make_registry() {
     Material *result = material.get();
     scene->materials.push_back(std::move(material));
     return dslvm::Value::object("Material", result);
+  });
+  registry.method("Material", "subsurface", {"float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *material = static_cast<Material *>(p);
+    for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("subsurface values must be finite");
+    if (a[0].f < 0.0 || a[0].f > 1.0 || a[1].f < 0.0 || a[1].f > 1.0 || a[2].f < 0.0 || a[2].f > 1.0 || a[3].f < 0.0 || a[3].f > 1.0 || a[4].f < 0.001 || a[4].f > 10.0)
+      throw dslvm::Error("subsurface weight/radius must be in [0,1] and scale in [0.001,10]");
+    material->subsurface = float(a[0].f);
+    material->subsurface_radius = {float(a[1].f), float(a[2].f), float(a[3].f)};
+    material->subsurface_scale = float(a[4].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "volume", {"string", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *material = static_cast<Material *>(p);
+    if (a[0].s != "absorption" && a[0].s != "scatter") throw dslvm::Error("volume kind must be absorption or scatter");
+    for (size_t i = 1; i < a.size(); ++i) if (!std::isfinite(a[i].f)) throw dslvm::Error("volume values must be finite");
+    if (a[1].f < 0.0 || a[1].f > 100.0 || a[2].f < 0.0 || a[2].f > 1.0 || a[3].f < 0.0 || a[3].f > 1.0 || a[4].f < 0.0 || a[4].f > 1.0)
+      throw dslvm::Error("volume density must be in [0,100] and color channels in [0,1]");
+    material->volume_kind = a[0].s == "absorption" ? 1 : 2;
+    material->volume_density = float(a[1].f);
+    material->volume_color = {float(a[2].f), float(a[3].f), float(a[4].f)};
+    return dslvm::Value::none();
   });
   auto patterned_material = [](void *p, dslvm::Args &a, int kind) {
     auto *scene=static_cast<Scene *>(p); if(scene->materials.size()>=4096) throw dslvm::Error("material limit exceeded (4096)");

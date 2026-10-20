@@ -15,6 +15,9 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/environment-texture.lms "$build/environment-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/transparent-film.lms "$build/transparent-film.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/camera-dof.lms "$build/camera-dof.dslb" >/dev/null
+for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
+  "${LMSCRIPT:-lmscript}" "examples/$effect.lms" "$build/$effect.dslb" >/dev/null
+done
 "${LMSCRIPT:-lmscript}" examples/render-mesh.lms "$build/imported-mesh.png" "$build/render-mesh.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-principled.lms "$build/material-principled.dslb" >/dev/null
@@ -36,6 +39,9 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
 "$exe" --dsl "$build/camera-dof.dslb" >"$build/camera-dof-result.json"
+for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
+  "$exe" --dsl "$build/$effect.dslb" >"$build/$effect-result.json"
+done
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
 LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/render-mesh-xml-result.json"
 "$exe" --dsl "$build/material-principled.dslb" >"$build/material-principled-result.json"
@@ -67,6 +73,7 @@ test -s "$build/sky-texture.png"
 test -s "$build/environment-texture.png"
 test -s "$build/transparent-film.png"
 test -s "$build/camera-dof.png"
+for image in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do test -s "$build/$image.png"; done
 test -s "$build/imported-mesh-xml.png"
 test -s "$build/material-principled.png"
 test -s "$build/camera-look-at.png"
@@ -95,6 +102,9 @@ python3 tests/sky_quality.py "$build/sky-texture.png"
 python3 tests/environment_quality.py "$build/environment-texture.png"
 python3 tests/transparent_alpha_quality.py "$build/transparent-film.png"
 python3 tests/dof_quality.py "$build/camera-dof.png"
+python3 tests/material_effect_quality.py "$build/volume-control.png" "$build/volume-fog.png"
+python3 tests/material_effect_quality.py "$build/subsurface-control.png" "$build/subsurface.png"
+python3 tests/material_effect_quality.py "$build/glass-opaque-control.png" "$build/glass-transmission.png"
 python3 tests/png_metrics.py "$build/imported-mesh-xml.png"
 python3 tests/png_metrics.py "$build/material-principled.png"
 python3 tests/png_blue_material.py "$build/material-principled.png"

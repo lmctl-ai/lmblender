@@ -29,3 +29,14 @@ Thumbnails: [environment-texture.png](img/environment-texture.png), [transparent
 - Motion blur is not claimed: an early direct-Cycles animated-transform prototype produced a blank frame and was removed. It needs a valid Cycles motion-step setup before being exposed as a supported binding.
 
 Thumbnail: [camera-dof.png](img/camera-dof.png).
+
+## Volume, subsurface, and glass experiments (`examples/volume-fog.lms`, `examples/subsurface.lms`, `examples/glass-transmission.lms`)
+
+All are 640×480 RGBA Cycles renders. The scripts use closed UV-sphere geometry and paired no-effect controls; `tests/material_effect_quality.py` compares RGB pixels and requires MAD >=0.35/255.
+
+- Volume scatter test: same transparent sphere and lighting, with and without scatter density 8.0. Matched-control MAD is `0.001/255`, below the threshold. The volume node currently has no measurable render effect in this direct CCL setup, so volume rendering is **not verified/supported**. The high-density exploratory image has visible grain and is not a quality pass.
+- Subsurface test: matched opaque control. Render RGB is constant `(38,43,56)` over the whole image, so the object disappears. The comparison MAD is not sufficient evidence; subsurface is **not verified/supported**.
+- Glass/transmission test: transmission 1.0 against an otherwise matched opaque sphere. MAD is `13.175/255`. Visual inspection shows a faint translucent sphere against the lit environment; this is a functional transmission signal, not a Blender-parity claim.
+- The comparison scripts and failed numeric measurements are retained deliberately to make the current limitations reproducible.
+
+Thumbnails: [volume-fog.png](img/volume-fog.png), [subsurface.png](img/subsurface.png), [glass-transmission.png](img/glass-transmission.png).

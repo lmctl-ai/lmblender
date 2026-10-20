@@ -7,7 +7,7 @@
 | Area | Status | Current support / gap |
 | --- | --- | --- |
 | CPU Cycles render | Done | Static executable, direct C++ scene construction, PNG and EXR, CPU OIDN denoise |
-| Materials and lights | Partial | Principled, checker/noise/image surface textures, point/area/sun/spot and emissive surfaces; HDRI, glass parity, SSS, and volumes remain |
+| Materials and lights | Partial | Principled, checker/noise/image textures, point/area/sun/spot and emissive surfaces; glass transmission binding is present; subsurface/volume nodes are experimental (see numeric QA failures) |
 | World | Partial | Color background, Cycles multiple-scattering sky, and equirectangular PNG/EXR/HDR environment node with rotation/strength |
 | Camera and motion | Partial | Perspective/orthographic, look-at/fitting, and Cycles aperture/focus DOF; animated-transform motion blur is not implemented (direct CCL motion prototype rendered blank) |
 | Mesh input | Partial | OBJ, STL, ASCII PLY; binary PLY and glTF remain |
