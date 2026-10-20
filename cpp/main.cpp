@@ -23,6 +23,7 @@
 #include "scene/background.h"
 #include "scene/camera.h"
 #include "scene/film.h"
+#include "scene/integrator.h"
 #include "scene/light.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
@@ -77,6 +78,9 @@ struct Scene {
   bool custom_camera = false;
   CameraConfig camera;
   int render_timeout_seconds = 3600;
+  int max_bounces = 12;
+  int render_seed = 0;
+  bool denoise = false;
 };
 
 template<typename SessionType> void run_session_with_timeout(SessionType *session, const int timeout_seconds, const std::string &temporary_output)
@@ -350,6 +354,9 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->camera->set_matrix(camera_tfm);
   scene->camera->need_flags_update = true;
   scene->camera->update(scene);
+  scene->integrator->set_max_bounce(source.max_bounces);
+  scene->integrator->set_seed(source.render_seed);
+  scene->integrator->set_use_denoise(source.denoise);
 
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
@@ -496,6 +503,16 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "render_timeout", {"int"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].i < 1 || a[0].i > 3600) throw dslvm::Error("render timeout must be in [1,3600] seconds");
     static_cast<Scene *>(p)->render_timeout_seconds = int(a[0].i);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_settings", {"int", "int", "bool"}, "void", [](void *p, dslvm::Args &a) {
+    if (a[0].i < 0 || a[0].i > 64) throw dslvm::Error("max bounces must be in [0,64]");
+    if (a[1].i < 0 || a[1].i > 2'147'483'647) throw dslvm::Error("render seed must be in [0,2147483647]");
+    if (a[2].b) throw dslvm::Error("denoising is unsupported in this standalone Cycles build; pass false");
+    auto *scene = static_cast<Scene *>(p);
+    scene->max_bounces = int(a[0].i);
+    scene->render_seed = int(a[1].i);
+    scene->denoise = a[2].b;
     return dslvm::Value::none();
   });
   registry.method("Scene", "world_color", {"float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {

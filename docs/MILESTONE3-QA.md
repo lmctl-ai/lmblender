@@ -10,5 +10,6 @@ Run on 2026-10-20 after `./test.sh`; static host reports `ldd: not a dynamic exe
 | `examples/mesh-instances.lms` | Connected-component segmentation; require two components >=10 pixels | component sizes `[915, 781]`; 256x192 | PASS: two separate uncropped tetrahedra with a clear gap |
 | `examples/render-exr.lms` | OpenEXR magic, dataWindow and payload | 128x96, 5,453 bytes | header validated |
 | `examples/render-timeout.lms` | One-second cancellation, structured error, no published partial output | `RENDER_TIMEOUT`; no PNG published | cancellation check passed |
+| `examples/render-settings.lms` | Visible pixels at a non-default seed/bounce setting | 192x144; luminance stddev 35.82/255 | PASS, score 5/5: one centered uncropped tetrahedron with clear contrast |
 
 The requested QA reviewer inspected the three material, camera, and instance PNGs directly and returned PASS for each checklist. Other numerical image checks are run by `test.sh`.

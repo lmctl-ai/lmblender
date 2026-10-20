@@ -1,0 +1,7 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/render-settings.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.render_settings(8, 1234, false);
+scene.render_png("build/render-settings.png", 24, 192, 144);
+end _dsl_
+savedsl(p, out);
