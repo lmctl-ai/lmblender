@@ -82,6 +82,8 @@ struct Material {
   float texture_scale = 5.0f;
   std::string image_path;
   bool image_factor_enabled = false;
+  bool bump_enabled = false;
+  float bump_strength = 0.35f, bump_distance = 0.12f, bump_scale = 18.0f;
   struct ColorKey { int frame; std::array<float,3> value; std::string interpolation; };
   std::vector<ColorKey> color_keys;
 };
@@ -587,6 +589,21 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       } else {
         graph->connect(image->output("Color"), principled->input("Base Color"));
       }
+    } else if (material.texture_kind == 4) {
+      ccl::TextureCoordinateNode *coordinates=graph->create_node<ccl::TextureCoordinateNode>();
+      ccl::NoiseTextureNode *noise=graph->create_node<ccl::NoiseTextureNode>();noise->set_scale(material.texture_scale);noise->set_detail(2.0f);
+      graph->connect(coordinates->output("Generated"),noise->input("Vector"));
+      ccl::RGBRampNode *ramp=graph->create_node<ccl::RGBRampNode>();
+      ccl::array<ccl::packed_float3> colors;colors.push_back_slow(ccl::make_float3(material.color[0],material.color[1],material.color[2]));colors.push_back_slow(ccl::make_float3(material.texture_color2[0],material.texture_color2[1],material.texture_color2[2]));ramp->set_ramp(colors);
+      ccl::array<float> alpha;alpha.push_back_slow(1.0f);alpha.push_back_slow(1.0f);ramp->set_ramp_alpha(alpha);
+      graph->connect(noise->output("Fac"),ramp->input("Fac"));graph->connect(ramp->output("Color"),principled->input("Base Color"));
+    }
+    if(material.bump_enabled){
+      ccl::TextureCoordinateNode *coordinates=graph->create_node<ccl::TextureCoordinateNode>();
+      ccl::NoiseTextureNode *height=graph->create_node<ccl::NoiseTextureNode>();height->set_scale(material.bump_scale);height->set_detail(4.0f);height->set_roughness(0.7f);
+      graph->connect(coordinates->output("Generated"),height->input("Vector"));
+      ccl::BumpNode *bump=graph->create_node<ccl::BumpNode>();bump->set_strength(material.bump_strength);bump->set_distance(material.bump_distance);
+      graph->connect(height->output("Fac"),bump->input("Height"));graph->connect(bump->output("Normal"),principled->input("Normal"));
     }
     if (material.volume_only) {
       ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
@@ -1494,6 +1511,8 @@ dslvm::Registry make_registry() {
   };
   registry.method("Scene", "checker_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,1);});
   registry.method("Scene", "noise_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,2);});
+  registry.method("Scene", "ramp_material", {"float","float","float","float","float","float","float","float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,4);});
+  registry.method("Material", "bump", {"float","float","float"}, "void", [](void *p,dslvm::Args &a){auto*m=static_cast<Material*>(p);for(const auto&v:a)if(!std::isfinite(v.f))throw dslvm::Error("bump parameters must be finite");if(a[0].f<0||a[0].f>1||a[1].f<0||a[1].f>2||a[2].f<0.1||a[2].f>1000)throw dslvm::Error("bump strength must be 0..1, distance 0..2 scene units, texture scale 0.1..1000");m->bump_enabled=true;m->bump_strength=float(a[0].f);m->bump_distance=float(a[1].f);m->bump_scale=float(a[2].f);return dslvm::Value::none();});
   registry.method("Scene", "image_material", {"string", "float"}, "Material", [](void *p, dslvm::Args &a) {
     const std::filesystem::path path(a[0].s);
     const std::string ext = path.extension().string();

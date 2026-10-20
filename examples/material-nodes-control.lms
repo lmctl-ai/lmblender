@@ -1,0 +1,13 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/material-nodes-control.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let a = scene.uv_sphere(1.05, 48, 24, true); a.translate(-1.45,0.0,1.08);
+let red = scene.material(0.68,0.18,0.055,0.08,0.3,0.0,0.0,0.0,0.0,0.0); a.set_material(red);
+let b = scene.uv_sphere(1.05,48,24,true); b.translate(1.45,0.0,1.08);
+let teal = scene.material(0.02,0.055,0.24,0.0,0.34,0.0,0.0,0.0,0.0,0.0); b.set_material(teal);
+scene.ground_plane(-0.02,60.0,0.28,0.30,0.34); scene.world_color(0.16,0.18,0.22,0.2);
+scene.area_light(-4.0,-6.0,7.0,0.0,0.0,0.8,1.0,0.85,0.72,460.0,5.0);
+scene.area_light(4.0,-3.0,4.0,0.0,0.0,1.0,0.65,0.78,1.0,220.0,4.0);
+scene.camera_look_at(0.0,-9.5,4.0,0.0,0.0,1.0,45.0); scene.render_settings(12,91,true);
+scene.render_png("build/material-nodes-control.png",48,640,480);
+end _dsl_
+savedsl(p,out);

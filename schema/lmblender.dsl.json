@@ -474,6 +474,21 @@
             ],
             "returns": "void"
           }
+        ],
+        "ramp_material": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float"
+            ],
+            "returns": "Material"
+          }
         ]
       }
     },
@@ -619,6 +634,16 @@
               "float",
               "float",
               "string"
+            ],
+            "returns": "void"
+          }
+        ],
+        "bump": [
+          {
+            "params": [
+              "float",
+              "float",
+              "float"
             ],
             "returns": "void"
           }

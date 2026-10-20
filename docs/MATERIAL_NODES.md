@@ -1,0 +1,7 @@
+# Material graph coverage
+
+The standalone binding translates selected procedurals into Cycles' shader graph. `Scene.checker_material(...)` and `Scene.noise_material(...)` create the existing checker/noise base-color networks. `Scene.ramp_material(color1 RGB, color2 RGB, scale, roughness)` creates Generated-coordinate Noise Texture → RGB Ramp → Principled Base Color. `Material.bump(strength, distance, scale)` adds Generated-coordinate Noise Texture → Bump → Principled Normal; distance is in scene units. `Scene.image_material(path, roughness)` binds a UV image texture. `Material.keyframe_color(...)` animates the Principled base color.
+
+`examples/material-nodes.lms` renders the bump and ramp networks next to a flat-material control. `tests/material_nodes_quality.py` verifies both output dimensions, subject coverage, a minimum 2/255 mean pixel difference from the control, and >400 distinct subject colors. Current run: 89,706 subject pixels, 12.25/255 mean absolute difference, 16,578 unique subject colors.
+
+The graph API is intentionally a fixed supported subset, not arbitrary node construction. Tangent-space normal-map image input, roughness/metallic maps, layered/mix shaders, and two-sided/backface controls are not exposed yet. Existing emission color/strength, checker, noise, image color, Principled metallic/roughness/transmission, and spot blend controls remain available through their current methods.
