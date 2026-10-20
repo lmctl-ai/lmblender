@@ -11,5 +11,9 @@ Run on 2026-10-20 after `./test.sh`; static host reports `ldd: not a dynamic exe
 | `examples/render-exr.lms` | OpenEXR magic, dataWindow and payload | 128x96, 5,453 bytes | header validated |
 | `examples/render-timeout.lms` | One-second cancellation, structured error, no published partial output | `RENDER_TIMEOUT`; no PNG published | cancellation check passed |
 | `examples/render-settings.lms` | Visible pixels at a non-default seed/bounce setting | 192x144; luminance stddev 35.82/255 | PASS, score 5/5: one centered uncropped tetrahedron with clear contrast |
+| `examples/compose/mug-render.lms` | Pixel variation plus checklist for ceramic body, attached handle, framing and contrast | 384x288; luminance stddev 32.23/255 | PASS, score 5/5 |
+| `examples/compose/plate-render.lms` | Pixel variation plus checklist for perforated plate, open holes and framing | 384x288; luminance stddev 33.42/255 | PASS, score 5/5; eight holes visible |
 
 The requested QA reviewer inspected the three material, camera, and instance PNGs directly and returned PASS for each checklist. Other numerical image checks are run by `test.sh`.
+
+The lmcad composition runner `examples/compose/run.sh` successfully ran both lmcad STL exporters and lmblender render scripts sequentially. Source models were the existing lmcad mug and plate-with-holes examples.
