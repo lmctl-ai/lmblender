@@ -115,8 +115,8 @@ method Scene.world_color(float, float, float, float) -> void
 | `area_light_shape(...,power,size_x,size_y,shape)` | `rectangle`, `disk`, or `ellipse`; sizes are in scene units. |
 | `spot_light(px,py,pz,tx,ty,tz,r,g,b,power,angle_degrees,blend)` | Cone angle 1..170 degrees; softness/blend 0..1. |
 | `point_light(x,y,z,r,g,b,power)`; `sun_light(dx,dy,dz,r,g,b,power,angle)` | World-space position or direction; power in renderer units and sun angle in radians. |
-| `camera_look_at(px,py,pz,tx,ty,tz,fov_degrees)` | Perspective camera, FOV 5..170 degrees. |
-| `camera_orthographic(px,py,pz,tx,ty,tz,width)` | Orthographic camera width in scene units. |
+| `camera_look_at(px,py,pz,tx,ty,tz,fov_degrees)` | Perspective camera; **vertical** FOV 5..170 degrees, so the horizontal coverage follows render aspect. |
+| `camera_orthographic(px,py,pz,tx,ty,tz,vertical_span)` | Orthographic camera; visible vertical span in scene units, with horizontal span adjusted to output aspect. |
 | `camera_dof(aperture,focus_distance)` | Aperture 0..10; focus distance in scene units. |
 | `motion_blur(enabled,shutter_frames)` | Cycles transform blur for keyed mesh translations and camera keys; shutter is 0.1..2 frames. |
 | `world_color(r,g,b,strength)`, `sky_texture(elevation_degrees,rotation_degrees,intensity)` | Linear RGB world or built-in procedural sky. |

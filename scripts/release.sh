@@ -5,7 +5,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-version=${RELEASE_VERSION:-0.2.1}
+version=${RELEASE_VERSION:-0.2.2}
 version=${version#v}
 binary=${LMBLENDER_BINARY:-$root/build/lmblender}
 machine=${LMBLENDER_ARCH:-$(uname -m)}

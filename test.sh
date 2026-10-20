@@ -41,6 +41,8 @@ done
 "${LMSCRIPT:-lmscript}" examples/render-settings.lms "$build/render-settings.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/procedural-materials.lms "$build/procedural-materials.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/orthographic-camera.lms "$build/orthographic-camera.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/camera_aspect.lms "$build/camera-aspect.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/camera_aspect_cube.lms "$build/camera-aspect-cube.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/image-texture.lms "$build/image-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/display-transforms.lms "$build/display-transforms.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
@@ -88,6 +90,8 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/render-settings.dslb" >"$build/render-settings-result.json"
 "$exe" --dsl "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
 "$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
+"$exe" --dsl "$build/camera-aspect.dslb" >"$build/camera-aspect-result.json"
+"$exe" --dsl "$build/camera-aspect-cube.dslb" >"$build/camera-aspect-cube-result.json"
 "$exe" --dsl "$build/image-texture.dslb" >"$build/image-texture-result.json"
 "$exe" --dsl "$build/display-transforms.dslb" >"$build/display-transforms-result.json"
 "$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
@@ -174,6 +178,7 @@ python3 tests/png_instances.py "$build/mesh-instances.png"
 python3 tests/png_metrics.py "$build/render-settings.png"
 python3 tests/procedural_materials_quality.py "$build/procedural-materials.png"
 python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" "$build/orthographic-camera.png"
+python3 tests/camera_aspect_quality.py "$build"
 python3 tests/image_texture_quality.py "$build/image-texture.png"
 python3 tests/denoise_quality.py "$build/denoise-noisy.png" "$build/denoise-filtered.png" "$build/denoise-reference.png"
 python3 tests/animation_quality.py "$build"

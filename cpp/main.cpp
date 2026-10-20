@@ -962,11 +962,18 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     ccl::float3 right = ccl::cross(forward, up_ref);
     if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
     right = ccl::normalize(right);
-    /* Cycles' camera basis uses a square sensor; convert horizontal camera
-     * scale to the output's pixel aspect ratio. */
-    right *= float(height) / float(width) * 0.88f;
+    /* Cycles' camera projection uses a normalized screen plane whose horizontal
+     * span is not pixel-corrected for portrait output. Scale the camera's
+     * horizontal basis by half the pixel aspect (the camera basis spans two
+     * normalized units). This keeps world units isotropic at every aspect.
+     * fov_radians is the vertical field of view. */
     ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
-    if (source.camera.orthographic) { right *= source.camera.ortho_scale * 0.5f; up *= source.camera.ortho_scale * 0.5f; }
+    right *= (float(width) / float(height)) * 0.5f;
+    if (source.camera.orthographic) {
+      /* ortho_scale is the visible vertical world-space span. */
+      right *= source.camera.ortho_scale * 0.5f;
+      up *= source.camera.ortho_scale * 0.5f;
+    }
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
                                      right.y, up.y, forward.y, p[1],
                                      right.z, up.z, forward.z, p[2]);
@@ -985,7 +992,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       const ccl::float3 forward = ccl::normalize(target - p);
       ccl::float3 right = ccl::cross(forward, ccl::make_float3(0.0f, 0.0f, 1.0f));
       if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
-      right = ccl::normalize(right) * (float(height) / float(width) * 0.88f);
+      right = ccl::normalize(right) * (float(width) / float(height) * 0.5f);
       const ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
       motion[step] = ccl::make_transform(right.x, up.x, forward.x, p.x,
                                          right.y, up.y, forward.y, p.y,
@@ -2193,7 +2200,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender 0.2.1 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
+    return dslvm::Value::string("lmblender 0.2.2 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
@@ -2201,7 +2208,7 @@ dslvm::Registry make_registry() {
 
 int main(int argc, char **argv) {
   if (argc == 2 && std::string(argv[1]) == "--version") {
-    std::cout << "lmblender 0.2.1 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+    std::cout << "lmblender 0.2.2 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE
     std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
 #else
