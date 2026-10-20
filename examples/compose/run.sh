@@ -17,7 +17,7 @@ for item in mug plate; do
   "$host_bin" --dsl "$out/$item-render.dslb"
   python3 "$root/tests/png_metrics.py" "$root/build/compose-$item.png"
   if [[ "$item" == mug ]]; then
-    python3 "$root/tests/compose_mug_quality.py" "$root/build/compose-mug.png"
+    python3 "$root/tests/compose_mug_quality.py" "$root/build/compose-mug.png" "$out/build/mug.stl"
   else
     python3 "$root/tests/compose_plate_quality.py" "$root/build/compose-plate.png"
   fi

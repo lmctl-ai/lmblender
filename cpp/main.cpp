@@ -93,6 +93,7 @@ struct CameraConfig {
   std::array<float, 3> position{};
   std::array<float, 3> target{};
   float fov_radians = 0.785398163f;
+  bool fit_to_geometry = false;
   bool orthographic = false;
   float ortho_scale = 10.0f;
 };
@@ -112,6 +113,24 @@ struct Scene {
   int render_seed = 0;
   bool denoise = false;
 };
+
+std::array<float, 3> fitted_camera_position(const ccl::float3 center,
+                                           const float radius,
+                                           const float fov,
+                                           const int width,
+                                           const int height)
+{
+  const float vertical_half = fov * 0.5f;
+  const float aspect = float(width) / float(height);
+  const float half_fov = std::min(vertical_half, std::atan(std::tan(vertical_half) * aspect));
+  const float distance = radius / std::sin(half_fov) * 1.2f;
+  // Use a raised three-quarter view so tall imported CAD parts retain readable
+  // side proportions while their top openings remain visible.
+  const ccl::float3 direction = ccl::normalize(ccl::make_float3(0.50f, -0.61f, 0.25f));
+  return {center.x + distance * direction.x,
+          center.y + distance * direction.y,
+          center.z + distance * direction.z};
+}
 
 template<typename SessionType> void run_session_with_timeout(SessionType *session, const int timeout_seconds, const std::string &temporary_output)
 {
@@ -157,11 +176,14 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
     for (size_t axis = 0; axis < 3; ++axis) { lo[axis] = std::min(lo[axis], v[axis]); hi[axis] = std::max(hi[axis], v[axis]); }
   const ccl::float3 center = ccl::make_float3(float((lo[0] + hi[0]) * 0.5), float((lo[1] + hi[1]) * 0.5), float((lo[2] + hi[2]) * 0.5));
   const float radius = std::max(0.5f, float(std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]})) * 0.5f);
+  const float fit_radius = std::max(0.5f, 0.5f * ccl::len(ccl::make_float3(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2])));
   const float fov = source.custom_camera ? source.camera.fov_radians : 0.8f;
   ccl::float3 camera_position;
   ccl::float3 camera_target;
   if (source.custom_camera) {
-    camera_position = ccl::make_float3(source.camera.position[0], source.camera.position[1], source.camera.position[2]);
+    const auto fitted = source.camera.fit_to_geometry ?
+        fitted_camera_position(center, fit_radius, source.camera.fov_radians, width, height) : source.camera.position;
+    camera_position = ccl::make_float3(fitted[0], fitted[1], fitted[2]);
     camera_target = ccl::make_float3(source.camera.target[0], source.camera.target[1], source.camera.target[2]);
   } else {
     const float distance = radius * 1.85f / std::tan(fov * 0.5f);
@@ -281,6 +303,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   }
   const ccl::float3 center = ccl::make_float3(float((lo[0] + hi[0]) * 0.5), float((lo[1] + hi[1]) * 0.5), float((lo[2] + hi[2]) * 0.5));
   const float radius = std::max(0.5f, float(std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]})) * 0.5f);
+  const float fit_radius = std::max(0.5f, 0.5f * ccl::len(ccl::make_float3(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2])));
 
   ccl::log_init(nullptr);
   ccl::path_init();
@@ -481,13 +504,19 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
                                      right.y, up.y, forward.y, p.y,
                                      right.z, up.z, forward.z, p.z);
   } else {
-    const auto &p = source.camera.position;
+    const auto fitted = source.camera.fit_to_geometry ?
+        fitted_camera_position(center, fit_radius, source.camera.fov_radians, width, height) : source.camera.position;
+    const auto &p = fitted;
     const auto &t = source.camera.target;
     ccl::float3 forward = ccl::normalize(ccl::make_float3(t[0] - p[0], t[1] - p[1], t[2] - p[2]));
     ccl::float3 up_ref = ccl::make_float3(0.0f, 0.0f, 1.0f);
     ccl::float3 right = ccl::cross(forward, up_ref);
     if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
     right = ccl::normalize(right);
+    // The Cycles camera's perspective projection uses a unit square sensor;
+    // compensate the fitted camera's horizontal basis for the output aspect.
+    if (source.camera.fit_to_geometry && !source.camera.orthographic)
+      right *= float(height) / float(width);
     ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
     if (source.camera.orthographic) { right *= source.camera.ortho_scale * 0.5f; up *= source.camera.ortho_scale * 0.5f; }
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
@@ -675,8 +704,7 @@ dslvm::Registry make_registry() {
     if (!any) throw dslvm::Error("fit_camera requires imported geometry");
     const float cx = float((lo[0] + hi[0]) * 0.5), cy = float((lo[1] + hi[1]) * 0.5), cz = float((lo[2] + hi[2]) * 0.5);
     const float radius = std::max(0.1f, float(std::sqrt((hi[0]-lo[0])*(hi[0]-lo[0]) + (hi[1]-lo[1])*(hi[1]-lo[1]) + (hi[2]-lo[2])*(hi[2]-lo[2])) * 0.5));
-    const float distance = radius * 1.85f / std::tan(float(fov * M_PI / 360.0));
-    scene->camera.position = {cx + distance * 0.62f, cy - distance, cz + distance * 0.8f};
+    scene->camera.fit_to_geometry = true;
     scene->camera.target = {cx, cy, cz};
     scene->camera.fov_radians = float(fov * M_PI / 180.0);
     scene->custom_camera = true;
