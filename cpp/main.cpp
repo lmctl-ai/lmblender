@@ -49,11 +49,13 @@ namespace {
 struct Mesh {
   std::vector<std::array<double, 3>> vertices;
   std::vector<std::array<uint32_t, 3>> triangles;
+  std::vector<std::array<float, 2>> uvs;
   struct Material *material = nullptr;
   Mesh *geometry_source = nullptr;
   std::array<float, 3> translation{0.0f, 0.0f, 0.0f};
   std::array<float, 3> scale{1.0f, 1.0f, 1.0f};
   bool ground_plane = false;
+  bool smooth = false;
 };
 struct Material {
   std::array<float, 3> color{0.8f, 0.8f, 0.8f};
@@ -65,6 +67,7 @@ struct Material {
   std::array<float, 3> subsurface_radius{1.0f, 0.2f, 0.1f};
   float subsurface_scale = 0.1f;
   int volume_kind = 0; /* 1 absorption, 2 scatter */
+  bool volume_only = false;
   float volume_density = 0.0f;
   std::array<float, 3> volume_color{1.0f, 1.0f, 1.0f};
   float emission_strength = 0.0f;
@@ -130,6 +133,8 @@ struct Scene {
   CameraConfig camera;
   int render_timeout_seconds = 3600;
   int max_bounces = 12;
+  float clamp_direct = 0.0f;
+  float clamp_indirect = 0.0f;
   int render_seed = 0;
   bool denoise = false;
   std::string view_transform = "Standard";
@@ -524,8 +529,10 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_metallic(material.metallic);
     principled->set_roughness(material.roughness);
     principled->set_transmission_weight(material.transmission);
-    principled->set_subsurface_weight(material.subsurface);
-    principled->set_subsurface_method(ccl::CLOSURE_BSSRDF_BURLEY_ID);
+    /* Keep the principled surface intact; the DSL's subsurface control is
+     * represented by a translucent lobe until direct BSSRDF evaluation is
+     * stable across the static CPU build. */
+    principled->set_subsurface_weight(0.0f);
     principled->set_subsurface_radius(ccl::make_float3(material.subsurface_radius[0], material.subsurface_radius[1], material.subsurface_radius[2]));
     principled->set_subsurface_scale(material.subsurface_scale);
     principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
@@ -555,7 +562,21 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       graph->connect(coordinates->output("UV"), image->input("Vector"));
       graph->connect(image->output("Color"), principled->input("Base Color"));
     }
-    graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
+    if (material.volume_only) {
+      ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
+      transparent->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f));
+      graph->connect(transparent->output("BSDF"), graph->output()->input("Surface"));
+    } else if (material.subsurface > 0.0f) {
+      ccl::TranslucentBsdfNode *sss = graph->create_node<ccl::TranslucentBsdfNode>();
+      sss->set_color(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+      ccl::MixClosureNode *mix = graph->create_node<ccl::MixClosureNode>();
+      mix->set_fac(material.subsurface);
+      graph->connect(principled->output("BSDF"), mix->input("Closure1"));
+      graph->connect(sss->output("BSDF"), mix->input("Closure2"));
+      graph->connect(mix->output("Closure"), graph->output()->input("Surface"));
+    } else {
+      graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
+    }
     if (material.volume_kind == 1) {
       ccl::AbsorptionVolumeNode *volume = graph->create_node<ccl::AbsorptionVolumeNode>();
       volume->set_color(ccl::make_float3(material.volume_color[0], material.volume_color[1], material.volume_color[2]));
@@ -630,8 +651,16 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     for (size_t i = 0; i < mesh_data->triangles.size(); ++i)
       for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(mesh_data->triangles[i][j]);
     std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
-    std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), false);
+    std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), source_mesh->smooth);
     mesh->set_used_shaders(used_shaders);
+    if (!mesh_data->uvs.empty()) {
+      ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
+      ccl::float2 *uv = uv_attr->data_for_write<ccl::float2>();
+      if (mesh_data->uvs.size() != mesh_data->triangles.size() * 3)
+        throw dslvm::Error("mesh UV corner count does not match triangle count");
+      for (size_t i = 0; i < mesh_data->uvs.size(); ++i)
+        uv[i] = ccl::make_float2(mesh_data->uvs[i][0], mesh_data->uvs[i][1]);
+    }
       if (material && material->texture_kind == 3) {
         /* Build a cube-style per-corner projection. A vertex generated-coordinate
          * attribute collapses one UV axis on each side face, smearing 2D images. */
@@ -773,20 +802,21 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     ccl::float3 right = ccl::cross(forward, up_ref);
     if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
     right = ccl::normalize(right);
-    // The Cycles camera's perspective projection uses a unit square sensor;
-    // compensate the fitted camera's horizontal basis for the output aspect.
-    if (source.camera.fit_to_geometry && !source.camera.orthographic)
-      right *= float(height) / float(width);
+    /* Cycles' camera basis uses a square sensor; convert horizontal camera
+     * scale to the output's pixel aspect ratio. */
+    right *= float(height) / float(width);
     ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
     if (source.camera.orthographic) { right *= source.camera.ortho_scale * 0.5f; up *= source.camera.ortho_scale * 0.5f; }
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
                                      right.y, up.y, forward.y, p[1],
                                      right.z, up.z, forward.z, p[2]);
   }
-  scene->camera->set_matrix(camera_tfm);
+    scene->camera->set_matrix(camera_tfm);
   scene->camera->need_flags_update = true;
   scene->camera->update(scene);
   scene->integrator->set_max_bounce(source.max_bounces);
+  scene->integrator->set_sample_clamp_direct(source.clamp_direct);
+  scene->integrator->set_sample_clamp_indirect(source.clamp_indirect);
   scene->integrator->set_seed(source.render_seed);
   scene->integrator->set_use_denoise(source.denoise);
 
@@ -1012,6 +1042,51 @@ Mesh read_stl(const std::string &path) {
 dslvm::Registry make_registry() {
   dslvm::Registry registry;
   registry.context("scene", "Scene");
+  auto primitive = [](void *p, const std::string &kind, const double *v, size_t count, bool smooth) -> dslvm::Value {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    auto mesh = std::make_unique<Mesh>();
+    mesh->smooth = smooth;
+    auto add_tri = [&](uint32_t a, uint32_t b, uint32_t c) { mesh->triangles.push_back({a,b,c}); };
+    if (kind == "plane") {
+      const double s=v[0]*0.5;
+      mesh->vertices={{{-s,-s,0},{s,-s,0},{s,s,0},{-s,s,0}}}; add_tri(0,1,2);add_tri(0,2,3);
+    } else if (kind == "cube") {
+      const double s=v[0]*0.5;
+      mesh->vertices={{{-s,-s,-s},{s,-s,-s},{s,s,-s},{-s,s,-s},{-s,-s,s},{s,-s,s},{s,s,s},{-s,s,s}}};
+      const uint32_t f[][3]={{0,2,1},{0,3,2},{4,5,6},{4,6,7},{0,1,5},{0,5,4},{1,2,6},{1,6,5},{2,3,7},{2,7,6},{3,0,4},{3,4,7}};
+      for(const auto &t:f)add_tri(t[0],t[1],t[2]);
+    } else {
+      const int seg=int(v[kind=="uv_sphere"?1:(kind=="torus"?2:2)]);
+      const int rings=int(v[kind=="uv_sphere"?2:(kind=="torus"?3:2)]);
+      if(seg<8||seg>256||rings<4||rings>256) throw dslvm::Error("primitive segments/rings must be within 8..256 and 4..256");
+      if(kind=="uv_sphere") {
+        const double r=v[0];
+        for(int y=0;y<=rings;++y){double phi=M_PI*y/rings;for(int x=0;x<seg;++x){double th=2*M_PI*x/seg;mesh->vertices.push_back({r*std::sin(phi)*std::cos(th),r*std::sin(phi)*std::sin(th),r*std::cos(phi)});}}
+        for(int y=0;y<rings;++y)for(int x=0;x<seg;++x){uint32_t a=y*seg+x,b=y*seg+(x+1)%seg,c=(y+1)*seg+(x+1)%seg,d=(y+1)*seg+x;if(y>0)add_tri(a,d,b);if(y<rings-1)add_tri(b,d,c);}
+      } else if(kind=="cylinder"||kind=="cone") {
+        const double r=v[0],h=v[1];
+        for(int z=0;z<2;++z)for(int x=0;x<seg;++x){double th=2*M_PI*x/seg;double rr=(kind=="cone"&&z==1)?0:r;mesh->vertices.push_back({rr*std::cos(th),rr*std::sin(th),z?h*0.5:-h*0.5});}
+        const uint32_t bottom=2*seg,top=bottom+1;mesh->vertices.push_back({0,0,-h*0.5});mesh->vertices.push_back({0,0,h*0.5});
+        for(int x=0;x<seg;++x){uint32_t n=(x+1)%seg;add_tri(x,n,seg+n);if(kind=="cylinder")add_tri(x,seg+n,seg+x);add_tri(bottom,n,x);if(kind=="cylinder")add_tri(top,seg+x,seg+n);}
+      } else if(kind=="torus") {
+        const double R=v[0],r=v[1];
+        for(int y=0;y<rings;++y)for(int x=0;x<seg;++x){double a=2*M_PI*x/seg,b=2*M_PI*y/rings;double rr=R+r*std::cos(b);mesh->vertices.push_back({rr*std::cos(a),rr*std::sin(a),r*std::sin(b)});}
+        for(int y=0;y<rings;++y)for(int x=0;x<seg;++x){uint32_t a=y*seg+x,b=y*seg+(x+1)%seg,c=((y+1)%rings)*seg+(x+1)%seg,d=((y+1)%rings)*seg+x;add_tri(a,b,c);add_tri(a,c,d);}
+      } else throw dslvm::Error("unknown primitive kind");
+    }
+    if(mesh->vertices.size()>2'000'000||mesh->triangles.size()>4'000'000)throw dslvm::Error("primitive geometry budget exceeded");
+    std::array<double,3> lo{INFINITY,INFINITY,INFINITY},hi{-INFINITY,-INFINITY,-INFINITY};
+    for(const auto &q:mesh->vertices)for(int k=0;k<3;++k){lo[k]=std::min(lo[k],q[k]);hi[k]=std::max(hi[k],q[k]);}
+    for(const auto &t:mesh->triangles)for(int k=0;k<3;++k){const auto &q=mesh->vertices[t[k]];mesh->uvs.push_back({float((q[0]-lo[0])/std::max(hi[0]-lo[0],1e-9)),float((q[1]-lo[1])/std::max(hi[1]-lo[1],1e-9))});}
+    Mesh *result=mesh.get();scene->meshes.push_back(std::move(mesh));return dslvm::Value::object("Mesh",result);
+  };
+  registry.method("Scene","plane",{"float"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("plane size must be in (0,10000]");return primitive(p,"plane",&a[0].f,1,false);});
+  registry.method("Scene","cube",{"float"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("cube size must be in (0,10000]");return primitive(p,"cube",&a[0].f,1,false);});
+  registry.method("Scene","uv_sphere",{"float","int","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("sphere radius must be in (0,10000]");double v[]={a[0].f,double(a[1].i),double(a[2].i)};return primitive(p,"uv_sphere",v,3,a[3].b);});
+  registry.method("Scene","cylinder",{"float","float","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[1].f<=0||a[0].f>10000||a[1].f>10000)throw dslvm::Error("cylinder dimensions must be in (0,10000]");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[2].i)};return primitive(p,"cylinder",v,4,a[3].b);});
+  registry.method("Scene","cone",{"float","float","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[1].f<=0||a[0].f>10000||a[1].f>10000)throw dslvm::Error("cone dimensions must be in (0,10000]");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[2].i)};return primitive(p,"cone",v,4,a[3].b);});
+  registry.method("Scene","torus",{"float","float","int","int","bool"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=a[1].f||a[1].f<=0||a[0].f>10000)throw dslvm::Error("torus radii require major > minor > 0");double v[]={a[0].f,a[1].f,double(a[2].i),double(a[3].i)};return primitive(p,"torus",v,4,a[4].b);});
   registry.method("Scene", "camera_look_at", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("camera values must be finite");
@@ -1034,6 +1109,11 @@ dslvm::Registry make_registry() {
     scene->camera_aperture = float(a[0].f);
     scene->camera_focus_distance = float(a[1].f);
     return dslvm::Value::none();
+  });
+  registry.method("Scene", "light_clamp", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    for(const auto &v:a) if(!std::isfinite(v.f)||v.f<0||v.f>10000) throw dslvm::Error("light clamp values must be finite and within [0,10000] (0 disables)");
+    scene->clamp_direct=float(a[0].f);scene->clamp_indirect=float(a[1].f);return dslvm::Value::none();
   });
   registry.method("Scene", "camera_orthographic", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
@@ -1212,6 +1292,12 @@ dslvm::Registry make_registry() {
     scene->meshes.push_back(std::move(mesh));
     return dslvm::Value::none();
   });
+  registry.method("Scene", "checker_ground", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[0].f>10000||a[1].f<0.1||a[1].f>1000)throw dslvm::Error("checker ground size must be (0,10000] and tile scale 0.1..1000");
+    auto material=std::make_unique<Material>();material->color={0.035f,0.045f,0.06f};material->texture_color2={0.72f,0.75f,0.78f};material->texture_scale=float(a[1].f);material->texture_kind=1;material->roughness=0.82f;Material *mat=material.get();scene->materials.push_back(std::move(material));
+    const double s=a[0].f;auto mesh=std::make_unique<Mesh>();mesh->vertices={{{-s,-s,-0.02},{s,-s,-0.02},{s,s,-0.02},{-s,s,-0.02}}};mesh->triangles={{{0,2,1},{0,3,2}}};mesh->uvs={{0,0},{1,1},{1,0},{0,0},{0,1},{1,1}};mesh->material=mat;mesh->ground_plane=true;scene->meshes.push_back(std::move(mesh));return dslvm::Value::none();
+  });
   registry.method("Scene", "wall_plane_y", {"float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("wall plane values must be finite");
@@ -1267,6 +1353,7 @@ dslvm::Registry make_registry() {
     if (a[1].f < 0.0 || a[1].f > 100.0 || a[2].f < 0.0 || a[2].f > 1.0 || a[3].f < 0.0 || a[3].f > 1.0 || a[4].f < 0.0 || a[4].f > 1.0)
       throw dslvm::Error("volume density must be in [0,100] and color channels in [0,1]");
     material->volume_kind = a[0].s == "absorption" ? 1 : 2;
+    material->volume_only = true;
     material->volume_density = float(a[1].f);
     material->volume_color = {float(a[2].f), float(a[3].f), float(a[4].f)};
     return dslvm::Value::none();

@@ -345,6 +345,85 @@
             "params": [],
             "returns": "string"
           }
+        ],
+        "plane": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "cube": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "uv_sphere": [
+          {
+            "params": [
+              "float",
+              "int",
+              "int",
+              "bool"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "cylinder": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int",
+              "bool"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "cone": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int",
+              "bool"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "torus": [
+          {
+            "params": [
+              "float",
+              "float",
+              "int",
+              "int",
+              "bool"
+            ],
+            "returns": "Mesh"
+          }
+        ],
+        "checker_ground": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "light_clamp": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },

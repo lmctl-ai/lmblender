@@ -15,6 +15,7 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/environment-texture.lms "$build/environment-texture.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/transparent-film.lms "$build/transparent-film.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/camera-dof.lms "$build/camera-dof.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/primitives-gallery.lms "$build/primitives-gallery.dslb" >/dev/null
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
   "${LMSCRIPT:-lmscript}" "examples/$effect.lms" "$build/$effect.dslb" >/dev/null
 done
@@ -39,6 +40,7 @@ done
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
 "$exe" --dsl "$build/camera-dof.dslb" >"$build/camera-dof-result.json"
+"$exe" --dsl "$build/primitives-gallery.dslb" >"$build/primitives-gallery-result.json"
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
   "$exe" --dsl "$build/$effect.dslb" >"$build/$effect-result.json"
 done
@@ -73,6 +75,7 @@ test -s "$build/sky-texture.png"
 test -s "$build/environment-texture.png"
 test -s "$build/transparent-film.png"
 test -s "$build/camera-dof.png"
+test -s "$build/primitives-gallery.png"
 for image in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do test -s "$build/$image.png"; done
 test -s "$build/imported-mesh-xml.png"
 test -s "$build/material-principled.png"
@@ -102,6 +105,7 @@ python3 tests/sky_quality.py "$build/sky-texture.png"
 python3 tests/environment_quality.py "$build/environment-texture.png"
 python3 tests/transparent_alpha_quality.py "$build/transparent-film.png"
 python3 tests/dof_quality.py "$build/camera-dof.png"
+python3 tests/primitives_quality.py "$build/primitives-gallery.png"
 python3 tests/material_effect_quality.py "$build/volume-control.png" "$build/volume-fog.png"
 python3 tests/material_effect_quality.py "$build/subsurface-control.png" "$build/subsurface.png"
 python3 tests/material_effect_quality.py "$build/glass-opaque-control.png" "$build/glass-transmission.png"
