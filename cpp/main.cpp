@@ -25,6 +25,10 @@
 #include <nlohmann/json.hpp>
 
 #include "device/device.h"
+#include "util/version.h"
+#ifdef WITH_OPENIMAGEDENOISE
+#  include <OpenImageDenoise/config.h>
+#endif
 #include "scene/background.h"
 #include "scene/camera.h"
 #include "scene/film.h"
@@ -1745,13 +1749,22 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender 0.1.0 (DSL bytecode v5)");
+    return dslvm::Value::string("lmblender 0.2.0 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
 }
 
 int main(int argc, char **argv) {
+  if (argc == 2 && std::string(argv[1]) == "--version") {
+    std::cout << "lmblender 0.2.0 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+#ifdef WITH_OPENIMAGEDENOISE
+    std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
+#else
+    std::cout << "OpenImageDenoise disabled\n";
+#endif
+    return 0;
+  }
   if (argc == 2 && std::string(argv[1]) == "--schema") {
     std::cout.write(reinterpret_cast<const char *>(lmblender::embedded_schema),
                      static_cast<std::streamsize>(lmblender::embedded_schema_size));
@@ -1764,7 +1777,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (argc != 3 || std::string(argv[1]) != "--dsl") {
-    std::cerr << "usage: lmblender --schema | --dsl-signatures | --dsl BYTECODE.dslb\n";
+    std::cerr << "usage: lmblender --version | --schema | --dsl-signatures | --dsl BYTECODE.dslb\n";
     return 2;
   }
   try {

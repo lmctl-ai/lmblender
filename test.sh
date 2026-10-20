@@ -8,6 +8,9 @@ cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
 exe="$build/lmblender"
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
+"$exe" --version >"$build/version.txt"
+grep -q '^Cycles [0-9]\+\.[0-9]\+\.[0-9]\+' "$build/version.txt"
+grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.txt"
 "${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/import-mesh.lms "$build/import-mesh.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/import-ply.lms "$build/import-ply.dslb" >/dev/null
