@@ -9,4 +9,4 @@ transparent=sum(a<16 for a in alphas)
 opaque=sum(a>240 for a in alphas)
 print(f"Transparent-film QA: transparent={transparent}, opaque={opaque}, total={w*h}")
 assert transparent > w*h//3, "transparent world pixels should occupy at least one third of frame"
-assert 100 < opaque < w*h//2, "rendered tetra should contribute a nontrivial opaque silhouette"
+assert 100 < opaque < w*h//2, "rendered smooth sphere should contribute a nontrivial opaque silhouette"

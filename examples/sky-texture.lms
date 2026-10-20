@@ -1,6 +1,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/sky-texture.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
-let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+let mesh = scene.uv_sphere(1.0,48,32,true); mesh.translate(0.0,0.0,1.0);
+mesh.set_material(scene.material(0.72,0.22,0.06,0.0,0.38,0.0,0.0,0.0,0.0,0.0));
 scene.sky_texture(35.0, 12.0, 0.1);
 scene.fit_camera(46.0);
 scene.render_png("build/sky-texture.png", 16, 640, 480);
