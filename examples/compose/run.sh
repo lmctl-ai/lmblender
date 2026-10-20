@@ -16,5 +16,10 @@ for item in mug plate; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item-render.lms" "$out/$item-render.dslb" >/dev/null
   "$host_bin" --dsl "$out/$item-render.dslb"
   python3 "$root/tests/png_metrics.py" "$root/build/compose-$item.png"
+  if [[ "$item" == mug ]]; then
+    python3 "$root/tests/compose_mug_quality.py" "$root/build/compose-mug.png"
+  else
+    python3 "$root/tests/compose_plate_quality.py" "$root/build/compose-plate.png"
+  fi
 done
 echo "Wrote $root/build/compose-mug.png and compose-plate.png"

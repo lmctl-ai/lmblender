@@ -1,12 +1,17 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/compose-mug.dslb";
 p = _dsl_ schema="../../schema/lmblender.dsl.json";
 let mesh = scene.import_stl("build/compose-input/build/mug.stl");
-let ceramic = scene.material(0.08, 0.38, 0.62, 0.05, 0.28, 0.0, 0.08, 0.38, 0.62, 1.5);
+# lmcad's revolve_y geometry uses +Y as its upright axis; map that axis to renderer +Z.
+mesh.rotate_x(90.0);
+mesh.translate(0.0, 0.0, 7.0);
+let ceramic = scene.material(0.08, 0.28, 0.42, 0.0, 0.22, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(ceramic);
-scene.world_color(0.12, 0.16, 0.22, 0.35);
-scene.point_light(-10.0, -15.0, 18.0, 1.0, 0.82, 0.66, 1200.0);
-scene.camera_look_at(18.0, -25.0, 18.0, 0.0, 0.0, 0.0, 48.0);
-scene.render_settings(8, 17, false);
-scene.render_png("build/compose-mug.png", 32, 384, 288);
+scene.ground_plane(-0.08, 200.0, 0.42, 0.44, 0.48);
+scene.world_color(0.20, 0.22, 0.27, 0.65);
+scene.area_light(-12.0, -16.0, 22.0, 0.0, 0.0, 3.0, 1.0, 0.82, 0.68, 6000.0, 8.0);
+scene.area_light(11.0, -11.0, 13.0, 0.0, 0.0, 5.0, 0.68, 0.82, 1.0, 1800.0, 12.0);
+scene.fit_camera(42.0);
+scene.render_settings(10, 17, false);
+scene.render_png("build/compose-mug.png", 256, 512, 384);
 end _dsl_
 savedsl(p, out);

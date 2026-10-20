@@ -5,6 +5,10 @@
     "Scene": {
       "methods": {
         "camera_look_at": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "fit_camera": [{"params": ["float"], "returns": "void"}],
+        "area_light": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "ground_plane": [{"params": ["float", "float", "float", "float", "float"], "returns": "void"}],
+        "wall_plane_y": [{"params": ["float", "float", "float", "float", "float"], "returns": "void"}],
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
         "expect_int": [
@@ -54,6 +58,7 @@
         "set_material": [{"params": ["Material"], "returns": "void"}],
         "translate": [{"params": ["float", "float", "float"], "returns": "void"}],
         "scale": [{"params": ["float", "float", "float"], "returns": "void"}],
+        "rotate_x": [{"params": ["float"], "returns": "void"}],
         "vertex_count": [{"params": [], "returns": "int"}],
         "triangle_count": [{"params": [], "returns": "int"}],
         "min_x": [{"params": [], "returns": "float"}],

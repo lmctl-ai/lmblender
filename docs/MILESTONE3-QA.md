@@ -1,19 +1,27 @@
-# Milestone 3 render QA
+# Milestone 3 image review
 
-Run on 2026-10-20 after `./test.sh`; static host reports `ldd: not a dynamic executable`.
+Re-rendered 2026-10-20 after correcting direct Cycles light shader assignments and lmcad/renderer axis handling. The earlier generic compose “PASS 5/5” is withdrawn. Both compose images now have image-specific numeric checks in `tests/compose_mug_quality.py` and `tests/compose_plate_quality.py`, run by `examples/compose/run.sh`.
 
-| DSL example | Auditable image check | Numeric result | Image QA |
+| Image / example | Falsifiable criteria | Numeric result | Independent visual review |
 |---|---|---|---|
-| `examples/render-mesh.lms` | PNG pixel variation and direct-vs-XML object pixels | 256x192; direct/XML object MAD 1.11/255; full-frame MAD 14.94/255 due the XML fixture's unlinked black world | inspected |
-| `examples/material-principled.lms` | Blue foreground pixels and green top-left world sample | mean object RGB `(40.4, 100.5, 247.5)`; world sample `(10, 54, 15)` | PASS: centered blue tetrahedron against green world |
-| `examples/camera-look-at.lms` | Foreground centroid within 12% of image center | `(120.7, 114.0)` in 256x192 | PASS: full tetrahedron near center, uncropped |
-| `examples/mesh-instances.lms` | Connected-component segmentation; require two components >=10 pixels | component sizes `[915, 781]`; 256x192 | PASS: two separate uncropped tetrahedra with a clear gap |
-| `examples/render-exr.lms` | OpenEXR magic, dataWindow and payload | 128x96, 5,453 bytes | header validated |
-| `examples/render-timeout.lms` | One-second cancellation, structured error, no published partial output | `RENDER_TIMEOUT`; no PNG published | cancellation check passed |
-| `examples/render-settings.lms` | Visible pixels at a non-default seed/bounce setting | 192x144; luminance stddev 35.82/255 | PASS, score 5/5: one centered uncropped tetrahedron with clear contrast |
-| `examples/compose/mug-render.lms` | Pixel variation plus checklist for ceramic body, attached handle, framing and contrast | 384x288; luminance stddev 32.23/255 | PASS, score 5/5 |
-| `examples/compose/plate-render.lms` | Pixel variation plus checklist for perforated plate, open holes and framing | 384x288; luminance stddev 33.42/255 | PASS, score 5/5; eight holes visible |
+| `build/compose-mug.png` / `examples/compose/mug-render.lms` | blue body mask, uncropped; principal axis <=10° from vertical; body sigma >=7/255; dark opening/rim contrast; lit floor >1.25x shadow sample | upright error 3.3°; body sigma 20.7/255; cavity 25.3 vs rim 35.5; floor lit/shadow 83.5/26.7 | Opus PASS, 4/5. Opening, attached handle, soft key pool, and cast shadow visible. Minor vertical facet banding, floor grain, and dark surround remain. |
+| `build/compose-plate.png` / `examples/compose/plate-render.lms` | copper mask >5,000 pixels; uncropped; eight neutral backdrop components visible through plate; lit wall >1.2x wall shadow | copper pixels 11,125; 8 openings; wall lit/shadow 113.4/62.1 | Opus PASS, 4/5. All 8 holes show the lit neutral wall. Material still reads as dark rust-orange more than polished copper; pink light noise above the plate remains minor. |
 
-The requested QA reviewer inspected the three material, camera, and instance PNGs directly and returned PASS for each checklist. Other numerical image checks are run by `test.sh`.
+The mug is explicitly rotated from lmcad's Y-up `revolve_y` coordinates to renderer +Z-up. Generic STL carries no axis metadata, so arbitrary imports are not rotated automatically. `scene.fit_camera(fov)` uses transformed mesh bounds and ignores studio planes; the composition uses a diffuse XY floor, area key/fill, and a point-fill default where no point light is supplied. The plate uses a lit vertical wall behind its holes so openings can be checked visually and numerically.
 
-The lmcad composition runner `examples/compose/run.sh` successfully ran both lmcad STL exporters and lmblender render scripts sequentially. Source models were the existing lmcad mug and plate-with-holes examples.
+## Technical smoke images (not product-gallery claims)
+
+The compact binding examples use a tetrahedron fixture to exercise execution and pixels, not to claim a realistic material or composition. I inspected each generated image directly:
+
+| Image | What it demonstrates | Limitation |
+|---|---|---|
+| `build/imported-mesh.png` | visible gray tetrahedron silhouette | projected nearly edge-on; not a modeling showcase |
+| `build/imported-mesh-xml.png` | same fixture via XML oracle | dark-background regression oracle only |
+| `build/material-principled.png` | blue material against green world | simple tetrahedron, slight visible shading, not a material study |
+| `build/camera-look-at.png` | visible object near the image center | same simple tetrahedron |
+| `build/mesh-instances.png` | two distinct, separated silhouettes | not a composition example |
+| `build/render-settings.png` | visible pixels under selected seed/bounce settings | technical smoke only |
+| `build/cornell-view.png` | colored room planes and central box | XML test scene, not a full lighting gallery |
+| `build/cornell-cleanenv.png`, `build/cornell-static.png`, `build/cornell-dynamic.png` | output/environment and linkage smoke files | not beauty renders; static/dynamic controls are minimal |
+
+`./test.sh` checks decoded output, direct-vs-XML object-pixel MAD, embedded schema, and static linkage. The old generic visual score is not treated as evidence for scene-specific visual quality.
