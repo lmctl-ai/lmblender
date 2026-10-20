@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
+#include <atomic>
+#include <thread>
 #include <filesystem>
 #include <memory>
 #include <limits>
@@ -71,7 +73,32 @@ struct Scene {
   float world_strength = 0.45f;
   bool custom_camera = false;
   CameraConfig camera;
+  int render_timeout_seconds = 3600;
 };
+
+template<typename SessionType> void run_session_with_timeout(SessionType *session, const int timeout_seconds, const std::string &temporary_output)
+{
+  std::atomic<bool> finished{false};
+  std::atomic<bool> timed_out{false};
+  std::thread watchdog([&] {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+    while (!finished.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    if (!finished.exchange(true, std::memory_order_acq_rel)) {
+      timed_out.store(true, std::memory_order_release);
+      session->cancel();
+    }
+  });
+  session->start();
+  session->wait();
+  finished.store(true, std::memory_order_release);
+  watchdog.join();
+  if (timed_out.load(std::memory_order_acquire)) {
+    std::error_code ec;
+    std::filesystem::remove(temporary_output, ec);
+    throw dslvm::Error("RENDER_TIMEOUT", "render timed out after " + std::to_string(timeout_seconds) + " seconds");
+  }
+}
 
 void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
 {
@@ -152,8 +179,7 @@ void render_png_xml_oracle(const Scene &source, const std::string &output, int s
   buffers.width = buffers.full_width = width;
   buffers.height = buffers.full_height = height;
   session->reset(params, buffers);
-  session->start();
-  session->wait();
+  run_session_with_timeout(session.get(), source.render_timeout_seconds, tmp);
   session.reset();
   std::filesystem::rename(tmp, output, ec);
   if (ec) {
@@ -321,8 +347,7 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
   buffers.width = buffers.full_width = width;
   buffers.height = buffers.full_height = height;
   session->reset(params, buffers);
-  session->start();
-  session->wait();
+  run_session_with_timeout(session.get(), source.render_timeout_seconds, tmp);
   session.reset();
   std::filesystem::rename(tmp, output, ec);
   if (ec) {
@@ -454,6 +479,11 @@ dslvm::Registry make_registry() {
     scene->camera.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
     scene->camera.fov_radians = float(a[6].f * M_PI / 180.0);
     scene->custom_camera = true;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_timeout", {"int"}, "void", [](void *p, dslvm::Args &a) {
+    if (a[0].i < 1 || a[0].i > 3600) throw dslvm::Error("render timeout must be in [1,3600] seconds");
+    static_cast<Scene *>(p)->render_timeout_seconds = int(a[0].i);
     return dslvm::Value::none();
   });
   registry.method("Scene", "world_color", {"float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {

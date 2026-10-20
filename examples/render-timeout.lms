@@ -1,0 +1,7 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/render-timeout.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/tetra.obj");
+scene.render_timeout(1);
+scene.render_png("build/render-timeout.png", 65536, 1024, 1024);
+end _dsl_
+savedsl(p, out);

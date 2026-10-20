@@ -37,6 +37,7 @@
             "returns": "void"
           }
         ],
+        "render_timeout": [{"params": ["int"], "returns": "void"}],
         "version": [
           {
             "params": [],

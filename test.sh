@@ -14,12 +14,25 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-principled.lms "$build/material-principled.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/camera-look-at.lms "$build/camera-look-at.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/render-timeout.lms "$build/render-timeout.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
 LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/render-mesh-xml-result.json"
 "$exe" --dsl "$build/material-principled.dslb" >"$build/material-principled-result.json"
 "$exe" --dsl "$build/camera-look-at.dslb" >"$build/camera-look-at-result.json"
+rm -f "$build/render-timeout.png"
+if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
+  echo "render-timeout test unexpectedly completed" >&2
+  exit 1
+fi
+test ! -e "$build/render-timeout.png"
+python3 - "$build/render-timeout-result.json" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1]))
+assert r.get('ok') is False and r.get('code') == 'RENDER_TIMEOUT', r
+assert 'timed out' in r.get('message',''), r
+PY
 test -s "$build/imported-mesh.png"
 test -s "$build/imported-mesh-xml.png"
 test -s "$build/material-principled.png"
