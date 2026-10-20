@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 import sys, math
 from png_metrics import decode
 w,h,c,rows=decode(sys.argv[1])

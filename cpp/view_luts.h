@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: Blender Authors and Blender color-management contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generated from Blender 5.2 config.ocio; input is scene-linear Rec.709, output sRGB display.
 #pragma once
 #include <array>

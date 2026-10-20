@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Strict, auditable framing and distinct-view checks for lmcad turntables."""
 import sys
 from pathlib import Path

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Create a uniform emission-panel .blend and render Blender OCIO goldens.
 
 Run only in the test/reference path with Blender's bundled Python. The lmblender

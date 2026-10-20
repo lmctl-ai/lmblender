@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 import sys
 from collections import deque
 from png_metrics import decode

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Numeric image checks for three lmcad bracket turntable views."""
 import sys
 from pathlib import Path

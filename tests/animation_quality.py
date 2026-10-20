@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 import pathlib, struct, sys, zlib
 root=pathlib.Path(sys.argv[1])
 def png_rgb(path):

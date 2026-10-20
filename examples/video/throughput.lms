@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 out = ARGV.len() > 0 ? ARGV[0] : "build/video-throughput.dslb";
 p = _dsl_ schema="../../schema/lmblender.dsl.json";
 let orb = scene.uv_sphere(1.0, 32, 16, true);

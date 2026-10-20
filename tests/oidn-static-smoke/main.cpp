@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 #include <OpenImageDenoise/oidn.hpp>
 #include <cmath>
 #include <iostream>

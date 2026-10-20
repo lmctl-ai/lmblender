@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 namespace gltf_import {

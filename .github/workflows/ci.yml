@@ -1,0 +1,174 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: linux-arm64
+            runner: ubuntu-24.04-arm
+            machine: arm64
+          - arch: linux-x64
+            runner: ubuntu-24.04
+            machine: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build gcc-14 g++-14 git curl xz-utils patch flex bison python3 npm pkg-config libtinfo-dev libncurses-dev libssl-dev
+          echo "compiler=$(g++-14 -dumpfullversion -dumpversion)" >> "$GITHUB_OUTPUT"
+        id: toolchain
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install pinned DSL v5 compiler
+        run: npm install --global @lmctl-ai/lmctl@0.2.347
+      - name: restore compiler and static dependency cache
+        id: deps-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/blender-src-upstream-v5.2.2
+            build/blender-deps-environment
+            build/blender-deps-harvest
+            build/blender-libdir
+            build/ispc-toolchain
+            build/ispc-executable.txt
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+            build/oidn-static-build
+            build/cycles-static
+          key: lmblender-${{ matrix.arch }}-gcc-${{ steps.toolchain.outputs.compiler }}-${{ hashFiles('.github/cycles-flags.txt', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh', 'scripts/configure-cycles-static.sh', 'scripts/make-cycles-source-overlay.py', 'patches/*.patch') }}
+      - name: fetch upstream Blender source and pinned dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        env:
+          BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+          BLENDER_DEPS_ENV_BUILD: ${{ github.workspace }}/build/blender-deps-environment
+          BLENDER_DEPS_INSTALL: ${{ github.workspace }}/build/blender-deps-harvest
+          BLENDER_LIBDIR: ${{ github.workspace }}/build/blender-libdir
+          LMBLENDER_CXX: /usr/bin/g++-14
+          LMBLENDER_CC: /usr/bin/gcc-14
+          BUILD_JOBS: 2
+        run: |
+          scripts/fetch-cycles-source.sh
+          scripts/bootstrap-static-deps.sh
+      - name: build static image dependencies
+        env:
+          BLENDER_DEPS_SOURCE_ROOT: ${{ github.workspace }}/build/blender-deps-environment/build
+          BLENDER_DEPS_INSTALL: ${{ github.workspace }}/build/blender-deps-harvest
+          BLENDER_LIBDIR: ${{ github.workspace }}/build/blender-libdir
+          LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/static-prefix-gcc14
+          LMBLENDER_DEPS_BUILD_DIR: ${{ github.workspace }}/build/deps-gcc14
+          LMBLENDER_CXX: /usr/bin/g++-14
+          LMBLENDER_CC: /usr/bin/gcc-14
+          BUILD_JOBS: 2
+        run: scripts/build-deps.sh
+      - name: load pinned ISPC executable path
+        run: echo "ISPC_EXECUTABLE=$(cat build/ispc-executable.txt)" >> "$GITHUB_ENV"
+      - name: build static CPU denoiser
+        env:
+          OIDN_SOURCE: ${{ github.workspace }}/build/blender-deps-environment/build/openimagedenoise/src/external_openimagedenoise
+          OIDN_BUILD_DIR: ${{ github.workspace }}/build/oidn-static-build
+          OIDN_INSTALL_PREFIX: ${{ github.workspace }}/build/oidn-static-install
+          LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/static-prefix-gcc14
+          BUILD_JOBS: 2
+        run: scripts/build-oidn-static.sh
+      - name: build standalone Cycles with pinned Blender source overlay
+        env:
+          BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+          BLENDER_DEPS_INSTALL: ${{ github.workspace }}/build/blender-deps-harvest
+          BLENDER_LIBDIR: ${{ github.workspace }}/build/blender-deps-harvest
+          LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/static-prefix-gcc14
+          LMBLENDER_DEPS_BUILD_DIR: ${{ github.workspace }}/build/deps-gcc14
+          LMBLENDER_CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+          LMBLENDER_CXX: /usr/bin/g++-14
+          LMBLENDER_CC: /usr/bin/gcc-14
+          BUILD_JOBS: 2
+        run: scripts/configure-cycles-static.sh
+      - name: build and test lmblender
+        env:
+          CC: /usr/bin/gcc-14
+          CXX: /usr/bin/g++-14
+          BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+          BLENDER_DEPS_INSTALL: ${{ github.workspace }}/build/blender-deps-harvest
+          BLENDER_LIBDIR: ${{ github.workspace }}/build/blender-deps-harvest
+          CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+          LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/static-prefix-gcc14
+          BUILD_JOBS: 2
+        run: ./test.sh
+      - name: verify the binary is static and stage release assets
+        env:
+          LMBLENDER_ARCH: ${{ matrix.machine }}
+          RELEASE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.2.1' }}
+          LMBLENDER_HOST_RELEASE: ${{ runner.temp }}/lmblender-release
+        run: |
+          ldd build/lmblender > build/lmblender.ldd 2>&1 || true
+          grep -q 'not a dynamic executable' build/lmblender.ldd
+          scripts/release.sh
+          mkdir -p dist
+          cp build/lmblender.ldd dist/
+          sha256sum dist/lmblender-linux-* > dist/SHA256SUMS
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            build/blender-src-upstream-v5.2.2
+            build/blender-deps-environment
+            build/blender-deps-harvest
+            build/blender-libdir
+            build/ispc-toolchain
+            build/ispc-executable.txt
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+            build/oidn-static-build
+            build/cycles-static
+          key: lmblender-${{ matrix.arch }}-gcc-${{ steps.toolchain.outputs.compiler }}-${{ hashFiles('.github/cycles-flags.txt', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh', 'scripts/configure-cycles-static.sh', 'scripts/make-cycles-source-overlay.py', 'patches/*.patch') }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmblender-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: lmblender-linux-*
+          path: dist
+          merge-multiple: true
+      - name: attach binaries, archives, checksums, and notices to a draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber dist/*
+            gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft
+          else
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --generate-notes dist/*
+          fi

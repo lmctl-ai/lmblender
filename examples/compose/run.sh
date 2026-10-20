@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cad_source=${LMCAD_SOURCE:-/home/ubuntu/repos/lmcad}

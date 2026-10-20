@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-maps.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
 let textured = scene.uv_sphere(0.88, 48, 24, true);

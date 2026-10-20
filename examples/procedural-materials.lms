@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 out = ARGV.len() > 0 ? ARGV[0] : "build/procedural-materials.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
 let checker_mesh = scene.import_obj("tests/fixtures/tetra.obj");

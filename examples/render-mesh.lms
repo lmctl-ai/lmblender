@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 out = ARGV.len() > 0 ? ARGV[0] : "build/imported-mesh.png";
 bytecode = ARGV.len() > 1 ? ARGV[1] : "build/render-mesh.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";

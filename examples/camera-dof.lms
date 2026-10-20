@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-dof.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
 let near = scene.uv_sphere(0.8,48,32,true);

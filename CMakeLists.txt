@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 cmake_minimum_required(VERSION 3.24)
 project(lmblender LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
@@ -8,6 +11,7 @@ set(BLENDER_SOURCE_TREE "/home/ubuntu/blender-src" CACHE PATH "Blender source tr
 set(CYCLES_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/cycles-static" CACHE PATH "Static Cycles build directory")
 set(LMBLENDER_STATIC_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/build/static-prefix-gcc14" CACHE PATH "Static OIIO/OCIO/EXR/TBB prefix")
 set(BLENDER_DEPS_INSTALL "/home/ubuntu/blender-deps/install" CACHE PATH "Harvested Blender dependencies")
+set(BLENDER_LIBDIR "${BLENDER_DEPS_INSTALL}" CACHE PATH "Blender support headers, including sse2neon")
 set(LMBLENDER_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmblender.dsl.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${LMBLENDER_SCHEMA}")
 file(READ "${LMBLENDER_SCHEMA}" LMBLENDER_SCHEMA_HEX HEX)
@@ -39,7 +43,7 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
   target_include_directories(lmblender PRIVATE
     "${CYCLES_SOURCE}" "${CYCLES_BUILD_DIR}/intern/cycles" "${CYCLES_BUILD_DIR}"
     "${BLENDER_SOURCE_TREE}/intern/atomic"
-    "/home/ubuntu/lib/linux_aarch64/sse2neon"
+    "${BLENDER_LIBDIR}/sse2neon"
     "${BLENDER_DEPS_INSTALL}/pugixml/include"
     "${LMBLENDER_STATIC_PREFIX}/include")
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install/include/OpenImageDenoise/oidn.hpp")

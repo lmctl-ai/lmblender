@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Image QA for the perforated lmcad plate composition."""
 import sys
 from pathlib import Path

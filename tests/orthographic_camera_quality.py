@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 """Compare a perspective reference and the same scene in orthographic projection."""
 import sys
 from pathlib import Path

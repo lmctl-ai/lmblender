@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+# SPDX-License-Identifier: MIT
+
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 static_cycles=${LMBLENDER_STATIC_CYCLES:-$repo/build/cycles-static/bin/cycles}
