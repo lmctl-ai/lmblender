@@ -22,7 +22,7 @@ scene.camera_optics_keyframe(0, 42.0, 8.0, "linear");
 scene.camera_optics_keyframe(1, 70.0, 8.0, "linear");
 scene.camera_optics_keyframe(2, 42.0, 8.0, "linear");
 scene.world_color(0.12, 0.15, 0.2, 0.5);
-scene.render_settings(8, 0, true);
+scene.render_settings(8, 0, true); scene.set_threads(2);
 scene.render_sequence("build/animation-visibility-{frame}.png", 0, 2, 8, 480, 270);
 end _dsl_
 savedsl(p, out);
