@@ -43,8 +43,20 @@ namespace {
 struct Mesh {
   std::vector<std::array<double, 3>> vertices;
   std::vector<std::array<uint32_t, 3>> triangles;
+  struct Material *material = nullptr;
 };
-struct Scene { std::vector<std::unique_ptr<Mesh>> meshes; };
+struct Material {
+  std::array<float, 3> color{0.8f, 0.8f, 0.8f};
+  std::array<float, 3> emission{0.0f, 0.0f, 0.0f};
+  float metallic = 0.0f;
+  float roughness = 0.5f;
+  float transmission = 0.0f;
+  float emission_strength = 0.0f;
+};
+struct Scene {
+  std::vector<std::unique_ptr<Mesh>> meshes;
+  std::vector<std::unique_ptr<Material>> materials;
+};
 
 void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
 {
@@ -191,7 +203,22 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
     shader->tag_update(scene);
     return shader;
   };
-  ccl::Shader *surface = make_emission_shader(ccl::make_float3(0.62f, 0.66f, 0.72f), 1.0f);
+  auto make_principled_shader = [scene](const Material &material) {
+    ccl::Shader *shader = scene->create_node<ccl::Shader>();
+    auto graph = ccl::make_unique<ccl::ShaderGraph>();
+    ccl::PrincipledBsdfNode *principled = graph->create_node<ccl::PrincipledBsdfNode>();
+    principled->set_base_color(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
+    principled->set_metallic(material.metallic);
+    principled->set_roughness(material.roughness);
+    principled->set_transmission_weight(material.transmission);
+    principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
+    principled->set_emission_strength(material.emission_strength);
+    graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
+    shader->set_graph(std::move(graph));
+    shader->tag_update(scene);
+    return shader;
+  };
+  ccl::Shader *default_surface = make_emission_shader(ccl::make_float3(0.62f, 0.66f, 0.72f), 1.0f);
   ccl::Shader *world = scene->default_background;
   auto world_graph = ccl::make_unique<ccl::ShaderGraph>();
   ccl::BackgroundNode *background = world_graph->create_node<ccl::BackgroundNode>();
@@ -201,9 +228,10 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
   world->set_graph(std::move(world_graph));
   world->tag_update(scene);
 
-  ccl::array<ccl::Node *> used_shaders;
-  used_shaders.push_back_slow(surface);
   for (const auto &source_mesh : source.meshes) {
+    ccl::Shader *surface = source_mesh->material ? make_principled_shader(*source_mesh->material) : default_surface;
+    ccl::array<ccl::Node *> used_shaders;
+    used_shaders.push_back_slow(surface);
     ccl::Mesh *mesh = scene->create_node<ccl::Mesh>();
     mesh->resize_mesh(int(source_mesh->vertices.size()), int(source_mesh->triangles.size()));
     ccl::packed_float3 *positions = mesh->get_position_for_write();
@@ -377,6 +405,27 @@ Mesh read_stl(const std::string &path) {
 dslvm::Registry make_registry() {
   dslvm::Registry registry;
   registry.context("scene", "Scene");
+  registry.method("Scene", "material", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->materials.size() >= 4096) throw dslvm::Error("material limit exceeded (4096)");
+    for (size_t i = 0; i < a.size(); ++i)
+      if (!std::isfinite(a[i].f)) throw dslvm::Error("material values must be finite");
+    for (size_t i = 0; i < 3; ++i)
+      if (a[i].f < 0.0 || a[i].f > 1.0 || a[i + 6].f < 0.0 || a[i + 6].f > 1.0)
+        throw dslvm::Error("material color and emission channels must be in [0,1]");
+    if (a[3].f < 0.0 || a[3].f > 1.0 || a[4].f < 0.0 || a[4].f > 1.0 || a[5].f < 0.0 || a[5].f > 1.0 || a[9].f < 0.0 || a[9].f > 10000.0)
+      throw dslvm::Error("material metallic, roughness, and transmission must be in [0,1], emission strength in [0,10000]");
+    auto material = std::make_unique<Material>();
+    material->color = {float(a[0].f), float(a[1].f), float(a[2].f)};
+    material->metallic = float(a[3].f);
+    material->roughness = float(a[4].f);
+    material->transmission = float(a[5].f);
+    material->emission = {float(a[6].f), float(a[7].f), float(a[8].f)};
+    material->emission_strength = float(a[9].f);
+    Material *result = material.get();
+    scene->materials.push_back(std::move(material));
+    return dslvm::Value::object("Material", result);
+  });
   auto import = [](void *p, dslvm::Args &args, bool stl) {
     auto *scene = static_cast<Scene *>(p);
     if (args[0].s.empty()) throw dslvm::Error("mesh input path must not be empty");
@@ -388,6 +437,12 @@ dslvm::Registry make_registry() {
   };
   registry.method("Scene", "import_obj", {"string"}, "Mesh", [import](void *p, dslvm::Args &a) { return import(p, a, false); });
   registry.method("Scene", "import_stl", {"string"}, "Mesh", [import](void *p, dslvm::Args &a) { return import(p, a, true); });
+  registry.method("Mesh", "set_material", {"Material"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    if (!a[0].obj) throw dslvm::Error("set_material requires a material created by this scene");
+    mesh->material = static_cast<Material *>(a[0].obj);
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "render_png", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     const auto *scene = static_cast<const Scene *>(p);
     if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)

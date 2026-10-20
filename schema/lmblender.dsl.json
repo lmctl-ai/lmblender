@@ -22,6 +22,12 @@
             "returns": "Mesh"
           }
         ],
+        "material": [
+          {
+            "params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float"],
+            "returns": "Material"
+          }
+        ],
         "render_png": [
           {
             "params": ["string", "int", "int", "int"],
@@ -38,6 +44,7 @@
     },
     "Mesh": {
       "methods": {
+        "set_material": [{"params": ["Material"], "returns": "void"}],
         "vertex_count": [{"params": [], "returns": "int"}],
         "triangle_count": [{"params": [], "returns": "int"}],
         "min_x": [{"params": [], "returns": "float"}],
@@ -47,6 +54,9 @@
         "max_y": [{"params": [], "returns": "float"}],
         "max_z": [{"params": [], "returns": "float"}]
       }
+    },
+    "Material": {
+      "methods": {}
     }
   },
   "context": {
