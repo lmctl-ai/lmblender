@@ -829,6 +829,73 @@ Mesh read_obj(const std::string &path) {
   return mesh;
 }
 
+Mesh read_ply_ascii(const std::string &path) {
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec) || ec)
+    throw dslvm::Error("PLY input must be a readable regular file");
+  const auto size = std::filesystem::file_size(path, ec);
+  if (ec || size == 0 || size > 256u * 1024u * 1024u)
+    throw dslvm::Error("PLY input must be non-empty and at most 256 MiB");
+  std::ifstream in(path, std::ios::binary);
+  if (!in) throw dslvm::Error("could not open PLY input");
+  std::string line;
+  if (!std::getline(in, line) || line != "ply") throw dslvm::Error("invalid PLY magic");
+  bool ascii = false, ended = false, vertices_seen = false, faces_seen = false;
+  size_t vertex_count = 0, face_count = 0;
+  std::string element;
+  bool xyz[3] = {false, false, false};
+  while (std::getline(in, line)) {
+    if (line.size() > 4096) throw dslvm::Error("PLY header line exceeds 4096 bytes");
+    std::istringstream row(line);
+    std::string key;
+    row >> key;
+    if (key == "format") {
+      std::string format, version;
+      row >> format >> version;
+      ascii = format == "ascii" && version == "1.0";
+      if (!ascii) throw dslvm::Error("PLY supports only ASCII format 1.0");
+    } else if (key == "element") {
+      std::string name, count_text;
+      row >> name >> count_text;
+      size_t count;
+      try { count = std::stoull(count_text); } catch (...) { throw dslvm::Error("invalid PLY element count"); }
+      if (name == "vertex") { vertex_count = count; vertices_seen = true; if (count > 10'000'000) throw dslvm::Error("PLY vertex budget exceeded"); }
+      else if (name == "face") { face_count = count; faces_seen = true; if (count > 20'000'000) throw dslvm::Error("PLY face budget exceeded"); }
+      element = name;
+    } else if (key == "property" && element == "vertex") {
+      std::string type, name; row >> type >> name;
+      if (name == "x") xyz[0] = true;
+      if (name == "y") xyz[1] = true;
+      if (name == "z") xyz[2] = true;
+      if (type.rfind("list", 0) == 0) throw dslvm::Error("PLY vertex list properties are unsupported");
+    } else if (key == "end_header") { ended = true; break; }
+  }
+  if (!ended || !ascii || !vertices_seen || !faces_seen || !xyz[0] || !xyz[1] || !xyz[2])
+    throw dslvm::Error("PLY requires ASCII 1.0, vertex x/y/z, and face elements");
+  Mesh mesh;
+  mesh.vertices.reserve(vertex_count);
+  for (size_t i = 0; i < vertex_count; ++i) {
+    if (!std::getline(in, line)) throw dslvm::Error("truncated PLY vertex data");
+    std::istringstream row(line);
+    std::array<double, 3> v{};
+    if (!(row >> v[0] >> v[1] >> v[2]) || !std::isfinite(v[0]) || !std::isfinite(v[1]) || !std::isfinite(v[2]))
+      throw dslvm::Error("invalid PLY vertex coordinates");
+    mesh.vertices.push_back(v);
+  }
+  for (size_t i = 0; i < face_count; ++i) {
+    if (!std::getline(in, line)) throw dslvm::Error("truncated PLY face data");
+    std::istringstream row(line);
+    size_t n;
+    if (!(row >> n) || n < 3 || n > vertex_count) throw dslvm::Error("invalid PLY face vertex count");
+    std::vector<uint32_t> face(n);
+    for (uint32_t &index : face) if (!(row >> index) || index >= vertex_count) throw dslvm::Error("PLY face index is out of range");
+    for (size_t j = 1; j + 1 < n; ++j) mesh.triangles.push_back({face[0], face[j], face[j+1]});
+    if (mesh.triangles.size() > 20'000'000) throw dslvm::Error("PLY triangle budget exceeded");
+  }
+  if (mesh.vertices.empty() || mesh.triangles.empty()) throw dslvm::Error("PLY contains no triangle mesh");
+  return mesh;
+}
+
 uint32_t read_u32_le(const unsigned char *p) {
   return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) | (uint32_t(p[3]) << 24);
 }
@@ -1127,6 +1194,14 @@ dslvm::Registry make_registry() {
   };
   registry.method("Scene", "import_obj", {"string"}, "Mesh", [import](void *p, dslvm::Args &a) { return import(p, a, false); });
   registry.method("Scene", "import_stl", {"string"}, "Mesh", [import](void *p, dslvm::Args &a) { return import(p, a, true); });
+  registry.method("Scene", "import_ply", {"string"}, "Mesh", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    auto mesh = std::make_unique<Mesh>(read_ply_ascii(a[0].s));
+    Mesh *result = mesh.get();
+    scene->meshes.push_back(std::move(mesh));
+    return dslvm::Value::object("Mesh", result);
+  });
   registry.method("Mesh", "set_material", {"Material"}, "void", [](void *p, dslvm::Args &a) {
     auto *mesh = static_cast<Mesh *>(p);
     if (!a[0].obj) throw dslvm::Error("set_material requires a material created by this scene");

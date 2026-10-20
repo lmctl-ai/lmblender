@@ -10,6 +10,7 @@ exe="$build/lmblender"
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/import-mesh.lms "$build/import-mesh.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/import-ply.lms "$build/import-ply.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-mesh.lms "$build/imported-mesh.png" "$build/render-mesh.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-principled.lms "$build/material-principled.dslb" >/dev/null
@@ -26,6 +27,7 @@ cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 "${LMSCRIPT:-lmscript}" examples/denoise-quality.lms "$build/denoise-quality.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
+"$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
 "$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
 LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/render-mesh-xml-result.json"
 "$exe" --dsl "$build/material-principled.dslb" >"$build/material-principled-result.json"
@@ -52,6 +54,7 @@ assert r.get('ok') is False and r.get('code') == 'RENDER_TIMEOUT', r
 assert 'timed out' in r.get('message',''), r
 PY
 test -s "$build/imported-mesh.png"
+test -s "$build/import-ply.png"
 test -s "$build/imported-mesh-xml.png"
 test -s "$build/material-principled.png"
 test -s "$build/camera-look-at.png"
@@ -75,6 +78,7 @@ test -s "$build/perspective-reference.png"
 file "$build/imported-mesh.png" | grep -q 'PNG image data'
 file "$build/imported-mesh-xml.png" | grep -q 'PNG image data'
 python3 tests/png_metrics.py "$build/imported-mesh.png"
+python3 tests/png_metrics.py "$build/import-ply.png"
 python3 tests/png_metrics.py "$build/imported-mesh-xml.png"
 python3 tests/png_metrics.py "$build/material-principled.png"
 python3 tests/png_blue_material.py "$build/material-principled.png"

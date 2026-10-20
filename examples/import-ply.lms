@@ -1,0 +1,9 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/import-ply.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_ply("tests/fixtures/tetra.ply");
+scene.expect_int(mesh.vertex_count(), 4);
+scene.expect_int(mesh.triangle_count(), 4);
+scene.fit_camera(46.0);
+scene.render_png("build/import-ply.png", 32, 256, 192);
+end _dsl_
+savedsl(p, out);

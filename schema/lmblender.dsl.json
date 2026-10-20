@@ -35,6 +35,7 @@
             "returns": "Mesh"
           }
         ],
+        "import_ply": [{"params": ["string"], "returns": "Mesh"}],
         "instance_mesh": [{"params": ["Mesh", "float", "float", "float", "float", "float", "float"], "returns": "Mesh"}],
         "material": [
           {
