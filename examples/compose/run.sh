@@ -37,4 +37,9 @@ for item in turntable-mug turntable-bracket; do
   "$host_bin" --dsl "$out/$item.dslb"
 done
 python3 "$root/tests/turntable_quality.py" "$root/build"
+for item in studio-mug studio-bracket studio-plate; do
+  "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item.lms" "$out/$item.dslb" >/dev/null
+  "$host_bin" --dsl "$out/$item.dslb"
+  python3 "$root/tests/studio_quality.py" "$root/build/$item.png"
+done
 echo "Wrote mug/plate/bracket compositions and eight-angle mug/bracket turntable image sets under $root/build/"

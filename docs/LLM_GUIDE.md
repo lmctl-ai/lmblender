@@ -49,6 +49,7 @@ method Scene.cylinder(float, float, int, bool) -> Mesh
 method Scene.environment_texture(string, float, float) -> void
 method Scene.expect_int(int, int) -> void
 method Scene.fit_camera(float) -> void
+method Scene.studio_setup() -> void
 method Scene.ground_plane(float, float, float, float, float) -> void
 method Scene.image_material(string, float) -> Material
 method Scene.import_gltf(string) -> Mesh

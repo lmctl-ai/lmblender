@@ -1,0 +1,12 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/studio-mug.dslb";
+p = _dsl_ schema="../../schema/lmblender.dsl.json";
+let mug = scene.import_stl("build/compose-input/build/mug.stl");
+mug.set_smooth(true);
+mug.rotate_x(90.0); mug.translate(0.0, 0.0, 7.0); mug.scale(1.2, 1.2, 1.0);
+let ceramic = scene.material(0.18, 0.42, 0.62, 0.0, 0.24, 0.0, 0.0, 0.0, 0.0, 0.0);
+mug.set_material(ceramic);
+scene.studio_setup();
+scene.render_settings(12, 23, true);
+scene.render_png("build/studio-mug.png", 96, 640, 480);
+end _dsl_
+savedsl(p, out);

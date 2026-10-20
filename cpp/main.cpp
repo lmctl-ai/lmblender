@@ -1422,6 +1422,36 @@ dslvm::Registry make_registry() {
     scene->custom_camera = true;
     return dslvm::Value::none();
   });
+  registry.method("Scene", "studio_setup", {}, "void", [](void *p, dslvm::Args &) {
+    auto *scene = static_cast<Scene *>(p);
+    std::array<double, 3> lo{INFINITY, INFINITY, INFINITY}, hi{-INFINITY, -INFINITY, -INFINITY};
+    bool any = false;
+    for (const auto &mesh : scene->meshes) if (!mesh->ground_plane) {
+      const Mesh *data = mesh->geometry_source ? mesh->geometry_source : mesh.get();
+      for (const auto &v : data->vertices) {
+        any = true;
+        for (size_t axis = 0; axis < 3; ++axis) {
+          const double q = v[axis] * mesh->scale[axis] + mesh->translation[axis];
+          lo[axis] = std::min(lo[axis], q); hi[axis] = std::max(hi[axis], q);
+        }
+      }
+    }
+    if (!any) throw dslvm::Error("studio_setup requires at least one imported or created mesh");
+    const float cx=float((lo[0]+hi[0])*0.5), cy=float((lo[1]+hi[1])*0.5), cz=float((lo[2]+hi[2])*0.5);
+    const float radius=std::max(0.5f,float(std::sqrt((hi[0]-lo[0])*(hi[0]-lo[0])+(hi[1]-lo[1])*(hi[1]-lo[1])+(hi[2]-lo[2])*(hi[2]-lo[2]))*0.5));
+    scene->world_color={0.34f,0.37f,0.42f}; scene->world_strength=0.55f;
+    scene->camera.fit_to_geometry=true; scene->camera.target={cx,cy,cz}; scene->camera.fov_radians=float(42.0*M_PI/180.0); scene->custom_camera=true;
+    auto add_area=[&](float x,float y,float z,std::array<float,3> color,float power,float size) {
+      AreaLightData light; light.position={cx+x*radius,cy+y*radius,cz+z*radius}; light.target={cx,cy,cz}; light.color=color; light.strength=power*radius*radius; light.size=radius*size; light.size_y=radius*size; scene->area_lights.push_back(light);
+    };
+    add_area(-1.8f,-2.2f,2.2f,{1.0f,0.86f,0.72f},115.0f,1.1f);
+    add_area(2.0f,-0.8f,1.1f,{0.68f,0.80f,1.0f},52.0f,1.5f);
+    add_area(0.1f,1.8f,1.8f,{1.0f,1.0f,1.0f},78.0f,0.9f);
+    auto floor=std::make_unique<Material>(); floor->color={0.32f,0.34f,0.37f}; floor->roughness=0.86f; Material *mat=floor.get(); scene->materials.push_back(std::move(floor));
+    auto ground=std::make_unique<Mesh>(); const float z=float(lo[2])-std::max(0.01f,radius*0.004f), side=std::max(10.0f,radius*10.0f);
+    ground->vertices={{{cx-side,cy-side,z},{cx+side,cy-side,z},{cx+side,cy+side,z},{cx-side,cy+side,z}}}; ground->triangles={{{0,1,2},{0,2,3}}}; ground->material=mat; ground->ground_plane=true; scene->meshes.push_back(std::move(ground));
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "render_timeout", {"int"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].i < 1 || a[0].i > 3600) throw dslvm::Error("render timeout must be in [1,3600] seconds");
     static_cast<Scene *>(p)->render_timeout_seconds = int(a[0].i);

@@ -1,0 +1,3 @@
+mug: PASS | score 5/5 | An upright blue ceramic mug stands on the floor with its top opening visible, an attached handle fully inside the frame, clear light-to-dark shading across the body, and a soft contact shadow on the floor.
+bracket: PASS | score 5/5 | The U-channel bracket has a clearly visible base, rear wall, and two raised side flanges, is completely framed on the ground plane, and shows clear 3D shaded depth across its faces.
+plate: PASS | score 5/5 | A flat rectangular copper/orange plate lies horizontally on the ground plane with 8 visible holes (exceeding the six required), fully framed and well-lit with distinct top and side faces.
