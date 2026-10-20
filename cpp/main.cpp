@@ -118,6 +118,8 @@ struct Scene {
   float environment_rotation = 0.0f;
   float environment_strength = 1.0f;
   bool transparent_background = false;
+  float camera_aperture = 0.0f;
+  float camera_focus_distance = 10.0f;
   bool custom_camera = false;
   CameraConfig camera;
   int render_timeout_seconds = 3600;
@@ -642,6 +644,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     ccl::Object *object = scene->create_node<ccl::Object>();
     object->set_geometry(mesh);
     object->set_tfm(ccl::transform_identity());
+    object->tag_update(scene);
   }
 
   auto add_point_light = [scene, make_light_shader](const ccl::float3 position, const ccl::float3 color, const float strength) {
@@ -723,6 +726,9 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->camera->set_camera_type(source.custom_camera && source.camera.orthographic ? ccl::CAMERA_ORTHOGRAPHIC : ccl::CAMERA_PERSPECTIVE);
   scene->camera->set_nearclip(0.01f);
   scene->camera->set_farclip(10000.0f);
+  scene->camera->set_aperturesize(source.camera_aperture);
+  scene->camera->set_focaldistance(source.camera_focus_distance);
+  scene->camera->set_shuttertime(0.5f);
   ccl::Transform camera_tfm;
   if (!source.custom_camera) {
     const float distance = radius * 1.85f / std::tan(0.8f * 0.5f);
@@ -997,6 +1003,14 @@ dslvm::Registry make_registry() {
     scene->camera.fov_radians = float(a[6].f * M_PI / 180.0);
     scene->camera.orthographic = false;
     scene->custom_camera = true;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "camera_dof", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (!std::isfinite(a[0].f) || !std::isfinite(a[1].f) || a[0].f < 0.0 || a[0].f > 10.0 || a[1].f < 0.1 || a[1].f > 1'000'000.0)
+      throw dslvm::Error("camera DOF aperture must be 0..10 and focus distance 0.1..1000000");
+    scene->camera_aperture = float(a[0].f);
+    scene->camera_focus_distance = float(a[1].f);
     return dslvm::Value::none();
   });
   registry.method("Scene", "camera_orthographic", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {

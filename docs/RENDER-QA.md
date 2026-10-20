@@ -19,3 +19,13 @@ Thumbnail: [sky-texture.png](img/sky-texture.png).
 - Visual inspection: background is transparent (shown black by the viewer) and the tetra silhouette remains opaque. This verifies transparent world film, not shadow-catching compositing.
 
 Thumbnails: [environment-texture.png](img/environment-texture.png), [transparent-film.png](img/transparent-film.png).
+
+## Depth of field (`examples/camera-dof.lms`)
+
+- Render: 640×480 PNG, CPU Cycles, 32 samples; a red object is placed at the configured focus distance and a blue object farther from the camera. Camera aperture is 1.5 and focus distance is 17.5.
+- Numeric checklist (`tests/dof_quality.py`): exact 640×480 dimensions; computes two-pixel RGB edge contrast on each object's color mask and requires focal-plane contrast to exceed far-object contrast by 15%.
+- Measured edge contrast: focus red `22.41`, far blue `19.19`, ratio `1.17` (passes `>=1.15`).
+- Visual inspection: the red shape has a crisp boundary while the blue shape is visibly softened; both objects are in frame.
+- Motion blur is not claimed: an early direct-Cycles animated-transform prototype produced a blank frame and was removed. It needs a valid Cycles motion-step setup before being exposed as a supported binding.
+
+Thumbnail: [camera-dof.png](img/camera-dof.png).

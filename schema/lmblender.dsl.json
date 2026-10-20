@@ -5,6 +5,7 @@
     "Scene": {
       "methods": {
         "camera_look_at": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
+        "camera_dof": [{"params": ["float", "float"], "returns": "void"}],
         "camera_orthographic": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "fit_camera": [{"params": ["float"], "returns": "void"}],
         "area_light": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
