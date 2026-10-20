@@ -1,0 +1,11 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/quality-preset.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let ball = scene.uv_sphere(0.8, 16, 8, true);
+let mat = scene.material(0.2, 0.45, 0.9, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+ball.set_material(mat);
+scene.render_preset("draft");
+scene.render_png("build/quality-draft.png", 0, 64, 64);
+scene.render_preset("final");
+scene.render_png("build/quality-final.png", 0, 64, 64);
+end _dsl_
+savedsl(p, out);

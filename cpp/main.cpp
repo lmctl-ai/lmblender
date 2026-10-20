@@ -160,6 +160,8 @@ struct Scene {
   float clamp_indirect = 0.0f;
   int render_seed = 0;
   bool denoise = false;
+  int preset_samples = 64;
+  int preset_bounces = 8;
   bool motion_blur = false;
   float motion_shutter = 1.0f;
   std::string view_transform = "Standard";
@@ -424,7 +426,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   params.background = true;
   params.headless = true;
   params.samples = samples;
-  params.threads = 2;
+  params.threads = std::min(4, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
@@ -537,7 +539,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   params.background = true;
   params.headless = true;
   params.samples = samples;
-  params.threads = 2;
+  params.threads = std::min(4, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
@@ -1552,6 +1554,24 @@ dslvm::Registry make_registry() {
     scene->denoise = a[2].b;
     return dslvm::Value::none();
   });
+  registry.method("Scene", "render_preset", {"string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (a[0].s == "draft") {
+      scene->preset_samples = 16;
+      scene->preset_bounces = 4;
+      scene->denoise = false;
+    } else if (a[0].s == "final") {
+      if (!ccl::openimagedenoise_supported())
+        throw dslvm::Error("final render preset requires CPU OpenImageDenoise support");
+      scene->preset_samples = 64;
+      scene->preset_bounces = 8;
+      scene->denoise = true;
+    } else {
+      throw dslvm::Error("render preset must be 'draft' or 'final'");
+    }
+    scene->max_bounces = scene->preset_bounces;
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "set_view_transform", {"string"}, "void", [](void *p, dslvm::Args &a) {
     if (a[0].s != "Standard" && a[0].s != "Filmic" && a[0].s != "AgX")
       throw dslvm::Error("view transform must be Standard, Filmic, or AgX");
@@ -1982,16 +2002,17 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "render_png", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     const auto *scene = static_cast<const Scene *>(p);
     if (std::filesystem::path(a[0].s).extension() != ".png") throw dslvm::Error("render_png output must use the .png extension");
-    if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
+    if (a[1].i < 0 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
       throw dslvm::Error("render_png samples and dimensions are outside supported bounds");
-    render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    render_image(*scene, a[0].s, a[1].i == 0 ? scene->preset_samples : int(a[1].i), int(a[2].i), int(a[3].i));
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_sequence", {"string", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene=static_cast<Scene *>(p);
     if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239)throw dslvm::Error("render_sequence requires an ordered frame range of at most 240 frames");
-    if(a[3].i<1||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)
+    if(a[3].i<0||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)
       throw dslvm::Error("render_sequence sample, dimension, or total-pixel budget exceeded");
+    const int sequence_samples = a[3].i == 0 ? scene->preset_samples : int(a[3].i);
     std::vector<std::array<float,3>> mesh_base, material_base;
     std::array<float,6> camera_base{scene->camera.position[0],scene->camera.position[1],scene->camera.position[2],scene->camera.target[0],scene->camera.target[1],scene->camera.target[2]};
     for(const auto &m:scene->meshes)mesh_base.push_back(m->translation);
@@ -2002,7 +2023,7 @@ dslvm::Registry make_registry() {
         for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=sample_keys<Mesh::TransformKey,std::array<float,3>>(scene->meshes[i]->transform_keys,frame,mesh_base[i]);
         for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=sample_keys<Material::ColorKey,std::array<float,3>>(scene->materials[i]->color_keys,frame,material_base[i]);
         if(!scene->camera_keys.empty()){auto c=sample_keys<Scene::CameraKey,std::array<float,6>>(scene->camera_keys,frame,camera_base);for(size_t j=0;j<3;++j){scene->camera.position[j]=c[j];scene->camera.target[j]=c[j+3];}}
-        render_image(*scene,sequence_path(a[0].s,frame),int(a[3].i),int(a[4].i),int(a[5].i));
+        render_image(*scene,sequence_path(a[0].s,frame),sequence_samples,int(a[4].i),int(a[5].i));
       }
     } catch (...) { for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};throw; }
     for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];

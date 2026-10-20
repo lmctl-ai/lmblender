@@ -346,6 +346,14 @@
             "returns": "void"
           }
         ],
+        "render_preset": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
         "set_view_transform": [
           {
             "params": [

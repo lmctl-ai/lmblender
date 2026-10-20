@@ -45,6 +45,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/material-nodes.lms "$build/material-nodes.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/material-nodes-control.lms "$build/material-nodes-control.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
@@ -87,6 +88,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
 "$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
 "$exe" --dsl "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
+"$exe" --dsl "$build/quality-preset.dslb" >"$build/quality-preset-result.json"
 "$exe" --dsl "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
 rm -f "$build/render-timeout.png"
 if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
@@ -118,6 +120,8 @@ test -s "$build/mesh-instances.png"
 test -s "$build/denoise-noisy.png"
 test -s "$build/denoise-filtered.png"
 test -s "$build/denoise-reference.png"
+test -s "$build/quality-draft.png"
+test -s "$build/quality-final.png"
 test -s "$build/render-settings.png"
 test -s "$build/procedural-materials.png"
 test -s "$build/orthographic-camera.png"

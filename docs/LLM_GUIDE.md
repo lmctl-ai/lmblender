@@ -69,6 +69,7 @@ method Scene.render_passes(string, int, int, int) -> void
 method Scene.render_png(string, int, int, int) -> void
 method Scene.render_sequence(string, int, int, int, int, int) -> void
 method Scene.render_settings(int, int, bool) -> void
+method Scene.render_preset(string) -> void
 method Scene.render_timeout(int) -> void
 method Scene.set_view_transform(string) -> void
 method Scene.sky_texture(float, float, float) -> void
@@ -107,6 +108,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `motion_blur(enabled,shutter_frames)` | Cycles transform blur for keyed mesh translations and camera keys; shutter is 0.1..2 frames. |
 | `world_color(r,g,b,strength)`, `sky_texture(elevation_degrees,rotation_degrees,intensity)` | Linear RGB world or built-in procedural sky. |
 | `render_settings(max_bounces,seed,denoise)` | Max bounces 0..64; seed is a nonnegative 32-bit integer. |
+| `render_preset(name)` | `draft` = 16 samples, 4 bounces, no denoise; `final` = 64 samples, 8 bounces, CPU OIDN. Pass `0` for samples to `render_png` or `render_sequence` to use the preset. |
 | `render_png/exr(path,samples,width,height)` | Single frame, samples 1..65536, dimensions and total pixel bounds apply. |
 | `render_sequence(pattern,start,end,samples,width,height)` | Inclusive integer frames; path includes `{frame}` or `####`; key interpolation is `linear` or `ease`. |
 | `render_apng(path,start,end,samples,width,height,fps)` | Inclusive frames; exact rational frame delay is 1/fps; fps 1..240. |
