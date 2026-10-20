@@ -17,6 +17,7 @@
         "image_material": [{"params": ["string", "float"], "returns": "Material"}],
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
+        "sky_texture": [{"params": ["float", "float", "float"], "returns": "void"}],
         "expect_int": [
           {
             "params": ["int", "int"],

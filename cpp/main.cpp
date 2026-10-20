@@ -110,6 +110,10 @@ struct Scene {
   std::vector<SpotLightData> spot_lights;
   std::array<float, 3> world_color{0.16f, 0.18f, 0.22f};
   float world_strength = 0.45f;
+  bool sky_enabled = false;
+  float sky_elevation = 0.7f;
+  float sky_rotation = 0.0f;
+  float sky_intensity = 1.0f;
   bool custom_camera = false;
   CameraConfig camera;
   int render_timeout_seconds = 3600;
@@ -554,7 +558,15 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   auto world_graph = ccl::make_unique<ccl::ShaderGraph>();
   ccl::BackgroundNode *background = world_graph->create_node<ccl::BackgroundNode>();
   background->set_color(ccl::make_float3(source.world_color[0], source.world_color[1], source.world_color[2]));
-  background->set_strength(source.world_strength);
+  background->set_strength(source.world_strength * (source.sky_enabled ? source.sky_intensity : 1.0f));
+  if (source.sky_enabled) {
+    ccl::SkyTextureNode *sky = world_graph->create_node<ccl::SkyTextureNode>();
+    sky->set_sky_type(ccl::NODE_SKY_MULTIPLE_SCATTERING);
+    sky->set_sun_elevation(source.sky_elevation);
+    sky->set_sun_rotation(source.sky_rotation);
+    sky->set_sun_intensity(source.sky_intensity);
+    world_graph->connect(sky->output("Color"), background->input("Color"));
+  }
   world_graph->connect(background->output("Background"), world_graph->output()->input("Surface"));
   world->set_graph(std::move(world_graph));
   world->tag_update(scene);
@@ -1038,6 +1050,17 @@ dslvm::Registry make_registry() {
     if (a[3].f < 0.0 || a[3].f > 10000.0) throw dslvm::Error("world strength must be in [0,10000]");
     scene->world_color = {float(a[0].f), float(a[1].f), float(a[2].f)};
     scene->world_strength = float(a[3].f);
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "sky_texture", {"float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    for (const auto &v : a) if (!std::isfinite(v.f)) throw dslvm::Error("sky parameters must be finite");
+    if (a[0].f < 0.0 || a[0].f > 90.0 || std::abs(a[1].f) > 360.0 || a[2].f < 0.0 || a[2].f > 100.0)
+      throw dslvm::Error("sky elevation must be 0..90 degrees, rotation +/-360 degrees, intensity 0..100");
+    scene->sky_enabled = true;
+    scene->sky_elevation = float(a[0].f * M_PI / 180.0);
+    scene->sky_rotation = float(a[1].f * M_PI / 180.0);
+    scene->sky_intensity = float(a[2].f);
     return dslvm::Value::none();
   });
   registry.method("Scene", "point_light", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
