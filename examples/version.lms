@@ -1,0 +1,3 @@
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+scene.version();
+end _dsl_

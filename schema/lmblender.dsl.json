@@ -1,0 +1,19 @@
+{
+  "dsl.schema": 2,
+  "name": "lmblender",
+  "types": {
+    "Scene": {
+      "methods": {
+        "version": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ]
+      }
+    }
+  },
+  "context": {
+    "scene": "Scene"
+  }
+}
