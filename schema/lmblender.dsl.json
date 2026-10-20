@@ -14,6 +14,7 @@
         "wall_plane_y": [{"params": ["float", "float", "float", "float", "float"], "returns": "void"}],
         "checker_material": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float"], "returns": "Material"}],
         "noise_material": [{"params": ["float", "float", "float", "float", "float", "float", "float", "float"], "returns": "Material"}],
+        "image_material": [{"params": ["string", "float"], "returns": "Material"}],
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
         "expect_int": [

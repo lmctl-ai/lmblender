@@ -11,6 +11,7 @@ The mug is explicitly rotated from lmcad's Y-up `revolve_y` coordinates to rende
 
 | `build/procedural-materials.png` / `examples/procedural-materials.lms` | checker color mask and noise color bins | final: checker red pixels 2,355; noise blue pixels 6,621; 260 coarse noise-color bins | Opus reviewed the prior render: PASS, 4/5. We lowered noise material brightness to retain highlight detail and visually re-inspected the final render; tetra fixture is still narrow and floor grain remains. |
 | `build/perspective-reference.png` + `build/orthographic-camera.png` / `examples/orthographic-camera.lms` | uncropped orange object mask; compare rendered object height | initial: perspective 115 px; orthographic 224 px; ratio 1.95 | Opus reviewed the initial views: PASS, 4/5. Both cameras were moved to a three-quarter angle; final images were visually re-inspected after rerender. |
+| `build/image-texture.png` / `examples/image-texture.lms` | framed cube; alternating red/yellow cells on top and front; each color >200 px on each face; floor and shadow visible | red 4,160 px; yellow 3,837 px; top [1,461 red, 1,323 yellow]; front [2,787 red, 2,649 yellow] | Opus PASS 4/4. Per-corner cube UVs fixed the prior front-face smear. Opus notes front cells are vertically stretched and the right face is dark; neither hides checker alternation on the required faces. |
 
 ## Technical smoke images (not product-gallery claims)
 

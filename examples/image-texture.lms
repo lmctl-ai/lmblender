@@ -1,0 +1,12 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/image-texture.dslb";
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let mesh = scene.import_obj("tests/fixtures/texture-cube.obj");
+let image = scene.image_material("tests/fixtures/checker-texture.png", 0.42);
+mesh.set_material(image);
+scene.ground_plane(-0.1, 60.0, 0.3, 0.32, 0.36);
+scene.world_color(0.12, 0.14, 0.18, 0.35);
+scene.area_light(-4.0, -6.0, 8.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.8, 1000.0, 4.0);
+scene.camera_look_at(2.4, -4.6, 2.8, 0.0, 0.0, 0.0, 50.0);
+scene.render_png("build/image-texture.png", 64, 384, 288);
+end _dsl_
+savedsl(p, out);

@@ -62,6 +62,7 @@ struct Material {
   int texture_kind = 0;
   std::array<float, 3> texture_color2{1.0f, 1.0f, 1.0f};
   float texture_scale = 5.0f;
+  std::string image_path;
 };
 struct PointLightData {
   std::array<float, 3> position{};
@@ -358,6 +359,14 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       mix->set_b(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
       graph->connect(noise->output("Fac"), mix->input("Factor"));
       graph->connect(mix->output("Result"), principled->input("Base Color"));
+    } else if (material.texture_kind == 3) {
+      ccl::TextureCoordinateNode *coordinates = graph->create_node<ccl::TextureCoordinateNode>();
+      ccl::ImageTextureNode *image = graph->create_node<ccl::ImageTextureNode>();
+      image->set_filename(ccl::ustring(material.image_path));
+      image->set_interpolation(ccl::INTERPOLATION_LINEAR);
+      image->set_extension(ccl::EXTENSION_REPEAT);
+      graph->connect(coordinates->output("UV"), image->input("Vector"));
+      graph->connect(image->output("Color"), principled->input("Base Color"));
     }
     graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
     shader->set_graph(std::move(graph));
@@ -404,6 +413,34 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
     std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), false);
     mesh->set_used_shaders(used_shaders);
+      if (material && material->texture_kind == 3) {
+        /* Build a cube-style per-corner projection. A vertex generated-coordinate
+         * attribute collapses one UV axis on each side face, smearing 2D images. */
+        ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
+        ccl::float2 *uv = uv_attr->data_for_write<ccl::float2>();
+        std::array<double, 3> lo{INFINITY, INFINITY, INFINITY};
+        std::array<double, 3> hi{-INFINITY, -INFINITY, -INFINITY};
+        for (const auto &v : mesh_data->vertices) for (size_t axis = 0; axis < 3; ++axis) {
+          const double position = v[axis] * source_mesh->scale[axis];
+          lo[axis] = std::min(lo[axis], position);
+          hi[axis] = std::max(hi[axis], position);
+        }
+        for (size_t i = 0; i < mesh_data->triangles.size(); ++i) {
+          const auto &tri = mesh_data->triangles[i];
+          const auto &a = mesh_data->vertices[tri[0]], &b = mesh_data->vertices[tri[1]], &c = mesh_data->vertices[tri[2]];
+          const double nx = std::abs((b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]));
+          const double ny = std::abs((b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]));
+          const double nz = std::abs((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));
+          const int u = nx >= ny && nx >= nz ? 1 : 0;
+          const int v = nx >= ny && nx >= nz ? 2 : (ny >= nz ? 2 : 1);
+          for (int corner = 0; corner < 3; ++corner) {
+            const auto &p = mesh_data->vertices[tri[corner]];
+            const double su = hi[u] - lo[u], sv = hi[v] - lo[v];
+            uv[i * 3 + corner] = ccl::make_float2(su > 1e-20 ? float((p[u]-lo[u])/su) : 0.5f,
+                                                   sv > 1e-20 ? float((p[v]-lo[v])/sv) : 0.5f);
+          }
+        }
+      }
     mesh->tag_triangles_modified();
     mesh->tag_shader_modified();
     mesh->tag_smooth_modified();
@@ -853,6 +890,31 @@ dslvm::Registry make_registry() {
   };
   registry.method("Scene", "checker_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,1);});
   registry.method("Scene", "noise_material", {"float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [patterned_material](void *p,dslvm::Args &a){return patterned_material(p,a,2);});
+  registry.method("Scene", "image_material", {"string", "float"}, "Material", [](void *p, dslvm::Args &a) {
+    const std::filesystem::path path(a[0].s);
+    const std::string ext = path.extension().string();
+    std::error_code ec;
+    if (a[0].s.empty() || a[0].s.front() == '-' || (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".exr"))
+      throw dslvm::Error("image_material requires a PNG, JPEG, or EXR path that does not begin with '-'");
+    if (!std::filesystem::is_regular_file(path, ec) || ec)
+      throw dslvm::Error("image_material input must be a readable regular file");
+    const uintmax_t size = std::filesystem::file_size(path, ec);
+    if (ec || size == 0 || size > 64u * 1024u * 1024u)
+      throw dslvm::Error("image_material input must be non-empty and at most 64 MiB");
+    if (!std::isfinite(a[1].f) || a[1].f < 0.0 || a[1].f > 1.0)
+      throw dslvm::Error("image_material roughness must be in [0,1]");
+    auto *scene = static_cast<Scene *>(p);
+    if (scene->materials.size() >= 4096) throw dslvm::Error("material limit exceeded (4096)");
+    auto material = std::make_unique<Material>();
+    material->texture_kind = 3;
+    material->texture_scale = 1.0f;
+    material->roughness = float(a[1].f);
+    material->image_path = std::filesystem::absolute(path, ec).string();
+    if (ec) throw dslvm::Error("could not resolve image_material path");
+    Material *result = material.get();
+    scene->materials.push_back(std::move(material));
+    return dslvm::Value::object("Material", result);
+  });
   auto import = [](void *p, dslvm::Args &args, bool stl) {
     auto *scene = static_cast<Scene *>(p);
     if (args[0].s.empty()) throw dslvm::Error("mesh input path must not be empty");
