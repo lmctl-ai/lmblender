@@ -432,6 +432,48 @@
             ],
             "returns": "void"
           }
+        ],
+        "render_sequence": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int"
+            ],
+            "returns": "void"
+          }
+        ],
+        "render_apng": [
+          {
+            "params": [
+              "string",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int",
+              "int"
+            ],
+            "returns": "void"
+          }
+        ],
+        "camera_keyframe": [
+          {
+            "params": [
+              "int",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "float",
+              "string"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },
@@ -528,6 +570,18 @@
             "params": [],
             "returns": "float"
           }
+        ],
+        "keyframe_transform": [
+          {
+            "params": [
+              "int",
+              "float",
+              "float",
+              "float",
+              "string"
+            ],
+            "returns": "void"
+          }
         ]
       }
     },
@@ -553,6 +607,18 @@
               "float",
               "float",
               "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "keyframe_color": [
+          {
+            "params": [
+              "int",
+              "float",
+              "float",
+              "float",
+              "string"
             ],
             "returns": "void"
           }

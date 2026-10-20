@@ -60,6 +60,8 @@ struct Mesh {
   std::array<float, 3> scale{1.0f, 1.0f, 1.0f};
   bool ground_plane = false;
   bool smooth = false;
+  struct TransformKey { int frame; std::array<float,3> value; std::string interpolation; };
+  std::vector<TransformKey> transform_keys;
 };
 struct Material {
   std::array<float, 3> color{0.8f, 0.8f, 0.8f};
@@ -80,6 +82,8 @@ struct Material {
   float texture_scale = 5.0f;
   std::string image_path;
   bool image_factor_enabled = false;
+  struct ColorKey { int frame; std::array<float,3> value; std::string interpolation; };
+  std::vector<ColorKey> color_keys;
 };
 struct PointLightData {
   std::array<float, 3> position{};
@@ -143,6 +147,9 @@ struct Scene {
   int render_seed = 0;
   bool denoise = false;
   std::string view_transform = "Standard";
+  struct CameraKey { int frame; std::array<float,6> value; std::string interpolation; };
+  std::vector<CameraKey> camera_keys;
+  int render_frame = 0;
 };
 
 #include "gltf_import.hpp"
@@ -465,6 +472,9 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
     throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
   }
 }
+
+template<typename Key, typename Value>
+Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base);
 
 void render_direct(const Scene &source, const std::string &output, int samples, int width, int height, bool emit_passes = false)
 {
@@ -897,6 +907,88 @@ void render_image(const Scene &source, const std::string &output, int samples, i
     render_direct(source, output, samples, width, height);
 }
 
+template<typename Key, typename Value>
+Value sample_keys(const std::vector<Key> &keys, double frame, const Value &base)
+{
+  if (keys.empty()) return base;
+  auto hi = std::lower_bound(keys.begin(), keys.end(), frame,
+                             [](const Key &key, double f) { return key.frame < f; });
+  if (hi == keys.begin()) return hi->value;
+  if (hi == keys.end()) return keys.back().value;
+  if (hi->frame == frame) return hi->value;
+  const Key &b = *hi, &a = *(hi - 1);
+  double t = double(frame - a.frame) / double(b.frame - a.frame);
+  if (a.interpolation == "ease") t = t * t * (3.0 - 2.0 * t);
+  Value result{};
+  for (size_t i = 0; i < result.size(); ++i)
+    result[i] = typename Value::value_type(a.value[i] + (b.value[i] - a.value[i]) * t);
+  return result;
+}
+
+std::string sequence_path(std::string pattern, int frame)
+{
+  const std::string replacement = std::to_string(frame);
+  size_t pos = pattern.find("{frame}");
+  if (pos != std::string::npos) pattern.replace(pos, 7, replacement);
+  else if ((pos = pattern.find("####")) != std::string::npos) {
+    std::ostringstream padded; padded.width(4); padded.fill('0'); padded << frame;
+    pattern.replace(pos, 4, padded.str());
+  } else throw dslvm::Error("render_sequence pattern must contain {frame} or ####");
+  return pattern;
+}
+
+void png_put32(std::vector<unsigned char> &out, uint32_t v)
+{ out.push_back(v>>24); out.push_back(v>>16); out.push_back(v>>8); out.push_back(v); }
+uint32_t png_crc32(const unsigned char *p, size_t n)
+{
+  uint32_t c=0xffffffffu;
+  for(size_t i=0;i<n;++i){c^=p[i];for(int b=0;b<8;++b)c=(c>>1)^(0xedb88320u&uint32_t(-int(c&1)));}
+  return c^0xffffffffu;
+}
+void png_chunk(std::vector<unsigned char> &out,const char *type,const std::vector<unsigned char> &data)
+{
+  png_put32(out,uint32_t(data.size())); const size_t begin=out.size();
+  for(int i=0;i<4;++i)out.push_back(type[i]); out.insert(out.end(),data.begin(),data.end());
+  png_put32(out,png_crc32(out.data()+begin,out.size()-begin));
+}
+void write_apng_from_pngs(const std::string &output,const std::vector<std::string> &paths,int fps)
+{
+  if(paths.empty()||paths.size()>240||fps<1||fps>240)throw dslvm::Error("APNG needs 1..240 frames and frame rate 1..240");
+  std::vector<std::vector<unsigned char>> frame_data; std::vector<unsigned char> ihdr; uint32_t width=0,height=0;
+  for(const std::string &path:paths){
+    std::ifstream in(path,std::ios::binary); if(!in)throw dslvm::Error("could not read rendered APNG frame");
+    std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(in)),{});
+    if(bytes.size()<33||bytes.size()>128u*1024u*1024u||std::memcmp(bytes.data(),"\x89PNG\r\n\x1a\n",8)!=0)throw dslvm::Error("rendered animation frame is not a bounded PNG");
+    std::vector<unsigned char> compressed; size_t pos=8;
+    while(pos+12<=bytes.size()){
+      uint32_t n=(uint32_t(bytes[pos])<<24)|(uint32_t(bytes[pos+1])<<16)|(uint32_t(bytes[pos+2])<<8)|bytes[pos+3];
+      if(n>bytes.size()-pos-12)throw dslvm::Error("truncated PNG chunk in rendered animation frame");
+      const char *type=reinterpret_cast<const char*>(bytes.data()+pos+4);
+      if(std::memcmp(type,"IHDR",4)==0){ihdr.assign(bytes.begin()+pos+8,bytes.begin()+pos+8+n);if(n!=13)throw dslvm::Error("invalid PNG IHDR");}
+      if(std::memcmp(type,"IDAT",4)==0)compressed.insert(compressed.end(),bytes.begin()+pos+8,bytes.begin()+pos+8+n);
+      if(std::memcmp(type,"IEND",4)==0)break; pos+=size_t(n)+12;
+    }
+    if(ihdr.size()!=13||compressed.empty())throw dslvm::Error("PNG frame is missing image data");
+    const uint32_t w=(uint32_t(ihdr[0])<<24)|(uint32_t(ihdr[1])<<16)|(uint32_t(ihdr[2])<<8)|ihdr[3];
+    const uint32_t h=(uint32_t(ihdr[4])<<24)|(uint32_t(ihdr[5])<<16)|(uint32_t(ihdr[6])<<8)|ihdr[7];
+    if(frame_data.empty()){width=w;height=h;} else if(w!=width||h!=height)throw dslvm::Error("APNG frames must have identical dimensions");
+    frame_data.push_back(std::move(compressed));
+  }
+  std::vector<unsigned char> out{137,80,78,71,13,10,26,10}; png_chunk(out,"IHDR",ihdr); png_chunk(out,"sRGB",{0});
+  std::vector<unsigned char> actl;png_put32(actl,uint32_t(paths.size()));png_put32(actl,0);png_chunk(out,"acTL",actl);
+  uint32_t seq=0;
+  for(size_t i=0;i<frame_data.size();++i){
+    std::vector<unsigned char> ctl;png_put32(ctl,seq++);png_put32(ctl,width);png_put32(ctl,height);png_put32(ctl,0);png_put32(ctl,0);ctl.push_back(0);ctl.push_back(1);ctl.push_back(uint8_t(fps>>8));ctl.push_back(uint8_t(fps));ctl.push_back(0);ctl.push_back(0);png_chunk(out,"fcTL",ctl);
+    if(i==0)png_chunk(out,"IDAT",frame_data[i]);else{std::vector<unsigned char> d;png_put32(d,seq++);d.insert(d.end(),frame_data[i].begin(),frame_data[i].end());png_chunk(out,"fdAT",d);}
+  }
+  png_chunk(out,"IEND",{});
+  const std::filesystem::path dest(output); std::error_code ec;
+  if(!dest.parent_path().empty()&&!std::filesystem::is_directory(dest.parent_path(),ec))throw dslvm::Error("APNG output directory does not exist");
+  std::string tmp=output+".tmp."+std::to_string(::getpid());
+  {std::ofstream file(tmp,std::ios::binary|std::ios::trunc);if(!file||!file.write(reinterpret_cast<const char*>(out.data()),std::streamsize(out.size())))throw dslvm::Error("could not write staged APNG");}
+  std::filesystem::rename(tmp,output,ec);if(ec){std::filesystem::remove(tmp);throw dslvm::Error("could not atomically publish APNG");}
+}
+
 Mesh read_obj(const std::string &path) {
   std::error_code ec;
   if (!std::filesystem::is_regular_file(path, ec) || ec) throw dslvm::Error("OBJ input must be a readable regular file");
@@ -1126,6 +1218,11 @@ dslvm::Registry make_registry() {
     scene->camera.orthographic = false;
     scene->custom_camera = true;
     return dslvm::Value::none();
+  });
+  registry.method("Scene", "camera_keyframe", {"int", "float", "float", "float", "float", "float", "float", "string"}, "void", [](void *p,dslvm::Args &a){
+    auto *scene=static_cast<Scene*>(p);if(a[0].i<0||a[0].i>1'000'000)throw dslvm::Error("camera keyframe must be in [0,1000000]");if(a[7].s!="linear"&&a[7].s!="ease")throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    std::array<float,6> value{};for(size_t i=0;i<6;++i){if(!std::isfinite(a[i+1].f)||std::abs(a[i+1].f)>1'000'000)throw dslvm::Error("camera keyframe coordinates must be finite and bounded");value[i]=float(a[i+1].f);}double dx=value[3]-value[0],dy=value[4]-value[1],dz=value[5]-value[2];if(dx*dx+dy*dy+dz*dz<1e-12)throw dslvm::Error("camera keyframe position and target must differ");
+    auto &keys=scene->camera_keys;auto it=std::find_if(keys.begin(),keys.end(),[&](const auto&k){return k.frame==a[0].i;});Scene::CameraKey key{int(a[0].i),value,a[7].s};if(it==keys.end())keys.push_back(key);else *it=key;std::sort(keys.begin(),keys.end(),[](const auto&x,const auto&y){return x.frame<y.frame;});scene->custom_camera=true;scene->camera.fit_to_geometry=false;return dslvm::Value::none();
   });
   registry.method("Scene", "camera_dof", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
@@ -1492,6 +1589,32 @@ dslvm::Registry make_registry() {
     mesh->scale = proposed;
     return dslvm::Value::none();
   });
+  registry.method("Mesh", "keyframe_transform", {"int", "float", "float", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    if (a[0].i < 0 || a[0].i > 1'000'000) throw dslvm::Error("keyframe frame must be in [0,1000000]");
+    if (a[4].s != "linear" && a[4].s != "ease") throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    std::array<float,3> value{};
+    for (size_t i=0;i<3;++i) { if (!std::isfinite(a[i+1].f) || std::abs(a[i+1].f)>1'000'000) throw dslvm::Error("keyframed position must be finite and within scene bounds"); value[i]=float(a[i+1].f); }
+    auto &keys=mesh->transform_keys;
+    auto it=std::find_if(keys.begin(),keys.end(),[&](const auto &key){return key.frame==a[0].i;});
+    Mesh::TransformKey key{int(a[0].i),value,a[4].s};
+    if(it==keys.end()) keys.push_back(key); else *it=key;
+    std::sort(keys.begin(),keys.end(),[](const auto &x,const auto &y){return x.frame<y.frame;});
+    return dslvm::Value::none();
+  });
+  registry.method("Material", "keyframe_color", {"int", "float", "float", "float", "string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *material=static_cast<Material *>(p);
+    if(a[0].i<0||a[0].i>1'000'000)throw dslvm::Error("keyframe frame must be in [0,1000000]");
+    if(a[4].s!="linear"&&a[4].s!="ease")throw dslvm::Error("interpolation must be 'linear' or 'ease'");
+    std::array<float,3> value{};
+    for(size_t i=0;i<3;++i){if(!std::isfinite(a[i+1].f)||a[i+1].f<0||a[i+1].f>1)throw dslvm::Error("keyframed color channels must be in [0,1]");value[i]=float(a[i+1].f);}
+    auto &keys=material->color_keys;
+    auto it=std::find_if(keys.begin(),keys.end(),[&](const auto &key){return key.frame==a[0].i;});
+    Material::ColorKey key{int(a[0].i),value,a[4].s};
+    if(it==keys.end())keys.push_back(key);else *it=key;
+    std::sort(keys.begin(),keys.end(),[](const auto &x,const auto &y){return x.frame<y.frame;});
+    return dslvm::Value::none();
+  });
   registry.method("Mesh", "rotate_x", {"float"}, "void", [](void *p, dslvm::Args &a) {
     if (!std::isfinite(a[0].f) || std::abs(a[0].f) > 360000.0) throw dslvm::Error("mesh X rotation must be finite and bounded");
     auto *mesh = static_cast<Mesh *>(p);
@@ -1528,6 +1651,41 @@ dslvm::Registry make_registry() {
       throw dslvm::Error("render_png samples and dimensions are outside supported bounds");
     render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
     return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_sequence", {"string", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239)throw dslvm::Error("render_sequence requires an ordered frame range of at most 240 frames");
+    if(a[3].i<1||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)
+      throw dslvm::Error("render_sequence sample, dimension, or total-pixel budget exceeded");
+    std::vector<std::array<float,3>> mesh_base, material_base;
+    std::array<float,6> camera_base{scene->camera.position[0],scene->camera.position[1],scene->camera.position[2],scene->camera.target[0],scene->camera.target[1],scene->camera.target[2]};
+    for(const auto &m:scene->meshes)mesh_base.push_back(m->translation);
+    for(const auto &m:scene->materials)material_base.push_back(m->color);
+    try {
+      for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){
+        scene->render_frame=frame;
+        for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=sample_keys<Mesh::TransformKey,std::array<float,3>>(scene->meshes[i]->transform_keys,frame,mesh_base[i]);
+        for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=sample_keys<Material::ColorKey,std::array<float,3>>(scene->materials[i]->color_keys,frame,material_base[i]);
+        if(!scene->camera_keys.empty()){auto c=sample_keys<Scene::CameraKey,std::array<float,6>>(scene->camera_keys,frame,camera_base);for(size_t j=0;j<3;++j){scene->camera.position[j]=c[j];scene->camera.target[j]=c[j+3];}}
+        render_image(*scene,sequence_path(a[0].s,frame),int(a[3].i),int(a[4].i),int(a[5].i));
+      }
+    } catch (...) { for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};throw; }
+    for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];
+    for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];
+    scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "render_apng", {"string", "int", "int", "int", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if(std::filesystem::path(a[0].s).extension()!=".apng"||a[0].s.empty()||a[0].s.front()=='-')throw dslvm::Error("render_apng output must be a .apng path not beginning with '-'");
+    if(a[1].i<0||a[2].i<a[1].i||a[2].i-a[1].i>239||a[6].i<1||a[6].i>240)throw dslvm::Error("render_apng frame range must contain 1..240 frames and fps must be 1..240");
+    if(a[3].i<1||a[3].i>65536||a[4].i<16||a[4].i>4096||a[5].i<16||a[5].i>4096||uint64_t(a[4].i)*uint64_t(a[5].i)*(uint64_t(a[2].i-a[1].i)+1)>64'000'000)throw dslvm::Error("render_apng sample, dimension, or total-pixel budget exceeded");
+    std::vector<std::array<float,3>> mesh_base,material_base;std::array<float,6> camera_base{scene->camera.position[0],scene->camera.position[1],scene->camera.position[2],scene->camera.target[0],scene->camera.target[1],scene->camera.target[2]};for(const auto&m:scene->meshes)mesh_base.push_back(m->translation);for(const auto&m:scene->materials)material_base.push_back(m->color);
+    std::string tmpdir="/tmp/lmblender-apng-XXXXXX";std::vector<char> tmpbuf(tmpdir.begin(),tmpdir.end());tmpbuf.push_back('\0');char *made=::mkdtemp(tmpbuf.data());if(!made)throw dslvm::Error("could not create APNG staging directory");
+    std::vector<std::string> frames;
+    try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){scene->render_frame=frame;for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=sample_keys<Mesh::TransformKey,std::array<float,3>>(scene->meshes[i]->transform_keys,frame,mesh_base[i]);for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=sample_keys<Material::ColorKey,std::array<float,3>>(scene->materials[i]->color_keys,frame,material_base[i]);if(!scene->camera_keys.empty()){auto c=sample_keys<Scene::CameraKey,std::array<float,6>>(scene->camera_keys,frame,camera_base);for(size_t j=0;j<3;++j){scene->camera.position[j]=c[j];scene->camera.target[j]=c[j+3];}}std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
+    catch(...){for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
+    for(size_t i=0;i<scene->meshes.size();++i)scene->meshes[i]->translation=mesh_base[i];for(size_t i=0;i<scene->materials.size();++i)scene->materials[i]->color=material_base[i];scene->camera.position={camera_base[0],camera_base[1],camera_base[2]};scene->camera.target={camera_base[3],camera_base[4],camera_base[5]};std::error_code ec;std::filesystem::remove_all(made,ec);return dslvm::Value::none();
   });
   registry.method("Scene", "render_exr", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);

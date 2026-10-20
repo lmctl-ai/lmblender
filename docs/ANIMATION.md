@@ -1,0 +1,7 @@
+# Animation and frame output
+
+`Mesh.keyframe_transform(frame, x, y, z, interpolation)` keys a mesh object's translation in scene units (Z up). `Material.keyframe_color(frame, r, g, b, interpolation)` keys base color channels in [0,1]. `Scene.camera_keyframe(frame, px,py,pz, tx,ty,tz, interpolation)` keys camera position and look target. Interpolation is `linear` or smoothstep `ease`. Repeated keys at the same frame replace the previous key.
+
+`Scene.render_sequence(pattern, first, last, samples, width, height)` renders inclusive integer frames. The path pattern must contain `{frame}` or `####`; the latter is zero-padded to four digits. `Scene.render_apng(path, first, last, samples, width, height, fps)` renders the same animation into an atomically published APNG. APNG frame delay is stored as the exact rational `1/fps`. Both APIs enforce a 240-frame / 64-million total-pixel budget and use the configured deterministic render seed.
+
+The current sequence API interpolates mesh translation, camera position/target, and material base color. It does not yet key mesh rotation/scale or material roughness/metallic, and it does not synthesize motion blur. A direct Cycles motion-transform prototype crashed in Cycles’ BVH motion interpolation (`transform_motion_array_interpolate`) under our standalone scene setup, so the feature is intentionally not exposed until the scene motion metadata can be initialized safely.
