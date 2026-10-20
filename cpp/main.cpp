@@ -58,12 +58,19 @@ struct PointLightData {
   std::array<float, 3> color{1.0f, 1.0f, 1.0f};
   float strength = 100.0f;
 };
+struct CameraConfig {
+  std::array<float, 3> position{};
+  std::array<float, 3> target{};
+  float fov_radians = 0.785398163f;
+};
 struct Scene {
   std::vector<std::unique_ptr<Mesh>> meshes;
   std::vector<std::unique_ptr<Material>> materials;
   std::vector<PointLightData> point_lights;
   std::array<float, 3> world_color{0.16f, 0.18f, 0.22f};
   float world_strength = 0.45f;
+  bool custom_camera = false;
+  CameraConfig camera;
 };
 
 void render_png_xml_oracle(const Scene &source, const std::string &output, int samples, int width, int height)
@@ -281,12 +288,27 @@ void render_png_direct(const Scene &source, const std::string &output, int sampl
 
   scene->camera->set_full_width(width);
   scene->camera->set_full_height(height);
-  scene->camera->set_fov(0.8f);
+  scene->camera->set_fov(source.custom_camera ? source.camera.fov_radians : 0.8f);
   scene->camera->set_camera_type(ccl::CAMERA_PERSPECTIVE);
   scene->camera->set_nearclip(0.01f);
   scene->camera->set_farclip(10000.0f);
-  ccl::Transform camera_tfm = ccl::transform_translate(center.x, center.y - radius * 4.0f, center.z) *
-                              ccl::transform_rotate(M_PI_F, ccl::make_float3(0.0f, 0.70710678f, 0.70710678f));
+  ccl::Transform camera_tfm;
+  if (!source.custom_camera) {
+    camera_tfm = ccl::transform_translate(center.x, center.y - radius * 4.0f, center.z) *
+                 ccl::transform_rotate(M_PI_F, ccl::make_float3(0.0f, 0.70710678f, 0.70710678f));
+  } else {
+    const auto &p = source.camera.position;
+    const auto &t = source.camera.target;
+    ccl::float3 forward = ccl::normalize(ccl::make_float3(t[0] - p[0], t[1] - p[1], t[2] - p[2]));
+    ccl::float3 up_ref = ccl::make_float3(0.0f, 0.0f, 1.0f);
+    ccl::float3 right = ccl::cross(forward, up_ref);
+    if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
+    right = ccl::normalize(right);
+    ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
+    camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
+                                     right.y, up.y, forward.y, p[1],
+                                     right.z, up.z, forward.z, p[2]);
+  }
   scene->camera->set_matrix(camera_tfm);
   scene->camera->need_flags_update = true;
   scene->camera->update(scene);
@@ -420,6 +442,20 @@ Mesh read_stl(const std::string &path) {
 dslvm::Registry make_registry() {
   dslvm::Registry registry;
   registry.context("scene", "Scene");
+  registry.method("Scene", "camera_look_at", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("camera values must be finite");
+    for (size_t i = 0; i < 6; ++i)
+      if (std::abs(a[i].f) > 1'000'000.0) throw dslvm::Error("camera position or target exceeds scene bounds");
+    const double dx = a[3].f - a[0].f, dy = a[4].f - a[1].f, dz = a[5].f - a[2].f;
+    if (dx * dx + dy * dy + dz * dz < 1.0e-12) throw dslvm::Error("camera position and target must differ");
+    if (a[6].f < 5.0 || a[6].f > 170.0) throw dslvm::Error("camera field of view must be 5..170 degrees");
+    scene->camera.position = {float(a[0].f), float(a[1].f), float(a[2].f)};
+    scene->camera.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
+    scene->camera.fov_radians = float(a[6].f * M_PI / 180.0);
+    scene->custom_camera = true;
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "world_color", {"float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     for (const auto &value : a) if (!std::isfinite(value.f)) throw dslvm::Error("world color values must be finite");

@@ -4,6 +4,7 @@
   "types": {
     "Scene": {
       "methods": {
+        "camera_look_at": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "point_light": [{"params": ["float", "float", "float", "float", "float", "float", "float"], "returns": "void"}],
         "world_color": [{"params": ["float", "float", "float", "float"], "returns": "void"}],
         "expect_int": [
