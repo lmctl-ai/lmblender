@@ -1,16 +1,17 @@
 # Full-check status
 
-Generated: 2026-10-20 19:31 UTC
+Generated: 2026-10-20 21:25 UTC
 
-Source revision tested: `21dd463 plus tested worktree changes`
+Source revision tested: `5d34185 (clean worktree)`
 
 ## Results
 
 - `BUILD_JOBS=2 ./test.sh`: PASS.
+- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.
 - Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.
 - Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).
-- Binary sizes: `lmblender` 80997264 bytes; standalone Cycles 79138952 bytes.
-- QA provider `agy/gemini-4-argon-medium`: PASS on all 14 named images; exact responses follow.
+- Binary sizes: `lmblender` 81002288 bytes; standalone Cycles 79138952 bytes.
+- QA provider `agy/gemini-4-argon-medium`: PASS on all 18 named images; exact responses follow.
 
 ## QA responses
 
@@ -28,3 +29,7 @@ Source revision tested: `21dd463 plus tested worktree changes`
 - image-texture: PASS | score 5/5 | The textured cube is fully visible inside the frame with red and yellow checker regions clearly appearing across all three visible faces.
 - material-maps: PASS | score 5/5 | Two smooth spheres sit apart and fully framed without overlapping or cropping; the left orange sphere displays irregular normal-map relief and varying metallic/roughness highlights across its surface, while the right sphere alternates gold and blue regions from a texture-driven shader mix.
 - backface-culling: PASS | score 5/5 | One bright green square panel is clearly visible and unclipped on the left while the corresponding right panel area is empty gray background due to backface culling.
+- video-level1: PASS | score 5/5 | Both the CODER and RESEARCH orb teams have readable labels, every ring and satellite orb is fully inside the frame with clear margins, the peek view is visibly closer than level1-0.png, and the two groups remain clearly separate.
+- video-level2: PASS | score 5/5 | The central yellow LEAD orb and the surrounding cyan, green, pink, and purple agents are clearly visible, the "CODER", "LEAD", and "BROWSER" labels are readable, the message arrows and red-orange token are clearly visible, and the entire scene is fully framed.
+- video-level3: PASS | score 5/5 | The "HUMAN", "LEAD", "TEAM", and "RESULT" cards are all clearly visible in left-to-right order with readable text, connected by arrows between consecutive cards, and the red-orange message token is clearly visible on the middle arrow without hiding any card labels.
+- video-level4: PASS | score 5/5 | The "INPUT", "BUILD", "REVIEW", and "SHIP" labels are clearly visible in left-to-right order, the large green checkmark is fully inside the frame next to the final "SHIP" stage, and the moving red-orange token is clearly visible at the end stage.
