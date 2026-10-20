@@ -1,12 +1,13 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/subsurface-control.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
 let mesh = scene.uv_sphere(1.1,48,32,true); mesh.translate(0.0,0.0,1.1);
-let skin = scene.material(0.85, 0.18, 0.08, 0.0, 0.42, 0.0, 0.25, 0.035, 0.015, 0.35);
+let skin = scene.material(0.82, 0.28, 0.09, 0.0, 0.38, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(skin);
 scene.world_color(0.08, 0.09, 0.12, 0.5);
-scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 0.0, 1.0, 0.72, 0.55, 850.0, 3.5);
-scene.area_light(3.0, -1.0, 2.5, 0.0, 0.0, 0.0, 0.5, 0.7, 1.0, 180.0, 3.0);
-scene.area_light(0.0,4.0,3.0,0.0,0.0,1.0,1.0,0.3,0.15,2200.0,2.0);
+scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 0.0, 1.0, 0.72, 0.55, 650.0, 3.5);
+scene.area_light(3.0, -1.0, 2.5, 0.0, 0.0, 0.0, 0.5, 0.7, 1.0, 90.0, 3.0);
+scene.area_light(0.0,4.0,3.0,0.0,0.0,1.0,1.0,0.12,0.03,2600.0,5.0);
+scene.light_clamp(12.0,3.0);
 scene.checker_ground(7.0,5.0);
 scene.fit_camera(45.0);
 scene.render_settings(12,177,true);

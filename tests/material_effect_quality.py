@@ -43,6 +43,27 @@ if "volume-fog" in sys.argv[2]:
     print(f"fog shell audit: lit red subject pixels={len(subject)}; blue haze pixels={blue_haze}")
     assert len(subject)>1500, f"fog volume obscures the lit subject ({len(subject)} red pixels)"
     assert blue_haze>10000, f"blue scattering haze is not visible ({blue_haze} pixels)"
+    def band_contrast(path, y0, y1):
+        _,_,channels,band_rows=decode(path)
+        values=[]
+        for yy in range(y0,y1):
+            for xx in range(30,610):
+                p=band_rows[yy][xx*channels:xx*channels+3]
+                values.append(.2126*p[0]+.7152*p[1]+.0722*p[2])
+        mean=sum(values)/len(values)
+        return (sum((v-mean)**2 for v in values)/len(values))**0.5
+    control_far=band_contrast(sys.argv[1],200,220)
+    fog_far=band_contrast(sys.argv[2],200,220)
+    control_near=band_contrast(sys.argv[1],390,410)
+    fog_near=band_contrast(sys.argv[2],390,410)
+    far_ratio=fog_far/control_far
+    near_ratio=fog_near/control_near
+    haze_region=[rows[y][x*c:x*c+3] for y in range(70,160) for x in range(220,420)]
+    mean_r=sum(p[0] for p in haze_region)/len(haze_region)
+    mean_b=sum(p[2] for p in haze_region)/len(haze_region)
+    print(f"fog attenuation audit: far checker contrast ratio={far_ratio:.3f}, near={near_ratio:.3f}; blue-minus-red haze={mean_b-mean_r:.1f}")
+    assert far_ratio < near_ratio-0.05, "fog must attenuate distant checker contrast more than the near floor"
+    assert mean_b-mean_r > 15, "fog region lacks a measurable blue scattering tint"
 if "subsurface" in sys.argv[2]:
     w,h,c,rows=decode(sys.argv[2]); roi=[rows[y][x*c:x*c+3] for y in range(130,370) for x in range(220,420)]
     lum=[.2126*p[0]+.7152*p[1]+.0722*p[2] for p in roi]
@@ -52,3 +73,5 @@ if "subsurface" in sys.argv[2]:
     print(f"wax sphere ROI luminance span={span:.2f}; orange sphere mask pixels={len(sphere)}; sphere lit-to-shadow span={sphere_span:.2f}")
     assert len(sphere)>5000, f"wax sphere mask is too small to measure ({len(sphere)} pixels)"
     assert sphere_span>25, f"wax sphere lacks a visible light-to-shadow gradient: span={sphere_span:.2f}"
+    if sys.argv[2].endswith("subsurface.png"):
+        assert mad>=3.0, f"Principled subsurface effect is too subtle vs the opaque control (MAD {mad:.3f}/255)"

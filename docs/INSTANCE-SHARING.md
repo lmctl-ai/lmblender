@@ -1,47 +1,27 @@
-# Instance geometry sharing investigation
+# Cycles mesh-instance sharing
 
-The DSL `scene.instance_mesh` currently shares its source mesh handle, but the
-Cycles scene builder creates a separate `ccl::Mesh` node for each object. This
-is intentional until the direct-node path has a working geometry ownership and
-update sequence.
+## What failed
 
-## Evidence
+The standalone Cycles build uses GCC 14 `-O2` and its CPU device uses BVH2. On this aarch64 build, GCC's tree vectorizer miscompiled `BVH2::pack_instances`: adding the primitive offset to `int4.x` and `.y` also zeroed `.z` (visibility) and `.w` (primitive type). Instanced leaf nodes then had no valid primitive type, so all rays missed. Separate geometry rendered normally.
 
-The attempted prototype cached a `ccl::Mesh *` by source mesh and material,
-called `Object::set_geometry` on each object, applied each object's transform,
-called `Mesh::compute_bounds()`, and tagged the shared geometry both before
-and after attaching all object users. `examples/mesh-instances.lms` still
-rendered a uniform background (RGB 67,75,88 everywhere). After the render,
-Cycles reported two mesh objects with the same geometry, valid shared geometry
-bounds `[0,0,0]..[2,3,4]`, and object bounds `[-1.8,0,0]..[-0.5,1.95,2.6]` and
-`[1.8,0,0]..[3.1,1.95,2.6]`. This rules out missing geometry bounds and
-instance transforms as the immediate cause, but does not identify the BVH or
-shader lifecycle failure. Returning to fresh mesh nodes per object restores
-both visible disconnected silhouettes (`tests/png_instances.py`: component
-areas 309 and 307 pixels at 256x192). The shared prototype was reverted, so
-production rendering remains correct and geometry sharing is still pending.
+## Fix carried by this repo
 
-Blender's Cycles integration has more lifecycle machinery than this host's
-direct C++ construction: `intern/cycles/blender/geometry.cpp` builds a
-`GeometryKey`, looks up `geometry_map`, avoids duplicate syncs using
-`geometry_synced`, and updates the map before returning geometry. Then
-`intern/cycles/blender/object.cpp::sync_object` attaches the returned geometry
-to an object. The standalone renderer bypasses `BlenderSync`; these source
-references suggest the missing behavior is lifecycle/synchronization rather
-than the `set_geometry` API alone. This is an inference from the integration
-path plus the prototype experiments, not a proven Cycles limitation.
+`scripts/make-cycles-source-overlay.py` creates a disposable copy of `intern/cycles` under `build/cycles-static/blender-source-overlay` and applies `patches/cycles-bvh2-instance-sharing.patch` there. Other Blender `intern` directories remain symlinks. The patch builds the leaf with `make_int4(offset_x, offset_y, original_visibility, original_type)`. The script never edits `/home/ubuntu/blender-src`; `git -C /home/ubuntu/blender-src status --short` stayed empty before and after the build.
 
-## Static OIDN integration
+`render_direct` shares a Cycles `Mesh` by `(source geometry, material, smooth flag)`, caches the material shader, keeps vertices in local space, and places translation/scale on each Cycles `Object`. Image-textured meshes remain per-object because the current cube-projection UVs depend on instance scale.
 
-`BUILD_JOBS=2 ./scripts/build-oidn-static.sh` configures CPU-only OIDN 2.5 with
-CUDA, HIP, and SYCL disabled, then links and runs the OIDN RT filter in a fully
-static executable. The verified smoke binary is 53,634,528 bytes;
-`ldd` reports `not a dynamic executable`, and the filter returned a finite
-center pixel (`0.400401`). The linker warns that OIDN's module-loader object
-uses `dlopen`; the exercised CPU RT path did not require a shared library.
+## Regression
 
-The static archive was then integrated into standalone Cycles and the host.
-`scene.render_settings(..., denoise=true)` now exercises the CPU RT filter.
-The end-to-end quality metrics and current ELF sizes are recorded in the
-top-level README; the smoke binary above is only the earlier standalone OIDN
-feasibility measurement.
+`examples/mesh-instances.lms` renders two translated copies of one imported OBJ. `tests/png_instances.py` checks that the output contains exactly two connected foreground components of at least 10 pixels; the current measured components are `[309, 307]`. The unpatched BVH2 build returns a blank frame for this fixture. `test.sh` runs the same image and component checks.
+
+## Other host builds checked
+
+The installed integrated Blender build at `/home/ubuntu/blender-build` has `WITH_CYCLES_EMBREE=ON`, so its CPU path does not use this BVH2 instance merge. `/home/ubuntu/cycles-nopy` is GCC 14 `-O2` with Embree off, but its XML reader's `xml_read_object` creates a fresh `Mesh` for each `<object>`; the standalone XML path does not share mesh geometry and therefore does not execute `pack_instances`. The patch is needed by this direct-node host when it shares a `ccl::Mesh`; it was not applied to either external build tree.
+
+To rebuild the repaired Cycles BVH and host:
+
+```sh
+python3 scripts/make-cycles-source-overlay.py /home/ubuntu/blender-src build/cycles-static/blender-source-overlay
+cmake --build build/cycles-static --target cycles_bvh --parallel 2
+cmake --build build --parallel 2
+```

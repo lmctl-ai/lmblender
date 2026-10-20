@@ -1,14 +1,14 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/volume-fog.dslb";
 p = _dsl_ schema="../schema/lmblender.dsl.json";
-let shell = scene.uv_sphere(2.2,64,40,true); shell.translate(0.0,0.0,1.9);
+let shell = scene.uv_sphere(15.0,64,40,true);
 let fog = scene.material(0.9, 0.95, 1.0, 0.0, 0.02, 1.0, 0.0, 0.0, 0.0, 0.0);
-fog.volume("scatter", 0.28, 0.36, 0.62, 1.0);
+fog.volume("scatter", 0.035, 0.36, 0.62, 1.0);
 shell.set_material(fog);
 let subject = scene.uv_sphere(0.72,48,32,true); subject.translate(0.0,0.0,0.75);
 subject.set_material(scene.material(0.8,0.12,0.035,0.0,0.32,0.0,0.0,0.0,0.0,0.0));
 scene.world_color(0.16, 0.19, 0.25, 0.65);
 scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 1.0, 1.0, 0.78, 0.56, 1250.0, 4.0);
-scene.spot_light(2.5,-3.5,4.0,0.0,0.0,0.7,0.55,0.72,1.0,600.0,42.0,0.3);
+scene.spot_light(2.5,-3.5,4.0,0.0,0.0,0.7,0.55,0.72,1.0,4000.0,55.0,0.3);
 scene.checker_ground(7.0,5.0);
 scene.camera_look_at(5.5,-9.0,5.1,0.0,0.0,1.4,40.0);
 scene.render_settings(12,481,true);

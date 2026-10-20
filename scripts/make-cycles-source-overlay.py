@@ -2,6 +2,8 @@
 """Create a symlink view of Blender sources with only the unused startup LFS gate satisfied."""
 import argparse
 from pathlib import Path
+import shutil
+import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument("source", type=Path)
@@ -13,6 +15,24 @@ output.mkdir(parents=True, exist_ok=True)
 
 for entry in source.iterdir():
     target = output / entry.name
+    if entry.name == "intern":
+        # Cycles needs one patched source file. Keep every other intern
+        # directory as an upstream symlink and copy only the small Cycles tree
+        # into this disposable build overlay.
+        if target.is_symlink():
+            target.unlink()
+        elif target.exists():
+            shutil.rmtree(target)
+        target.mkdir()
+        for intern_entry in entry.iterdir():
+            intern_target = target / intern_entry.name
+            if intern_entry.name == "cycles":
+                shutil.copytree(intern_entry, intern_target, symlinks=True)
+            else:
+                intern_target.symlink_to(intern_entry, target_is_directory=intern_entry.is_dir())
+        patch_file = Path(__file__).resolve().parent.parent / "patches/cycles-bvh2-instance-sharing.patch"
+        subprocess.run(["patch", "--batch", "-p1", "-i", str(patch_file)], cwd=output, check=True)
+        continue
     if entry.name != "release":
         if not target.exists() and not target.is_symlink():
             target.symlink_to(entry, target_is_directory=entry.is_dir())

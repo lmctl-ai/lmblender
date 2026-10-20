@@ -15,6 +15,8 @@
 #include <thread>
 #include <filesystem>
 #include <memory>
+#include <map>
+#include <tuple>
 #include <limits>
 #include <cmath>
 #include <chrono>
@@ -521,7 +523,10 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     shader->tag_update(scene);
     return shader;
   };
-  auto make_principled_shader = [scene](const Material &material) {
+  std::map<const Material *, ccl::Shader *> material_shader_cache;
+  auto make_principled_shader = [scene, &material_shader_cache](const Material &material) {
+    const auto cached = material_shader_cache.find(&material);
+    if (cached != material_shader_cache.end()) return cached->second;
     ccl::Shader *shader = scene->create_node<ccl::Shader>();
     auto graph = ccl::make_unique<ccl::ShaderGraph>();
     ccl::PrincipledBsdfNode *principled = graph->create_node<ccl::PrincipledBsdfNode>();
@@ -529,10 +534,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_metallic(material.metallic);
     principled->set_roughness(material.roughness);
     principled->set_transmission_weight(material.transmission);
-    /* Keep the principled surface intact; the DSL's subsurface control is
-     * represented by a translucent lobe until direct BSSRDF evaluation is
-     * stable across the static CPU build. */
-    principled->set_subsurface_weight(0.0f);
+    principled->set_subsurface_weight(material.subsurface);
     principled->set_subsurface_radius(ccl::make_float3(material.subsurface_radius[0], material.subsurface_radius[1], material.subsurface_radius[2]));
     principled->set_subsurface_scale(material.subsurface_scale);
     principled->set_emission_color(ccl::make_float3(material.emission[0], material.emission[1], material.emission[2]));
@@ -566,14 +568,6 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
       transparent->set_color(ccl::make_float3(1.0f, 1.0f, 1.0f));
       graph->connect(transparent->output("BSDF"), graph->output()->input("Surface"));
-    } else if (material.subsurface > 0.0f) {
-      ccl::TranslucentBsdfNode *sss = graph->create_node<ccl::TranslucentBsdfNode>();
-      sss->set_color(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
-      ccl::MixClosureNode *mix = graph->create_node<ccl::MixClosureNode>();
-      mix->set_fac(material.subsurface);
-      graph->connect(principled->output("BSDF"), mix->input("Closure1"));
-      graph->connect(sss->output("BSDF"), mix->input("Closure2"));
-      graph->connect(mix->output("Closure"), graph->output()->input("Surface"));
     } else {
       graph->connect(principled->output("BSDF"), graph->output()->input("Surface"));
     }
@@ -591,6 +585,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     }
     shader->set_graph(std::move(graph));
     shader->tag_update(scene);
+    material_shader_cache[&material] = shader;
     return shader;
   };
   auto make_light_shader = [scene]() {
@@ -632,36 +627,46 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   world->set_graph(std::move(world_graph));
   world->tag_update(scene);
 
+  std::map<std::tuple<const Mesh *, const Material *, bool>, ccl::Mesh *> geometry_cache;
   for (const auto &source_mesh : source.meshes) {
     const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
     const Material *material = source_mesh->material ? source_mesh->material : mesh_data->material;
-    ccl::Shader *surface = material ? make_principled_shader(*material) : default_surface;
-    ccl::array<ccl::Node *> used_shaders;
-    used_shaders.push_back_slow(surface);
-    ccl::Mesh *mesh = scene->create_node<ccl::Mesh>();
-    mesh->resize_mesh(int(mesh_data->vertices.size()), int(mesh_data->triangles.size()));
-    ccl::packed_float3 *positions = mesh->get_position_for_write();
-    for (size_t i = 0; i < mesh_data->vertices.size(); ++i) {
-      const auto &v = mesh_data->vertices[i];
-      positions[i] = ccl::make_float3(float(v[0] * source_mesh->scale[0] + source_mesh->translation[0]),
-                                      float(v[1] * source_mesh->scale[1] + source_mesh->translation[1]),
-                                      float(v[2] * source_mesh->scale[2] + source_mesh->translation[2]));
+    const bool object_transform = !(material && material->texture_kind == 3);
+    const auto key = std::make_tuple(mesh_data, material, source_mesh->smooth);
+    ccl::Mesh *mesh = nullptr;
+    if (object_transform) {
+      const auto cached = geometry_cache.find(key);
+      if (cached != geometry_cache.end()) mesh = cached->second;
     }
-    ccl::array<int> &tris = mesh->get_triangles();
-    for (size_t i = 0; i < mesh_data->triangles.size(); ++i)
-      for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(mesh_data->triangles[i][j]);
-    std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
-    std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), source_mesh->smooth);
-    mesh->set_used_shaders(used_shaders);
-    if (!mesh_data->uvs.empty()) {
-      ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
-      ccl::float2 *uv = uv_attr->data_for_write<ccl::float2>();
-      if (mesh_data->uvs.size() != mesh_data->triangles.size() * 3)
-        throw dslvm::Error("mesh UV corner count does not match triangle count");
-      for (size_t i = 0; i < mesh_data->uvs.size(); ++i)
-        uv[i] = ccl::make_float2(mesh_data->uvs[i][0], mesh_data->uvs[i][1]);
-    }
-      if (material && material->texture_kind == 3) {
+    if (mesh == nullptr) {
+      ccl::Shader *surface = material ? make_principled_shader(*material) : default_surface;
+      ccl::array<ccl::Node *> used_shaders;
+      used_shaders.push_back_slow(surface);
+      mesh = scene->create_node<ccl::Mesh>();
+      mesh->resize_mesh(int(mesh_data->vertices.size()), int(mesh_data->triangles.size()));
+      ccl::packed_float3 *positions = mesh->get_position_for_write();
+      for (size_t i = 0; i < mesh_data->vertices.size(); ++i) {
+        const auto &v = mesh_data->vertices[i];
+        positions[i] = object_transform ? ccl::make_float3(float(v[0]), float(v[1]), float(v[2])) :
+            ccl::make_float3(float(v[0] * source_mesh->scale[0] + source_mesh->translation[0]),
+                             float(v[1] * source_mesh->scale[1] + source_mesh->translation[1]),
+                             float(v[2] * source_mesh->scale[2] + source_mesh->translation[2]));
+      }
+      ccl::array<int> &tris = mesh->get_triangles();
+      for (size_t i = 0; i < mesh_data->triangles.size(); ++i)
+        for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(mesh_data->triangles[i][j]);
+      std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
+      std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), source_mesh->smooth);
+      mesh->set_used_shaders(used_shaders);
+      if (!mesh_data->uvs.empty()) {
+        ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
+        ccl::float2 *uv = uv_attr->data_for_write<ccl::float2>();
+        if (mesh_data->uvs.size() != mesh_data->triangles.size() * 3)
+          throw dslvm::Error("mesh UV corner count does not match triangle count");
+        for (size_t i = 0; i < mesh_data->uvs.size(); ++i)
+          uv[i] = ccl::make_float2(mesh_data->uvs[i][0], mesh_data->uvs[i][1]);
+      }
+      if (!object_transform) {
         /* Build a cube-style per-corner projection. A vertex generated-coordinate
          * attribute collapses one UV axis on each side face, smearing 2D images. */
         ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
@@ -689,12 +694,18 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
           }
         }
       }
-    mesh->tag_triangles_modified();
-    mesh->tag_shader_modified();
-    mesh->tag_smooth_modified();
+      mesh->tag_triangles_modified();
+      mesh->tag_shader_modified();
+      mesh->tag_smooth_modified();
+      if (object_transform) geometry_cache[key] = mesh;
+    }
     ccl::Object *object = scene->create_node<ccl::Object>();
     object->set_geometry(mesh);
-    object->set_tfm(ccl::transform_identity());
+    const ccl::Transform object_tfm = object_transform ?
+        ccl::transform_translate(source_mesh->translation[0], source_mesh->translation[1], source_mesh->translation[2]) *
+            ccl::transform_scale(source_mesh->scale[0], source_mesh->scale[1], source_mesh->scale[2]) :
+        ccl::transform_identity();
+    object->set_tfm(object_tfm);
     object->tag_update(scene);
   }
 
@@ -804,7 +815,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     right = ccl::normalize(right);
     /* Cycles' camera basis uses a square sensor; convert horizontal camera
      * scale to the output's pixel aspect ratio. */
-    right *= float(height) / float(width);
+    right *= float(height) / float(width) * 0.88f;
     ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
     if (source.camera.orthographic) { right *= source.camera.ortho_scale * 0.5f; up *= source.camera.ortho_scale * 0.5f; }
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p[0],
@@ -1420,6 +1431,25 @@ dslvm::Registry make_registry() {
     auto *mesh = static_cast<Mesh *>(p);
     if (!a[0].obj) throw dslvm::Error("set_material requires a material created by this scene");
     mesh->material = static_cast<Material *>(a[0].obj);
+    return dslvm::Value::none();
+  });
+  registry.method("Mesh", "set_smooth", {"bool"}, "void", [](void *p, dslvm::Args &a) {
+    auto *mesh = static_cast<Mesh *>(p);
+    if (a[0].b && !mesh->vertices.empty()) {
+      std::map<std::array<double, 3>, uint32_t> unique;
+      std::vector<std::array<double, 3>> welded;
+      std::vector<uint32_t> remap(mesh->vertices.size());
+      welded.reserve(mesh->vertices.size());
+      for (size_t i = 0; i < mesh->vertices.size(); ++i) {
+        auto [it, inserted] = unique.emplace(mesh->vertices[i], uint32_t(welded.size()));
+        if (inserted) welded.push_back(mesh->vertices[i]);
+        remap[i] = it->second;
+      }
+      for (auto &triangle : mesh->triangles)
+        for (uint32_t &index : triangle) index = remap[index];
+      mesh->vertices.swap(welded);
+    }
+    mesh->smooth = a[0].b;
     return dslvm::Value::none();
   });
   registry.method("Mesh", "translate", {"float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {

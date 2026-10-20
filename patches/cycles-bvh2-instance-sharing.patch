@@ -1,0 +1,16 @@
+--- a/intern/cycles/bvh/bvh2.cpp
++++ b/intern/cycles/bvh/bvh2.cpp
+@@ -588,10 +588,9 @@
+       int4 *leaf_nodes_offset = bvh->pack.leaf_nodes.data();
+       const size_t leaf_nodes_offset_size = bvh->pack.leaf_nodes.size();
+       for (size_t i = 0; i < leaf_nodes_offset_size; i += BVH_NODE_LEAF_SIZE) {
+-        int4 data = leaf_nodes_offset[i];
+-        data.x += prim_offset;
+-        data.y += prim_offset;
+-        pack_leaf_nodes[pack_leaf_nodes_offset] = data;
++        const int4 data = leaf_nodes_offset[i];
++        pack_leaf_nodes[pack_leaf_nodes_offset] = make_int4(
++            data.x + int(prim_offset), data.y + int(prim_offset), data.z, data.w);
+         for (int j = 1; j < BVH_NODE_LEAF_SIZE; ++j) {
+           pack_leaf_nodes[pack_leaf_nodes_offset + j] = leaf_nodes_offset[i + j];
+         }

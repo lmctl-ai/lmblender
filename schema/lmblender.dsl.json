@@ -437,6 +437,14 @@
             "returns": "void"
           }
         ],
+        "set_smooth": [
+          {
+            "params": [
+              "bool"
+            ],
+            "returns": "void"
+          }
+        ],
         "translate": [
           {
             "params": [
