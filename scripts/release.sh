@@ -5,7 +5,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-version=${RELEASE_VERSION:-0.3.0}
+version=${RELEASE_VERSION:-0.3.1}
 version=${version#v}
 binary=${LMBLENDER_BINARY:-$root/build/lmblender}
 machine=${LMBLENDER_ARCH:-$(uname -m)}
@@ -27,7 +27,7 @@ mkdir -p "$pkg/bin" "$pkg/schema" "$pkg/docs" "$pkg/licenses" "$pkg/examples"
 install -m 0755 "$binary" "$pkg/bin/lmblender"
 install -m 0644 schema/lmblender.dsl.json "$pkg/schema/lmblender.dsl.json"
 install -m 0644 README.md USE_FROM_POC.md THIRD_PARTY_NOTICES.md LICENSE SOURCE_OFFER.md BUILD.md "$pkg/"
-install -m 0644 docs/LLM_GUIDE.md docs/ANIMATION.md docs/THROUGHPUT.md docs/PRESETS.md docs/RELINKING.md docs/LICENSE_AUDIT.md docs/CONTRIBUTING.md docs/VIDEO-QA.md "$pkg/docs/"
+install -m 0644 docs/LLM_GUIDE.md docs/ANIMATION.md docs/THROUGHPUT.md docs/OIDN_AUDIT.md docs/PRESETS.md docs/RELINKING.md docs/LICENSE_AUDIT.md docs/CONTRIBUTING.md docs/VIDEO-QA.md "$pkg/docs/"
 cp -a licenses/. "$pkg/licenses/"
 cp -a examples/. "$pkg/examples/"
 printf 'lmblender %s (%s)\n' "$version" "$artifact" >"$pkg/VERSION"

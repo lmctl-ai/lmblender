@@ -1,3 +1,9 @@
+## lmblender 0.3.1 — Linux arm64
+
+Audits OIDN CPU throughput after a 6.31 s denoise measurement. The static OIDN 2.5 build uses optimized AArch64 NEON ISPC kernels and TBB; a controlled Cycles run measured 0.91 s at 960x540, and the OIDN device/filter are reused for the session. The earlier slow result was not reproducible. Adds standalone quality-level timings and 64/128-spp no-denoise comparisons: on a glossy test scene, 16-spp fast OIDN is both faster and passes the SSIM gate where the no-denoise choices do not. Retains the measured 1280x720 diagram final preset at approximately 2.00 s/frame on the simple emissive benchmark.
+
+See `docs/OIDN_AUDIT.md` and `docs/THROUGHPUT.md` for build flags, reproduction steps, quality metrics, and workload limits. This is a static Linux arm64 draft; render duration varies with scene complexity and host load.
+
 ## lmblender 0.3.0 — Linux arm64
 
 Adds measured homepage-video presets: 960x540 draft at 8 spp/no denoise (0.41 s/frame), and 1280x720 final at 16 spp/fast CPU OIDN (2.00 s/frame on the simple emissive benchmark). Adds a selectable OIDN quality binding and a regression against a 256-spp high-quality reference (47.14 dB PSNR, 0.99451 windowed SSIM at 640x360). The render profiler now reports scene build, BVH/session reset, path tracing, OIDN, PNG transform/encoding, and total time. Full-check passed: 14 gallery dimensions, 4 video sequences, 18/18 visual QA, schema, render/import tests, and static linkage.
