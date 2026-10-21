@@ -2,6 +2,8 @@
 
 Measurements on the shared aarch64 host (Cycles CPU, 4 threads, UV sphere + area light, static OIDN). Results are scene- and host-load-dependent. `LMBLENDER_PROFILE=1` enables the detailed Cycles debug timing and emits one `LMBLENDER_PROFILE` summary line per render to stderr. The output driver measures its own view-transform/PNG encode callback; Cycles logs path tracing and OIDN separately to stdout. Scene build and session reset/BVH are wall-clock brackets around C++ scene construction and `Session::reset` respectively.
 
+The 6.31 s OIDN entry below is a historical measurement and is not a stable baseline: a controlled rerun of the same resolution with the current binary reported 0.91 s for OIDN. The CPU device reports ARM NEON, four TBB threads, and OIDN 2.5; an unset `OIDN_NUM_THREADS` and an explicit value of four measured 0.9089 s and 0.9097 s. See [OIDN audit](OIDN_AUDIT.md) for the build flags, filter lifecycle, standalone quality timings, and reproduction command.
+
 ## Phase profile, 16 spp + OIDN
 
 Measured with `tests/throughput-bench.lms`-style scene on 2026-10-20. Values are seconds per frame; path tracing and OIDN are Cycles' own logged wall times, and PNG is the output-driver transform/encode callback.
