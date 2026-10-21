@@ -66,6 +66,9 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
     # Match the arm64 Cycles archives, which use sse2neon for their SIMD types.
     target_compile_options(lmblender PRIVATE -march=armv8.2-a+dotprod+fp16+lse)
     target_compile_definitions(lmblender PRIVATE WITH_SSE2NEON)
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+    # Match intern/cycles/CMakeLists.txt, which builds all Cycles code with SSE4.2.
+    target_compile_options(lmblender PRIVATE -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2)
   endif()
   target_compile_definitions(lmblender PRIVATE WITH_CYCLES_DEVICE_CPU WITH_TBB WITH_OCIO WITH_PUGIXML WITH_SYSTEM_PUGIXML OIIO_STATIC_DEFINE=1 OpenColorIO_SKIP_IMPORTS _FILE_OFFSET_BITS=64 _LARGEFILE64_SOURCE _LARGEFILE_SOURCE __LITTLE_ENDIAN__)
   set(CYCLES_LIB "${CYCLES_BUILD_DIR}/lib")
