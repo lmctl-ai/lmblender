@@ -125,5 +125,6 @@ if [[ ${CYCLES_CONFIGURE_ONLY:-0} == 1 ]]; then
 fi
 cmake --build "$build" --target cycles --parallel "$jobs"
 file "$build/bin/cycles"
-ldd "$build/bin/cycles" 2>&1 | tee "$build/ldd.txt"
+# ldd exits 1 for a static executable; keep pipefail from treating that as failure.
+{ ldd "$build/bin/cycles" 2>&1 || true; } | tee "$build/ldd.txt"
 grep -q 'not a dynamic executable' "$build/ldd.txt"
