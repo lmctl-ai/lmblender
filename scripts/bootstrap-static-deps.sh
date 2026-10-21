@@ -47,8 +47,13 @@ for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath exp
     cp -a "$release_libdir/$name" "$deps_install/$name"
   fi
 done
-# The final binary is fully static; never let a harvested shared object win.
-find "$deps_install" \( -name '*.so' -o -name '*.so.*' \) -delete
+# Match Blender's Linux harvest: png and brotli ship only static archives so
+# their shared objects can never win a link. openjph, tbb, and imath keep their
+# shared objects because their exported CMake targets reference them; the host
+# links static archives from the static prefix (checked by ldd in CI).
+for name in png brotli; do
+  find "$deps_install/$name" \( -name '*.so' -o -name '*.so.*' \) -delete
+done
 
 source_root="$env_build/build"
 mkdir -p "$source_root/openimagedenoise/src/external_openimagedenoise"
