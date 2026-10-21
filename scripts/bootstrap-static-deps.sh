@@ -17,9 +17,13 @@ test -f "$source_tree/build_files/build_environment/CMakeLists.txt" || {
   echo "pinned Blender build_environment is missing; run scripts/fetch-cycles-source.sh" >&2; exit 2;
 }
 mkdir -p "$deps_install" "$libdir" "$ispc_root"
+# Configure downloads every pinned package source. Blender's lib-source
+# mirror (hash-checked) is used by default because some upstream hosts, such
+# as gmplib.org, are unreachable from CI runners.
 cmake -S "$source_tree/build_files/build_environment" -B "$env_build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$cc" -DCMAKE_CXX_COMPILER="$cxx" \
-  -DHARVEST_TARGET="$deps_install" -DLIBDIR="$libdir"
+  -DHARVEST_TARGET="$deps_install" -DLIBDIR="$libdir" \
+  -DPACKAGE_USE_UPSTREAM_SOURCES="${BLENDER_PACKAGE_USE_UPSTREAM_SOURCES:-OFF}"
 
 # Building these pinned Blender ExternalProject targets populates the exact
 # source layout consumed by scripts/build-deps.sh and harvests the small set

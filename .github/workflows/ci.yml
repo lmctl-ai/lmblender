@@ -102,11 +102,33 @@ jobs:
             build/oidn-static-install
             build/cycles-static
           key: lmblender-prefix-${{ env.PREFIX_CACHE_VERSION }}-${{ matrix.arch }}-gcc-${{ steps.toolchain.outputs.gcc }}-${{ hashFiles('.github/cycles-flags.txt', 'scripts/fetch-cycles-source.sh', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh', 'scripts/configure-cycles-static.sh', 'scripts/make-cycles-source-overlay.py', 'patches/*.patch') }}
+      - name: restore pinned Blender package sources (cold cache only)
+        id: packages-cache
+        if: steps.prefix-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/blender-deps-environment/packages
+          # Architecture-independent source archives, keyed on the Blender pin.
+          key: blender-packages-${{ hashFiles('scripts/fetch-cycles-source.sh') }}
       - name: build pinned Blender dependency sources (cold cache only)
+        id: bootstrap
         if: steps.prefix-cache.outputs.cache-hit != 'true'
         env:
           BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
         run: scripts/bootstrap-static-deps.sh
+      - name: check downloaded package sources
+        id: packages
+        if: always() && steps.prefix-cache.outputs.cache-hit != 'true' && steps.packages-cache.outputs.cache-hit != 'true'
+        run: |
+          count=$(find build/blender-deps-environment/packages -maxdepth 1 -type f 2>/dev/null | wc -l)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          du -sh build/blender-deps-environment/packages || true
+      - name: save pinned Blender package sources
+        if: always() && steps.packages.outputs.count > 100
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/blender-deps-environment/packages
+          key: blender-packages-${{ hashFiles('scripts/fetch-cycles-source.sh') }}
       - name: build static image dependencies (cold cache only)
         if: steps.prefix-cache.outputs.cache-hit != 'true'
         env:
