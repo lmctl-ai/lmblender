@@ -28,11 +28,24 @@ cmake -S "$source_tree/build_files/build_environment" -B "$env_build" -G Ninja \
 # Building these pinned Blender ExternalProject targets populates the exact
 # source layout consumed by scripts/build-deps.sh and harvests the small set
 # of non-OpenEXR static dependencies. Their build products are cached in CI.
-cmake --build "$env_build" --parallel "$jobs" --target \
-  external_sse2neon external_zlib external_zstd external_png external_jpeg \
-  external_openjpeg external_openjph external_brotli external_pugixml external_fmt \
-  external_tbb external_imath external_openexr external_tiff external_opencolorio \
-  external_expat external_pystring external_yamlcpp external_minizipng external_openimageio
+targets=(external_zlib external_zstd external_png external_jpeg
+  external_openjpeg external_openjph external_brotli external_pugixml external_fmt
+  external_tbb external_imath external_openexr external_tiff external_opencolorio
+  external_expat external_pystring external_yamlcpp external_minizipng external_openimageio)
+# sse2neon only exists (and is only needed) on arm64 hosts.
+case "$(uname -m)" in aarch64|arm64) targets=(external_sse2neon "${targets[@]}") ;; esac
+cmake --build "$env_build" --parallel "$jobs" --target "${targets[@]}"
+
+# build_environment always installs into its own <build>/Release LIBDIR and
+# only fills HARVEST_TARGET from the full `harvest` target. Copy just the
+# prefixes consumed by build-deps.sh, configure-cycles-static.sh, and the host.
+release_libdir="$env_build/Release"
+for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath expat sse2neon; do
+  if [[ -d "$release_libdir/$name" ]]; then
+    rm -rf "${deps_install:?}/$name"
+    cp -a "$release_libdir/$name" "$deps_install/$name"
+  fi
+done
 
 source_root="$env_build/build"
 mkdir -p "$source_root/openimagedenoise/src/external_openimagedenoise"
