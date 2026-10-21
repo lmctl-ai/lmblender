@@ -20,9 +20,12 @@ origin=$(git -C "$source" remote get-url origin)
   echo "unexpected Blender source remote: $origin" >&2; exit 2;
 }
 git -C "$source" sparse-checkout init --cone
+# Blender's top-level CMake configure also reads BKE_blender_version.h and
+# always adds tests/gtests; LFS test data is never needed.
+export GIT_LFS_SKIP_SMUDGE=1
 git -C "$source" sparse-checkout set \
   CMakeLists.txt build_files/cmake build_files/build_environment intern/cycles intern/atomic \
-  intern/guardedalloc intern/libc_compat intern/sky
+  intern/guardedalloc intern/libc_compat intern/sky source/blender/blenkernel tests/gtests
 git -C "$source" fetch --filter=blob:none --depth=1 origin "$commit"
 git -C "$source" checkout --detach "$commit"
 actual=$(git -C "$source" rev-parse HEAD)

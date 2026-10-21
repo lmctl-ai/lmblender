@@ -77,11 +77,12 @@ jobs:
           # Blender build_files/build_environment/cmake/check_software.cmake list,
           # the GCC 14 toolchain used for every static archive, and the X11/GL
           # headers libepoxy's build needs (platform_unix.cmake requires Epoxy).
+          # platform_unix.cmake also always requires FreeType (system copy, unlinked).
           sudo apt-get install -y -qq --no-install-recommends \
             build-essential gcc-14 g++-14 cmake ninja-build git curl xz-utils patch file \
             autoconf automake autopoint flex help2man gettext texinfo bison libtool yasm nasm tcl \
             meson python3 python3-mako patchelf pkg-config libtinfo-dev libncurses-dev libssl-dev \
-            libx11-dev libegl-dev libgl-dev
+            libx11-dev libegl-dev libgl-dev libfreetype-dev
           echo "gcc=$(g++-14 -dumpfullversion -dumpversion)" >> "$GITHUB_OUTPUT"
           echo "jobs=$(nproc)" >> "$GITHUB_OUTPUT"
           g++-14 --version | head -1
