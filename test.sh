@@ -54,6 +54,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/denoise-speed.lms "$build/denoise-speed.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/sequence-budget.lms "$build/sequence-budget.dslb" >/dev/null
 mkdir -p "$build/video"
 for video in level1-teams level2-agents level3-flow level4-pipeline; do
@@ -110,6 +111,7 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
 "$exe" --dsl "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
 "$exe" --dsl "$build/quality-preset.dslb" >"$build/quality-preset-result.json"
+"$exe" --dsl "$build/denoise-speed.dslb" >"$build/denoise-speed-result.json"
 if "$exe" --dsl "$build/sequence-budget.dslb" >"$build/sequence-budget-result.json"; then
   echo "sequence budget test unexpectedly rendered" >&2
   exit 1
@@ -216,6 +218,7 @@ python3 tests/material_nodes_quality.py "$build/material-nodes.png" "$build/mate
 python3 tests/material_maps_quality.py "$build"
 python3 tests/backface_culling_quality.py "$build/backface-culling.png"
 python3 tests/preset_quality.py "$build"
+python3 tests/denoise_speed_quality.py "$build/denoise-speed-fast.png" "$build/denoise-speed-reference.png"
 if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
   blender="$BLENDERCLI_BLENDER"
 elif [ -x /home/ubuntu/blender-install/blender ]; then

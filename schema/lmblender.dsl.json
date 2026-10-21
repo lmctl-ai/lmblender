@@ -346,6 +346,14 @@
             "returns": "void"
           }
         ],
+        "denoise_quality": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "void"
+          }
+        ],
         "render_preset": [
           {
             "params": [

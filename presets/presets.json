@@ -3,7 +3,7 @@
   "presets": [
     {
       "name": "diagram-dark-16x9-draft",
-      "description": "Fast dark diagram and homepage-video look",
+      "description": "Quick 960x540 dark diagram preview; 8 spp, no denoise.",
       "render": {
         "tier": "draft",
         "threads": 4,
@@ -112,19 +112,20 @@
     },
     {
       "name": "diagram-dark-16x9-final",
-      "description": "Higher quality dark diagram and homepage-video look",
+      "description": "1280x720 diagram output; 16 spp with fast CPU OIDN. Runtime depends on scene and host.",
       "render": {
         "tier": "final",
         "threads": 4,
         "view_transform": "Standard",
         "samples": 16,
-        "bounces": 6,
+        "bounces": 4,
         "denoise": true,
         "resolution": [
-          960,
-          540
+          1280,
+          720
         ],
-        "fps": 24
+        "fps": 24,
+        "denoise_quality": "fast"
       },
       "world": {
         "color": [

@@ -30,6 +30,7 @@
 #include <nlohmann/json.hpp>
 
 #include "device/device.h"
+#include "device/denoise.h"
 #include "util/version.h"
 #ifdef WITH_OPENIMAGEDENOISE
 #  include <OpenImageDenoise/config.h>
@@ -179,6 +180,8 @@ struct Scene {
   float clamp_indirect = 0.0f;
   int render_seed = 0;
   bool denoise = false;
+  ccl::DenoiserQuality denoise_quality = ccl::DENOISER_QUALITY_HIGH;
+  ccl::DenoiserPrefilter denoise_prefilter = ccl::DENOISER_PREFILTER_FAST;
   int preset_samples = 64;
   int preset_bounces = 8;
   bool motion_blur = false;
@@ -190,6 +193,7 @@ struct Scene {
   std::vector<CameraOpticsKey> camera_optics_keys;
   int render_frame = 0;
 };
+
 
 using PresetJson = nlohmann::json;
 
@@ -221,6 +225,11 @@ void apply_preset(Scene &scene, const PresetJson &preset)
     scene.preset_bounces = preset.at("render").value("bounces", tier == "draft" ? 2 : 8);
     scene.max_bounces = scene.preset_bounces;
     scene.denoise = preset.at("render").value("denoise", tier == "final");
+    const std::string denoise_quality = preset.at("render").value("denoise_quality", std::string("high"));
+    if (denoise_quality == "fast") scene.denoise_quality = ccl::DENOISER_QUALITY_FAST;
+    else if (denoise_quality == "balanced") scene.denoise_quality = ccl::DENOISER_QUALITY_BALANCED;
+    else if (denoise_quality == "high") scene.denoise_quality = ccl::DENOISER_QUALITY_HIGH;
+    else throw dslvm::Error("PRESET_INVALID", "render.denoise_quality must be fast, balanced, or high");
     if (scene.preset_samples < 1 || scene.preset_samples > 65536 || scene.preset_bounces < 0 || scene.preset_bounces > 64)
       throw dslvm::Error("PRESET_INVALID", "render.samples must be 1..65536 and render.bounces 0..64");
     if (scene.denoise && !ccl::openimagedenoise_supported())
@@ -1158,6 +1167,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->integrator->set_sample_clamp_indirect(source.clamp_indirect);
   scene->integrator->set_seed(source.render_seed);
   scene->integrator->set_use_denoise(source.denoise);
+  scene->integrator->set_denoiser_quality(source.denoise_quality);
+  scene->integrator->set_denoiser_prefilter(source.denoise_prefilter);
   scene->integrator->set_motion_blur(source.motion_blur);
 
   if (emit_passes) {
@@ -1958,6 +1969,14 @@ dslvm::Registry make_registry() {
     scene->max_bounces = int(a[0].i);
     scene->render_seed = int(a[1].i);
     scene->denoise = a[2].b;
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "denoise_quality", {"string"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    if (a[0].s == "fast") scene->denoise_quality = ccl::DENOISER_QUALITY_FAST;
+    else if (a[0].s == "balanced") scene->denoise_quality = ccl::DENOISER_QUALITY_BALANCED;
+    else if (a[0].s == "high") scene->denoise_quality = ccl::DENOISER_QUALITY_HIGH;
+    else throw dslvm::Error("denoise_quality must be fast, balanced, or high");
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_preset", {"string"}, "void", [](void *p, dslvm::Args &a) {

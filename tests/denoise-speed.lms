@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+p = _dsl_ schema="../schema/lmblender.dsl.json";
+let sphere = scene.uv_sphere(1.0, 48, 24, true);
+let gold = scene.material(0.78, 0.29, 0.035, 0.65, 0.22, 0.0, 0.0, 0.0, 0.0, 0.0);
+sphere.set_material(gold);
+scene.ground_plane(-1.02, 20.0, 0.24, 0.27, 0.31);
+scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 0.0, 1.0, 0.82, 0.66, 500.0, 4.0);
+scene.area_light(4.0, -1.0, 3.0, 0.0, 0.0, 0.0, 0.55, 0.72, 1.0, 180.0, 3.0);
+scene.camera_look_at(0.0, -7.0, 2.4, 0.0, 0.0, 0.0, 42.0);
+scene.set_threads(4);
+scene.render_settings(16, 6, true);
+scene.denoise_quality("fast");
+scene.render_png("build/denoise-speed-fast.png", 16, 640, 360);
+scene.denoise_quality("high");
+scene.render_png("build/denoise-speed-reference.png", 256, 640, 360);
+end _dsl_
+savedsl(p, ARGV.len() > 0 ? ARGV[0] : "build/denoise-speed.dslb");
