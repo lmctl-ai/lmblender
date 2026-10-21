@@ -3,6 +3,13 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
+mkdir -p "$build"
+find "$build" -maxdepth 1 -type f \
+  \( -name '*.png' -o -name '*.exr' -o -name '*.apng' -o -name '*.dslb' \
+     -o -name '*-result.json' -o -name 'version.txt' -o -name 'presets-list.txt' \
+     -o -name 'install-example.log' \) -delete
+rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
+rm -f "$root/install-and-run.png"
 python3 tests/create_material_maps.py "$build/material-map-assets"
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
   -DBLENDER_SOURCE_TREE="${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}" \
@@ -14,6 +21,25 @@ cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
 exe="$build/lmblender"
 export PATH="$build:$PATH"
+compile_dsl() {
+  local source="$1" bytecode="$2" stem temporary log
+  shift 2
+  stem=$(basename "$source")
+  temporary="$build/compile-only-$stem"
+  log="$temporary.log"
+  # lmscript normally evaluates the whole outer script after saving its
+  # embedded DSL block. Stop at savedsl() here so this pass only builds the
+  # bytecode; the host execution and image assertions run once below. This
+  # avoids the 60 s system() timeout hiding a slow render as exit code null.
+  awk '/^[[:space:]]*savedsl\(/ { print; found=1; exit } { print }
+       END { if (!found) exit 1 }' "$source" >"$temporary"
+  if ! "${LMSCRIPT:-lmscript}" "$temporary" "$@" "$bytecode" >"$log" 2>&1; then
+    cat "$log" >&2
+    echo "failed compiling DSL block from $source" >&2
+    return 1
+  fi
+  rm -f "$temporary" "$log"
+}
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
 cmp schema/lmblender.dsl.json <("$exe" --dsl-schema --json)
 cmp schema/lmblender.dsl.json <("$exe" --schema --json)
@@ -26,64 +52,64 @@ python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-s
 grep -q '^lmblender 0\.3\.2 ' "$build/version.txt"
 grep -q '^Cycles [0-9]\+\.[0-9]\+\.[0-9]\+' "$build/version.txt"
 grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.txt"
-"${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/import-mesh.lms "$build/import-mesh.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/import-ply.lms "$build/import-ply.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/gltf-import.lms "$build/gltf-import.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/glb-import.lms "$build/glb-import.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/gltf-invalid.lms "$build/gltf-invalid.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/sky-texture.lms "$build/sky-texture.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/environment-texture.lms "$build/environment-texture.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/transparent-film.lms "$build/transparent-film.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/camera-dof.lms "$build/camera-dof.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/primitives-gallery.lms "$build/primitives-gallery.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/strands-showcase.lms "$build/strands-showcase.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/spot-falloff.lms "$build/spot-falloff.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/light-falloff.lms "$build/light-falloff.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/bridge/render-export.lms "$build/bridge-render.dslb" >/dev/null
+compile_dsl examples/version.lms "$build/version.dslb"
+compile_dsl examples/import-mesh.lms "$build/import-mesh.dslb"
+compile_dsl examples/import-ply.lms "$build/import-ply.dslb"
+compile_dsl examples/gltf-import.lms "$build/gltf-import.dslb"
+compile_dsl examples/glb-import.lms "$build/glb-import.dslb"
+compile_dsl tests/gltf-invalid.lms "$build/gltf-invalid.dslb"
+compile_dsl examples/sky-texture.lms "$build/sky-texture.dslb"
+compile_dsl examples/environment-texture.lms "$build/environment-texture.dslb"
+compile_dsl examples/transparent-film.lms "$build/transparent-film.dslb"
+compile_dsl examples/camera-dof.lms "$build/camera-dof.dslb"
+compile_dsl examples/primitives-gallery.lms "$build/primitives-gallery.dslb"
+compile_dsl examples/strands-showcase.lms "$build/strands-showcase.dslb"
+compile_dsl examples/spot-falloff.lms "$build/spot-falloff.dslb"
+compile_dsl examples/light-falloff.lms "$build/light-falloff.dslb"
+compile_dsl examples/bridge/render-export.lms "$build/bridge-render.dslb"
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
-  "${LMSCRIPT:-lmscript}" "examples/$effect.lms" "$build/$effect.dslb" >/dev/null
+  compile_dsl "examples/$effect.lms" "$build/$effect.dslb"
 done
-"${LMSCRIPT:-lmscript}" examples/render-mesh.lms "$build/imported-mesh.png" "$build/render-mesh.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/material-principled.lms "$build/material-principled.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/camera-look-at.lms "$build/camera-look-at.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/render-timeout.lms "$build/render-timeout.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/render-exr.lms "$build/render-exr.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/mesh-instances.lms "$build/mesh-instances.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/render-settings.lms "$build/render-settings.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/procedural-materials.lms "$build/procedural-materials.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/orthographic-camera.lms "$build/orthographic-camera.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/camera_aspect.lms "$build/camera-aspect.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/camera_aspect_cube.lms "$build/camera-aspect-cube.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/image-texture.lms "$build/image-texture.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/display-transforms.lms "$build/display-transforms.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/render-passes.lms "$build/render-passes.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/denoise-quality.lms "$build/denoise-quality.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/animation-tween.lms "$build/animation-tween.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/animation-visibility-optics.lms "$build/animation-visibility-optics.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/motion-blur.lms "$build/motion-blur.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/material-nodes.lms "$build/material-nodes.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/preset-explicit-overrides.lms "$build/preset-explicit-overrides.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/denoise-speed.lms "$build/denoise-speed.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" tests/sequence-budget.lms "$build/sequence-budget.dslb" >/dev/null
+compile_dsl examples/render-mesh.lms "$build/render-mesh.dslb" "$build/imported-mesh.png"
+compile_dsl examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb"
+compile_dsl examples/material-principled.lms "$build/material-principled.dslb"
+compile_dsl examples/camera-look-at.lms "$build/camera-look-at.dslb"
+compile_dsl examples/render-timeout.lms "$build/render-timeout.dslb"
+compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
+compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
+compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
+compile_dsl examples/procedural-materials.lms "$build/procedural-materials.dslb"
+compile_dsl examples/orthographic-camera.lms "$build/orthographic-camera.dslb"
+compile_dsl tests/camera_aspect.lms "$build/camera-aspect.dslb"
+compile_dsl tests/camera_aspect_cube.lms "$build/camera-aspect-cube.dslb"
+compile_dsl examples/image-texture.lms "$build/image-texture.dslb"
+compile_dsl examples/display-transforms.lms "$build/display-transforms.dslb"
+compile_dsl examples/render-passes.lms "$build/render-passes.dslb"
+compile_dsl examples/denoise-quality.lms "$build/denoise-quality.dslb"
+compile_dsl examples/animation-tween.lms "$build/animation-tween.dslb"
+compile_dsl examples/animation-visibility-optics.lms "$build/animation-visibility-optics.dslb"
+compile_dsl examples/motion-blur.lms "$build/motion-blur.dslb"
+compile_dsl examples/material-nodes.lms "$build/material-nodes.dslb"
+compile_dsl examples/material-maps.lms "$build/material-maps.dslb"
+compile_dsl examples/backface-culling.lms "$build/backface-culling.dslb"
+compile_dsl tests/quality-preset.lms "$build/quality-preset.dslb"
+compile_dsl tests/preset-explicit-overrides.lms "$build/preset-explicit-overrides.dslb"
+compile_dsl tests/denoise-speed.lms "$build/denoise-speed.dslb"
+compile_dsl tests/sequence-budget.lms "$build/sequence-budget.dslb"
 mkdir -p "$build/video"
 for video in level1-teams level2-agents level3-flow level4-pipeline; do
-  "${LMSCRIPT:-lmscript}" "examples/video/$video.lms" "$build/video/$video.dslb" >/dev/null
+  compile_dsl "examples/video/$video.lms" "$build/video/$video.dslb"
 done
-"${LMSCRIPT:-lmscript}" examples/material-nodes-control.lms "$build/material-nodes-control.dslb" >/dev/null
+compile_dsl examples/material-nodes-control.lms "$build/material-nodes-control.dslb"
 for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio turntable-neutral glass-showcase technical-clean; do
-  "${LMSCRIPT:-lmscript}" "examples/presets/$preset.lms" "$build/preset-$preset.dslb" >/dev/null
+  compile_dsl "examples/presets/$preset.lms" "$build/preset-$preset.dslb"
 done
 PATH="$build:$PATH" LMSCRIPT_TOOL_CACHE="$build/test-tool-cache" "${LMSCRIPT:-lmscript}" examples/dsl/install-and-run.lms >"$build/install-example.log"
 test -s install-and-run.png
 python3 tests/png_metrics.py install-and-run.png
 rm -f install-and-run.png
-"${LMSCRIPT:-lmscript}" examples/presets/external-load.lms "$build/preset-external.dslb" >/dev/null
-"${LMSCRIPT:-lmscript}" examples/presets/switch.lms "$build/preset-switch.dslb" >/dev/null
+compile_dsl examples/presets/external-load.lms "$build/preset-external.dslb"
+compile_dsl examples/presets/switch.lms "$build/preset-switch.dslb"
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
