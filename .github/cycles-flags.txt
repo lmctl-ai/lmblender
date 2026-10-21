@@ -4,3 +4,5 @@ Cycles: WITH_BLENDER=OFF WITH_CYCLES_STANDALONE=ON WITH_PYTHON=OFF
 Cycles options: OSL/LLVM/Embree/OpenVDB/OpenSubdiv/GPU OFF, TBB/OIDN CPU ON
 Host: -static -static-libstdc++ -static-libgcc
 LMBLENDER_FULL_STATIC=ON; project GPL-3.0-or-later combined binary
+Blender-only features OFF for standalone Cycles: Vulkan, Wayland/X11, audio, FFmpeg, FFTW, NDOF, OpenXR, GMP, Manifold, Potrace, Haru, Alembic, MaterialX, Draco, WebP, i18n, Freestyle, libmv, QuadriFlow, Bullet
+build_environment targets harvested into the deps prefix (plus Epoxy, required by platform_unix.cmake)
