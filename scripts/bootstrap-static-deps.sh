@@ -46,6 +46,8 @@ for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath exp
     cp -a "$release_libdir/$name" "$deps_install/$name"
   fi
 done
+# The final binary is fully static; never let a harvested shared object win.
+find "$deps_install" \( -name '*.so' -o -name '*.so.*' \) -delete
 
 source_root="$env_build/build"
 mkdir -p "$source_root/openimagedenoise/src/external_openimagedenoise"
