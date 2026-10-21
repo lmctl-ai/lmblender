@@ -3,3 +3,4 @@ build/
 *.png
 __pycache__/
 dist/
+!tests/fixtures/**/*.png
