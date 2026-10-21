@@ -91,7 +91,7 @@ jobs:
         with:
           node-version: 24
       - name: install pinned DSL v5 compiler
-        run: npm install --global @lmctl-ai/lmctl@0.2.347
+        run: npm install --global @lmctl-ai/lmctl@0.2.359
       - name: fetch pinned upstream Blender source (sparse)
         run: scripts/fetch-cycles-source.sh
       - name: restore static dependency and Cycles prefix
