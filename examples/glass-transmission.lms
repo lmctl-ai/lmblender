@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/glass-transmission.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.uv_sphere(1.1,48,32,true); mesh.translate(0.0,0.0,1.1);
 let glass = scene.material(0.94,0.97,1.0,0.0,0.04,0.95,0.0,0.0,0.0,0.0);
 mesh.set_material(glass);
@@ -16,3 +16,5 @@ scene.render_settings(12,991,true);
 scene.render_png("build/glass-transmission.png",128,640,480);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

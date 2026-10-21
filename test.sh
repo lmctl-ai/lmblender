@@ -13,8 +13,17 @@ cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STAT
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
 exe="$build/lmblender"
+export PATH="$build:$PATH"
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
+cmp schema/lmblender.dsl.json <("$exe" --dsl-schema --json)
+cmp schema/lmblender.dsl.json <("$exe" --schema --json)
+"$exe" --dsl-schema >"$build/schema-summary.txt"
+"$exe" --dsl-signatures >"$build/host-signatures.txt"
+"${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
+diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
+python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-signatures.txt"
 "$exe" --version >"$build/version.txt"
+grep -q '^lmblender 0\.3\.2 ' "$build/version.txt"
 grep -q '^Cycles [0-9]\+\.[0-9]\+\.[0-9]\+' "$build/version.txt"
 grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.txt"
 "${LMSCRIPT:-lmscript}" examples/version.lms "$build/version.dslb" >/dev/null
@@ -28,6 +37,10 @@ grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.
 "${LMSCRIPT:-lmscript}" examples/transparent-film.lms "$build/transparent-film.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/camera-dof.lms "$build/camera-dof.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/primitives-gallery.lms "$build/primitives-gallery.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/strands-showcase.lms "$build/strands-showcase.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/spot-falloff.lms "$build/spot-falloff.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/light-falloff.lms "$build/light-falloff.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" examples/bridge/render-export.lms "$build/bridge-render.dslb" >/dev/null
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
   "${LMSCRIPT:-lmscript}" "examples/$effect.lms" "$build/$effect.dslb" >/dev/null
 done
@@ -54,6 +67,7 @@ done
 "${LMSCRIPT:-lmscript}" examples/material-maps.lms "$build/material-maps.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/backface-culling.lms "$build/backface-culling.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/quality-preset.lms "$build/quality-preset.dslb" >/dev/null
+"${LMSCRIPT:-lmscript}" tests/preset-explicit-overrides.lms "$build/preset-explicit-overrides.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/denoise-speed.lms "$build/denoise-speed.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" tests/sequence-budget.lms "$build/sequence-budget.dslb" >/dev/null
 mkdir -p "$build/video"
@@ -64,12 +78,17 @@ done
 for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio turntable-neutral glass-showcase technical-clean; do
   "${LMSCRIPT:-lmscript}" "examples/presets/$preset.lms" "$build/preset-$preset.dslb" >/dev/null
 done
+PATH="$build:$PATH" LMSCRIPT_TOOL_CACHE="$build/test-tool-cache" "${LMSCRIPT:-lmscript}" examples/dsl/install-and-run.lms >"$build/install-example.log"
+test -s install-and-run.png
+python3 tests/png_metrics.py install-and-run.png
+rm -f install-and-run.png
 "${LMSCRIPT:-lmscript}" examples/presets/external-load.lms "$build/preset-external.dslb" >/dev/null
 "${LMSCRIPT:-lmscript}" examples/presets/switch.lms "$build/preset-switch.dslb" >/dev/null
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
 "$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
 "$exe" --dsl "$build/gltf-import.dslb" >"$build/gltf-import-result.json"
+python3 tests/gltf_emission_quality.py "$build/import-gltf-gltf.png"
 "$exe" --dsl "$build/glb-import.dslb" >"$build/glb-import-result.json"
 if "$exe" --dsl "$build/gltf-invalid.dslb" >"$build/gltf-invalid-result.json"; then
   echo "malformed GLB unexpectedly imported" >&2; exit 1
@@ -86,6 +105,14 @@ PYERR
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
 "$exe" --dsl "$build/camera-dof.dslb" >"$build/camera-dof-result.json"
 "$exe" --dsl "$build/primitives-gallery.dslb" >"$build/primitives-gallery-result.json"
+"$exe" --dsl "$build/strands-showcase.dslb" >"$build/strands-showcase-result.json"
+python3 tests/strands_quality.py "$build/strands-showcase.png"
+"$exe" --dsl "$build/spot-falloff.dslb" >"$build/spot-falloff-result.json"
+python3 tests/spot_falloff_quality.py "$build/spot-falloff.png"
+"$exe" --dsl "$build/light-falloff.dslb" >"$build/light-falloff-result.json"
+python3 tests/light_falloff_quality.py "$build/light-falloff.png"
+"$exe" --dsl "$build/bridge-render.dslb" >"$build/bridge-render-result.json"
+python3 tests/bridge_parity.py tests/fixtures/bridge/blendercli-reference.png "$build/bridge-from-blendercli.png"
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
   "$exe" --dsl "$build/$effect.dslb" >"$build/$effect-result.json"
 done
@@ -128,6 +155,8 @@ PY
 for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio turntable-neutral glass-showcase technical-clean; do
   "$exe" --dsl "$build/preset-$preset.dslb" >"$build/preset-$preset-result.json"
 done
+"$exe" --dsl "$build/preset-explicit-overrides.dslb" >"$build/preset-explicit-overrides-result.json"
+python3 tests/preset_explicit_overrides_quality.py "$build"
 "$exe" --dsl "$build/preset-external.dslb" >"$build/preset-external-result.json"
 "$exe" --dsl "$build/preset-switch.dslb" >"$build/preset-switch-result.json"
 "$exe" --presets >"$build/presets-list.txt"

@@ -1,0 +1,15 @@
+// Expects the binary GLB produced by blendercli/examples/bridge/build-and-export.lms.
+bytecode = ARGV.len() > 0 ? ARGV[0] : "build/bridge-render.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+let first = scene.import_gltf("tests/fixtures/bridge/bridge.glb");
+scene.expect_int(first.triangle_count(), 12);
+scene.world_color(0.24, 0.27, 0.31, 0.42);
+scene.area_light(-4.0, -5.0, 8.0, 0.0, 0.0, 1.0, 1.0, 0.87, 0.72, 1050.0, 5.0);
+scene.area_light(5.0, -1.0, 5.0, 0.0, 0.0, 1.2, 0.65, 0.79, 1.0, 560.0, 4.0);
+scene.camera_look_at(7.35889, -6.92579, 4.95831, 0.0, 0.0, 0.0, 30.2);
+scene.render_settings(32, 31, true);
+scene.render_png("build/bridge-from-blendercli.png", 32, 640, 480);
+end _dsl_
+savedsl(p, bytecode);
+run = system ${dsl_cli(p)} --dsl ${bytecode};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

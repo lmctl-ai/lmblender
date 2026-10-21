@@ -212,6 +212,13 @@ PresetJson find_builtin_preset(const std::string &name)
   throw dslvm::Error("PRESET_NOT_FOUND", "unknown preset '" + name + "'; list choices with lmblender --presets");
 }
 
+void remove_preset_area_rig(Scene &scene)
+{
+  scene.area_lights.erase(std::remove_if(scene.area_lights.begin(), scene.area_lights.end(),
+      [](const AreaLightData &light) { return light.preset_generated; }), scene.area_lights.end());
+  scene.preset_area_light_count = 0;
+}
+
 void apply_preset(Scene &scene, const PresetJson &preset)
 {
   try {
@@ -1841,6 +1848,7 @@ dslvm::Registry make_registry() {
     scene->camera.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
     scene->camera.fov_radians = float(a[6].f * M_PI / 180.0);
     scene->camera.orthographic = false;
+    scene->camera.fit_to_geometry = false;
     scene->custom_camera = true;
     return dslvm::Value::none();
   });
@@ -1860,6 +1868,7 @@ dslvm::Registry make_registry() {
     auto it = std::find_if(keys.begin(), keys.end(), [&](const auto &entry) { return entry.frame == a[0].i; });
     if (it == keys.end()) keys.push_back(key); else *it = key;
     std::sort(keys.begin(), keys.end(), [](const auto &x, const auto &y) { return x.frame < y.frame; });
+    scene->camera.fit_to_geometry = false;
     return dslvm::Value::none();
   });
   registry.method("Scene", "camera_dof", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
@@ -1892,7 +1901,7 @@ dslvm::Registry make_registry() {
     if (a[6].f < 0.1 || a[6].f > 100000.0) throw dslvm::Error("orthographic camera width must be in [0.1,100000]");
     scene->camera.position={float(a[0].f),float(a[1].f),float(a[2].f)};
     scene->camera.target={float(a[3].f),float(a[4].f),float(a[5].f)};
-    scene->camera.orthographic=true; scene->camera.ortho_scale=float(a[6].f); scene->custom_camera=true;
+    scene->camera.orthographic=true; scene->camera.ortho_scale=float(a[6].f); scene->camera.fit_to_geometry=false; scene->custom_camera=true;
     return dslvm::Value::none();
   });
   registry.method("Scene", "fit_camera", {"float"}, "void", [](void *p, dslvm::Args &a) {
@@ -2139,6 +2148,7 @@ dslvm::Registry make_registry() {
     light.position = {float(a[0].f), float(a[1].f), float(a[2].f)};
     light.color = {float(a[3].f), float(a[4].f), float(a[5].f)};
     light.strength = float(a[6].f);
+    remove_preset_area_rig(*scene);
     scene->point_lights.push_back(light);
     return dslvm::Value::none();
   });
@@ -2166,6 +2176,7 @@ dslvm::Registry make_registry() {
     light.target = {float(a[3].f), float(a[4].f), float(a[5].f)};
     light.color = {float(a[6].f), float(a[7].f), float(a[8].f)};
     light.strength = float(a[9].f); light.size = light.size_y = float(a[10].f);
+    remove_preset_area_rig(*scene);
     scene->area_lights.push_back(light);
     return dslvm::Value::none();
   });
@@ -2186,6 +2197,7 @@ dslvm::Registry make_registry() {
     light.strength=float(a[9].f); light.size=float(a[10].f); light.size_y=float(a[11].f);
     light.shape = a[12].s == "rectangle" ? 0 : a[12].s == "disk" ? 1 : 2;
     if (light.shape == 1) light.size_y = light.size;
+    remove_preset_area_rig(*scene);
     scene->area_lights.push_back(light);
     return dslvm::Value::none();
   });
@@ -2196,7 +2208,7 @@ dslvm::Registry make_registry() {
     if(len<1.0e-8 || len>1'000'000) throw dslvm::Error("sun direction must be nonzero and bounded");
     for(int i=3;i<6;++i) if(a[i].f<0||a[i].f>1) throw dslvm::Error("sun color channels must be in [0,1]");
     if(a[6].f<0||a[6].f>1'000'000||a[7].f<0||a[7].f>90) throw dslvm::Error("sun strength or angle outside supported bounds");
-    SunLightData light; for(int i=0;i<3;++i){light.direction[i]=float(a[i].f/len);light.color[i]=float(a[i+3].f);} light.strength=float(a[6].f);light.angle=float(a[7].f*M_PI/180.0);scene->sun_lights.push_back(light);
+    SunLightData light; for(int i=0;i<3;++i){light.direction[i]=float(a[i].f/len);light.color[i]=float(a[i+3].f);} light.strength=float(a[6].f);light.angle=float(a[7].f*M_PI/180.0);remove_preset_area_rig(*scene);scene->sun_lights.push_back(light);
     return dslvm::Value::none();
   });
   registry.method("Scene", "spot_light", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
@@ -2207,7 +2219,7 @@ dslvm::Registry make_registry() {
     if(dx*dx+dy*dy+dz*dz<1.0e-12) throw dslvm::Error("spot light position and target must differ");
     for(int i=6;i<9;++i) if(a[i].f<0||a[i].f>1) throw dslvm::Error("spot light color channels must be in [0,1]");
     if(a[9].f<0||a[9].f>1'000'000||a[10].f<1||a[10].f>170||a[11].f<0||a[11].f>1) throw dslvm::Error("spot light strength, angle, or blend outside supported bounds");
-    SpotLightData light; for(int i=0;i<3;++i){light.position[i]=float(a[i].f);light.target[i]=float(a[i+3].f);light.color[i]=float(a[i+6].f);} light.strength=float(a[9].f);light.angle=float(a[10].f*M_PI/180.0);light.blend=float(a[11].f);scene->spot_lights.push_back(light);
+    SpotLightData light; for(int i=0;i<3;++i){light.position[i]=float(a[i].f);light.target[i]=float(a[i+3].f);light.color[i]=float(a[i+6].f);} light.strength=float(a[9].f);light.angle=float(a[10].f*M_PI/180.0);light.blend=float(a[11].f);remove_preset_area_rig(*scene);scene->spot_lights.push_back(light);
     return dslvm::Value::none();
   });
   registry.method("Scene", "ground_plane", {"float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
@@ -2626,7 +2638,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender 0.3.1 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
+    return dslvm::Value::string("lmblender 0.3.2 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
@@ -2634,7 +2646,7 @@ dslvm::Registry make_registry() {
 
 int main(int argc, char **argv) {
   if (argc == 2 && std::string(argv[1]) == "--version") {
-    std::cout << "lmblender 0.3.1 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+    std::cout << "lmblender 0.3.2 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE
     std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
 #else
@@ -2651,13 +2663,42 @@ int main(int argc, char **argv) {
     try { std::cout << find_builtin_preset(argv[2]).dump(2) << '\n'; return 0; }
     catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 2; }
   }
-  if (argc == 2 && std::string(argv[1]) == "--schema") {
-    std::cout.write(reinterpret_cast<const char *>(lmblender::embedded_schema),
-                     static_cast<std::streamsize>(lmblender::embedded_schema_size));
-    std::cout << '\n';
-    return 0;
-  }
   auto registry = make_registry();
+  const auto print_embedded_schema = [] {
+    std::cout.write(reinterpret_cast<const char *>(lmblender::embedded_schema),
+                    static_cast<std::streamsize>(lmblender::embedded_schema_size));
+    return std::cout ? 0 : 4;
+  };
+  const auto print_schema_summary = [&registry] {
+    std::vector<std::string> types;
+    std::map<std::string, std::vector<std::string>> methods;
+    std::string current;
+    for (const auto &signature : registry.signatures()) {
+      if (signature.rfind("context ", 0) == 0 || signature.rfind("fn ", 0) == 0) {
+        std::cout << signature << '\n';
+      } else if (signature.rfind("method ", 0) == 0) {
+        const std::string body = signature.substr(7);
+        const std::string type = body.substr(0, body.find('.'));
+        if (type != current) { current = type; types.push_back(type); }
+        methods[type].push_back(body);
+      }
+    }
+    for (const auto &type : types) {
+      std::cout << type << ":\n";
+      for (const auto &method : methods[type]) std::cout << "  " << method << '\n';
+    }
+    return std::cout ? 0 : 4;
+  };
+  if (argc == 2 && std::string(argv[1]) == "--dsl-schema") return print_schema_summary();
+  if (argc == 3 && std::string(argv[1]) == "--dsl-schema" && std::string(argv[2]) == "--json")
+    return print_embedded_schema();
+  if (argc == 3 && std::string(argv[1]) == "--schema" && std::string(argv[2]) == "--json")
+    return print_embedded_schema();
+  if (argc == 2 && std::string(argv[1]) == "--schema") {
+    const int result = print_embedded_schema();
+    std::cout << '\n'; // Preserve the pre-R42 compatibility behavior.
+    return result;
+  }
   if (argc == 2 && std::string(argv[1]) == "--dsl-signatures") {
     for (const auto &signature : registry.signatures()) std::cout << signature << '\n';
     return 0;

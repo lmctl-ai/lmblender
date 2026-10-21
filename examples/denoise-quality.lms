@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/denoise-quality.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let blue = scene.material(0.04, 0.12, 0.8, 0.0, 0.28, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(blue);
@@ -18,3 +18,5 @@ scene.render_settings(8, 314159, false);
 scene.render_png("build/denoise-reference.png", 64, 192, 144);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

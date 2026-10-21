@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/turntable-bracket.dslb";
-p = _dsl_ schema="../../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let bracket = scene.import_stl("build/compose-input/build/bracket.stl");
 let steel = scene.material(0.42, 0.48, 0.56, 0.32, 0.42, 0.0, 0.0, 0.0, 0.0, 0.0);
 bracket.set_material(steel);
@@ -24,3 +24,5 @@ for (i in range(0, 8)) {
 }
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

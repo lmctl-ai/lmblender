@@ -16,13 +16,13 @@ for level in range(1, 5):
     (root / f"level{level}.mp4").unlink(missing_ok=True)
 PY
 for level in level1-teams level2-agents level3-flow level4-pipeline; do
+  PATH="$build:$PATH" \
   lmscript "examples/video/$level.lms" "$build/video/$level.dslb" >/dev/null
-  "$build/lmblender" --dsl "$build/video/$level.dslb"
 done
 python3 tests/video_quality.py "$build/video"
 if command -v ffmpeg >/dev/null 2>&1; then
   for pair in "level1-teams level1" "level2-agents level2" "level3-flow level3" "level4-pipeline level4"; do
-    read -r source output <<<"$pair"
+    read -r _ output <<<"$pair"
     ffmpeg -hide_banner -loglevel error -y -framerate 24 -i "$build/video/$output-%d.png" -c:v libx264 -pix_fmt yuv420p "$build/video/$output.mp4"
   done
   echo "encoded H.264 clips at 24 fps"

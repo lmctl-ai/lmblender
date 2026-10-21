@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-look-at.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.camera_look_at(1.0, -8.0, 2.0, 1.0, 1.5, 2.0, 45.0);
 scene.render_png("build/camera-look-at.png", 32, 256, 192);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

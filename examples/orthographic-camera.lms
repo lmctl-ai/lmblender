@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/orthographic-camera.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let clay = scene.material(0.55, 0.24, 0.08, 0.0, 0.62, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(clay);
@@ -15,3 +15,5 @@ scene.camera_orthographic(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 7.0);
 scene.render_png("build/orthographic-camera.png", 64, 512, 384);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

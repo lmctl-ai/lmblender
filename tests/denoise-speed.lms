@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let sphere = scene.uv_sphere(1.0, 48, 24, true);
 let gold = scene.material(0.78, 0.29, 0.035, 0.65, 0.22, 0.0, 0.0, 0.0, 0.0, 0.0);
 sphere.set_material(gold);
@@ -15,4 +15,7 @@ scene.render_png("build/denoise-speed-fast.png", 16, 640, 360);
 scene.denoise_quality("high");
 scene.render_png("build/denoise-speed-reference.png", 256, 640, 360);
 end _dsl_
-savedsl(p, ARGV.len() > 0 ? ARGV[0] : "build/denoise-speed.dslb");
+out = ARGV.len() > 0 ? ARGV[0] : "build/denoise-speed.dslb";
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

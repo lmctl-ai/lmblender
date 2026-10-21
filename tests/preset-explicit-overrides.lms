@@ -1,0 +1,20 @@
+out = ARGV.len() > 0 ? ARGV[0] : "build/preset-explicit-overrides.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+let cube = scene.cube(1.8);
+cube.set_material(scene.material(0.82, 0.035, 0.025, 0.0, 0.72, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.use_preset("product-studio");
+scene.set_view_transform("Standard");
+scene.render_settings(3, 17, false);
+scene.render_png("build/preset-override-before.png", 8, 320, 240);
+
+scene.camera_look_at(0.0, -8.0, 0.0, 0.0, 0.0, 0.0, 38.0);
+scene.render_png("build/preset-override-camera.png", 8, 320, 240);
+
+cube.set_material(scene.material(0.82, 0.82, 0.82, 0.0, 0.72, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.world_color(0.0, 0.0, 0.0, 0.0);
+scene.area_light(-3.0, -4.0, 4.5, 0.0, 0.0, 0.0, 0.02, 1.0, 0.025, 1800.0, 2.0);
+scene.render_png("build/preset-override-light.png", 12, 320, 240);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

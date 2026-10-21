@@ -32,7 +32,8 @@ from pathlib import Path
 b=Path(sys.argv[1])
 images=['import-gltf-gltf.png','import-gltf-glb.png','sky-texture.png','environment-texture.png',
         'transparent-film.png','camera-dof.png','primitives-gallery.png','volume-fog.png','material-maps.png',
-        'subsurface.png','glass-transmission.png','procedural-materials.png','image-texture.png','backface-culling.png']
+        'subsurface.png','glass-transmission.png','procedural-materials.png','image-texture.png','backface-culling.png',
+        'strands-showcase.png','spot-falloff.png','light-falloff.png','bridge-from-blendercli.png']
 for name in images:
     data=(b/name).read_bytes()
     assert data[:8]==b'\x89PNG\r\n\x1a\n', f'{name}: not PNG'
@@ -71,6 +72,10 @@ qa_image procedural procedural-materials.png '1) two distinct objects are visibl
 qa_image image-texture image-texture.png '1) the textured cube is fully visible; 2) red and yellow regions from the texture appear on multiple faces; 3) the image is not a plain gray cube.'
 qa_image material-maps material-maps.png '1) exactly two smooth spheres sit apart on the ground and both are fully framed; 2) the left orange sphere has visibly irregular normal-map relief and varying metallic/roughness highlights; 3) the right sphere visibly alternates gold and blue from a texture-driven shader mix; 4) neither sphere overlaps or is cropped.'
 qa_image backface-culling backface-culling.png '1) one bright green square panel is clearly visible on the left; 2) the corresponding right panel area is empty gray because the red material is viewed from its culled backface; 3) both left/right regions are unclipped and the distinction is clear.'
+qa_image strands strands-showcase.png '1) the left half contains a distinct green grass-like cluster of many thin swept strands; 2) the right half contains one gold spherical fur-ball with visible short outward strands; 3) the checker floor and both complete subjects are visible with a gap between them.'
+qa_image spot-falloff spot-falloff.png '1) a red sphere on the left is brightly illuminated by a soft spot cone; 2) a green sphere on the right is visibly dimmer outside the cone; 3) both spheres are fully visible and the beam transition is soft rather than a hard clipped disk.'
+qa_image light-falloff light-falloff.png '1) four separated diffuse spheres are visible in red and blue pairs; 2) the red near sphere is brighter than the farther red sphere under point lighting; 3) the near blue sphere is brighter than its farther blue partner under a disk area light; 4) every sphere is fully in frame.'
+qa_image bridge bridge-from-blendercli.png '1) the imported scene contains exactly three subjects: a red cube on the left, blue sphere in the center, and gold cone on the right; 2) all subjects are fully framed and separated; 3) their transferred material colors are distinct; 4) the rendering is visibly shaded rather than flat-color silhouettes.'
 qa_image video-level1 'video/level1-8.png' '1) Coder and Research orb teams both have readable labels; 2) every visible ring and satellite orb is fully inside frame; 3) this peek is closer than video/level1-0.png; 4) the groups remain visibly separate.'
 qa_image video-level2 'video/level2-12.png' '1) one yellow lead and the cyan, green, pink, and purple agents are visible; 2) the CODER, LEAD, and BROWSER labels are readable; 3) message arrows and a red-orange token are visible; 4) the scene is fully framed.'
 qa_image video-level3 'video/level3-12.png' '1) HUMAN, LEAD, TEAM, RESULT cards are all visible in left-to-right order; 2) the text on all cards is readable; 3) arrows connect consecutive cards; 4) a red-orange message token is visible without hiding card labels.'
@@ -86,9 +91,11 @@ else
 fi
 {
   printf '# Full-check status\n\n'
-printf 'Generated: %s\n\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
+  printf 'Generated: %s\n\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
+  # shellcheck disable=SC2016
   printf 'Source revision tested: `%s`\n\n' "$tested_revision"
-  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 18 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
+  # shellcheck disable=SC2016
+  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 18 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 22 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
   while IFS= read -r line; do printf -- '- %s\n' "$line"; done < "$qa_dir/results.txt"
 } > docs/STATUS.md
 cat docs/STATUS.md

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-product-studio.dslb";
-p = _dsl_ schema="../../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let sphere = scene.uv_sphere(0.9,24,16,true);
 let cube = scene.cube(1.2); cube.translate(1.6,0.0,0.0);
 scene.use_preset("product-studio");
@@ -12,3 +12,5 @@ scene.render_settings(2,17,true);
 scene.render_png("build/preset-product-studio.png",8,320,240);
 end _dsl_
 savedsl(p,out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

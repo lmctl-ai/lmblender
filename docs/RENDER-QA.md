@@ -62,3 +62,37 @@ Thumbnail: [compose-mug.png](img/compose-mug.png).
 ## Independent visual review
 
 Opus reviewed all nine thumbnails directly on 2026-10-20 and marked each PASS against the scene-specific checklist. It confirmed the fog cone and subject are visible, the wax has a soft broad transition, the glass sphere refracts the checker without isolated fireflies, and the mug is upright with its opening and handle visible. Remaining polish notes: the mug has a visible rim crease, the generated environment is a simple yellow/cyan placeholder, the sky scene has a few floor sparkles, and the transparent-film checker plane has a visible edge. These are documented limitations, not numeric QA failures.
+
+## BlenderCLI GLB bridge (`examples/bridge/`)
+
+The BlenderCLI worker creates a red cube, blue sphere, and gold cone, then exports
+world-space evaluated meshes and Principled base color, metallic, roughness, and
+emission to GLB. lmblender imports the scene nodes and renders with a camera
+matched to BlenderCLI's 50 mm metadata camera. The falsifiable comparison test
+uses per-image corner-background subtraction, requires silhouette IoU above
+`0.92`, and requires common-mask RGB MAD below `44/255`. Latest: IoU `0.9322`,
+MAD `43.57/255`; the image has three distinct colored subjects. Visual review
+shows good object placement and transferred colors, with expected lighting and
+color-management differences. Camera/light/world data and parent hierarchy are
+not included in the current export.
+
+Thumbnail: [bridge-from-blendercli.png](img/bridge-from-blendercli.png).
+
+## Strand helper (`examples/strands-showcase.lms`)
+
+The left grass-like cluster and right fur-ball are assembled from tube meshes.
+The pixel gate requires 640×480, at least 700 green pixels for the grass, 1,000
+gold pixels for the sphere and outward strands, and an in-frame mask. Latest:
+6,228 green pixels and 9,773 gold pixels. Visual inspection confirms both
+clusters are visible and separated; this is curve-like geometry, not a native
+hair simulation.
+
+Thumbnail: [strands-showcase.png](img/strands-showcase.png).
+
+## Point/area falloff (`examples/light-falloff.lms`)
+
+Two red receivers share a point source and two blue receivers share a disk area
+source. The numeric gate requires all four color masks and a near/far luminance
+ratio above `1.18` for point and `1.12` for area. The rendered measurement is
+recorded by `tests/light_falloff_quality.py`; this verifies the renderer's
+distance response as well as the two source APIs.

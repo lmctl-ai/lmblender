@@ -77,7 +77,7 @@ inline std::array<double, 3> transform_point(const Matrix &m, const std::array<d
   const double z = m[2]*p[0] + m[6]*p[1] + m[10]*p[2] + m[14];
   const double w = m[3]*p[0] + m[7]*p[1] + m[11]*p[2] + m[15];
   if (!std::isfinite(w) || std::abs(w) < 1e-12) fail("GLTF_INVALID", "node transform has invalid homogeneous coordinates");
-  std::array<double, 3> result{x/w, z/w, -y/w}; // right-handed Y-up glTF to Z-up renderer
+  std::array<double, 3> result{x/w, -z/w, y/w}; // inverse of Blender Z-up to glTF Y-up: (x,y,z) -> (x,z,-y)
   for (double v : result) if (!std::isfinite(v) || std::abs(v) > 1'000'000.0) fail("GLTF_LIMIT", "transformed glTF vertex is outside scene bounds");
   return result;
 }
@@ -239,8 +239,29 @@ inline Material *make_material(Scene &scene, const Json &root, const int materia
     if (!root.contains("materials") || !root.at("materials").is_array() || size_t(material_index) >= root.at("materials").size())
       fail("GLTF_INVALID", "primitive material index is out of range");
     const Json &source = root.at("materials")[material_index];
-    if (source.contains("extensions")) fail("GLTF_UNSUPPORTED", "glTF material extensions are not supported");
+    if (source.contains("extensions")) {
+      for (auto it = source.at("extensions").begin(); it != source.at("extensions").end(); ++it)
+        if (it.key() != "KHR_materials_emissive_strength") fail("GLTF_UNSUPPORTED", "unsupported glTF material extension: " + it.key());
+      if (source.at("extensions").contains("KHR_materials_emissive_strength")) {
+        const Json &extension = source.at("extensions").at("KHR_materials_emissive_strength");
+        material->emission_strength = extension.value("emissiveStrength", 1.0f);
+        if (!std::isfinite(material->emission_strength) || material->emission_strength < 0.0f || material->emission_strength > 100000.0f)
+          fail("GLTF_INVALID", "KHR_materials_emissive_strength.emissiveStrength must be finite and in [0,100000]");
+      }
+    }
     const Json pbr = source.value("pbrMetallicRoughness", Json::object());
+    if (source.contains("emissiveFactor")) {
+      const Json &factor = source.at("emissiveFactor");
+      if (!factor.is_array() || factor.size() != 3) fail("GLTF_INVALID", "emissiveFactor must contain three numbers");
+      for (int i=0;i<3;++i) {
+        if (!factor[i].is_number()) fail("GLTF_INVALID", "emissiveFactor contains a non-number");
+        const double v=factor[i].get<double>();
+        if (!std::isfinite(v) || v<0.0 || v>1.0) fail("GLTF_INVALID", "emissiveFactor components must be in [0,1]");
+        material->emission[i]=float(v);
+      }
+      if (!source.contains("extensions") || !source.at("extensions").contains("KHR_materials_emissive_strength"))
+        material->emission_strength = 1.0f;
+    }
     if (pbr.contains("baseColorFactor")) {
       const Json &factor = pbr.at("baseColorFactor");
       if (!factor.is_array() || factor.size() != 4) fail("GLTF_INVALID", "baseColorFactor must contain four numbers");

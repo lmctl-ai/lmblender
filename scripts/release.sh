@@ -5,7 +5,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-version=${RELEASE_VERSION:-0.3.1}
+version=${RELEASE_VERSION:-0.3.2}
 version=${version#v}
 binary=${LMBLENDER_BINARY:-$root/build/lmblender}
 machine=${LMBLENDER_ARCH:-$(uname -m)}
@@ -26,8 +26,8 @@ pkg="$stage/$artifact"
 mkdir -p "$pkg/bin" "$pkg/schema" "$pkg/docs" "$pkg/licenses" "$pkg/examples"
 install -m 0755 "$binary" "$pkg/bin/lmblender"
 install -m 0644 schema/lmblender.dsl.json "$pkg/schema/lmblender.dsl.json"
-install -m 0644 README.md USE_FROM_POC.md THIRD_PARTY_NOTICES.md LICENSE SOURCE_OFFER.md BUILD.md "$pkg/"
-install -m 0644 docs/LLM_GUIDE.md docs/ANIMATION.md docs/THROUGHPUT.md docs/OIDN_AUDIT.md docs/PRESETS.md docs/RELINKING.md docs/LICENSE_AUDIT.md docs/CONTRIBUTING.md docs/VIDEO-QA.md "$pkg/docs/"
+install -m 0644 README.md THIRD_PARTY_NOTICES.md LICENSE SOURCE_OFFER.md BUILD.md "$pkg/"
+install -m 0644 docs/LLM_GUIDE.md docs/ANIMATION.md docs/THROUGHPUT.md docs/OIDN_AUDIT.md docs/PRESETS.md docs/RELINKING.md docs/LICENSE_AUDIT.md docs/CONTRIBUTING.md docs/VIDEO-QA.md docs/USING_FROM_POC.md "$pkg/docs/"
 cp -a licenses/. "$pkg/licenses/"
 cp -a examples/. "$pkg/examples/"
 printf 'lmblender %s (%s)\n' "$version" "$artifact" >"$pkg/VERSION"
@@ -36,7 +36,11 @@ printf '\nRun: bin/lmblender --version\nSchema: schema/lmblender.dsl.json\n' >>"
 archive="$root/dist/${artifact}-v${version}.tar.gz"
 tar -C "$stage" -czf "$archive" "$artifact"
 sha256sum "$archive" >"$archive.sha256"
-bare="$root/dist/${artifact}-v${version}"
+install -m 0644 THIRD_PARTY_NOTICES.md "$root/dist/lmblender-notices-${artifact}-v${version}.md"
+install -m 0644 SOURCE_OFFER.md "$root/dist/lmblender-source-offer-${artifact}-v${version}.md"
+notices="$root/dist/lmblender-notices-${artifact}-v${version}.md"
+source_offer="$root/dist/lmblender-source-offer-${artifact}-v${version}.md"
+bare="$root/dist/${artifact}"
 install -m 0755 "$binary" "$bare"
 sha256sum "$bare" >"$bare.sha256"
 host_root=${LMBLENDER_HOST_RELEASE:-/home/ubuntu/lmblender-release}
@@ -47,12 +51,12 @@ ln -sfn latest "$host_root/current"
 for path in bin schema docs examples; do ln -sfn "current/$path" "$host_root/$path"; done
 echo "Installed stable host layout at $host_root (current -> v${version})"
 echo "Created $archive ($(stat -c '%s' "$archive") bytes compressed); binary=$size bytes; bare=$bare"
-if [[ ${1:-} == --draft ]]; then
-  if gh release view "v${version}" --repo lmctlhq/lmblender >/dev/null 2>&1; then
-    gh release upload "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" --repo lmctlhq/lmblender --clobber
-    gh release edit "v${version}" --repo lmctlhq/lmblender --draft --notes-file docs/RELEASE_NOTES.md
+if [[ ${1:-} == --publish ]]; then
+  if gh release view "v${version}" --repo lmctl-ai/lmblender >/dev/null 2>&1; then
+    gh release upload "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" --repo lmctl-ai/lmblender --clobber
+    gh release edit "v${version}" --repo lmctl-ai/lmblender --draft=false --notes-file docs/RELEASE_NOTES.md
   else
-    gh release create "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" --repo lmctlhq/lmblender --draft \
+    gh release create "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" --repo lmctl-ai/lmblender \
       --title "lmblender ${version} (${artifact})" --notes-file docs/RELEASE_NOTES.md
   fi
 fi

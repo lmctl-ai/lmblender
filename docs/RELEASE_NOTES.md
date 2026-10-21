@@ -1,3 +1,16 @@
+## lmblender 0.3.2 — Linux arm64 and x64
+
+Adopts the lmscript host protocol: `--dsl-schema` prints a human summary and
+`--dsl-schema --json` prints the byte-exact embedded schema; the legacy
+`--schema` output remains available. All lmblender `.lms` examples use a pinned
+`cli=`/`install=` declaration and run the selected executable through
+`dsl_cli(p)`. Release staging uses the public `lmctl-ai/lmblender` repository,
+Linux host/architecture bare binary names, checksums, notices, and a source
+offer. Presets now yield to later camera calls and replace their generated
+area-light rig when the first explicit light is added. Also includes GLB
+emissive-strength import and the BlenderCLI bridge, strand, spot, and light
+falloff examples.
+
 ## lmblender 0.3.1 — Linux arm64
 
 Audits OIDN CPU throughput after a 6.31 s denoise measurement. The static OIDN 2.5 build uses optimized AArch64 NEON ISPC kernels and TBB; a controlled Cycles run measured 0.91 s at 960x540, and the OIDN device/filter are reused for the session. The earlier slow result was not reproducible. Adds standalone quality-level timings and 64/128-spp no-denoise comparisons: on a glossy test scene, 16-spp fast OIDN is both faster and passes the SSIM gate where the no-denoise choices do not. Retains the measured 1280x720 diagram final preset at approximately 2.00 s/frame on the simple emissive benchmark.

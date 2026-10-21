@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/import-ply.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_ply("tests/fixtures/tetra.ply");
 scene.expect_int(mesh.vertex_count(), 4);
 scene.expect_int(mesh.triangle_count(), 4);
@@ -10,3 +10,5 @@ scene.fit_camera(46.0);
 scene.render_png("build/import-ply.png", 32, 256, 192);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

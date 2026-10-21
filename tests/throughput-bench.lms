@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/throughput-bench.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let sphere = scene.uv_sphere(1.0, 48, 24, true);
 let matte = scene.material(0.12, 0.42, 0.82, 0.0, 0.55, 0.0, 0.0, 0.0, 0.0, 0.0);
 sphere.set_material(matte);
@@ -19,3 +19,5 @@ scene.render_png("build/bench-final-960x540.png", 0, 960, 540);
 scene.render_png("build/bench-final-1280x720.png", 0, 1280, 720);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

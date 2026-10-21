@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/video-throughput.dslb";
-p = _dsl_ schema="../../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let orb = scene.uv_sphere(1.0, 32, 16, true);
 let gold = scene.material(0.8, 0.36, 0.07, 0.15, 0.24, 0.0, 0.0, 0.0, 0.0, 0.0);
 orb.set_material(gold);
@@ -11,3 +11,5 @@ scene.render_preset("final");
 scene.render_png("build/video-throughput.png", 0, 1280, 720);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

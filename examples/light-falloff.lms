@@ -1,0 +1,20 @@
+// Point and area source inverse-square falloff measured on matched diffuse spheres.
+out = ARGV.len() > 0 ? ARGV[0] : "build/light-falloff.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+scene.checker_ground(14.0,3.0);
+let red = scene.material(0.78,0.045,0.025,0.0,0.62,0.0,0.0,0.0,0.0,0.0);
+let blue = scene.material(0.025,0.15,0.82,0.0,0.62,0.0,0.0,0.0,0.0,0.0);
+let p_near=scene.uv_sphere(0.66,28,18,true); p_near.translate(-3.5,0.0,0.7); p_near.set_material(red);
+let p_far=scene.uv_sphere(0.66,28,18,true); p_far.translate(-0.5,0.0,0.7); p_far.set_material(red);
+let a_near=scene.uv_sphere(0.66,28,18,true); a_near.translate(2.0,0.0,0.7); a_near.set_material(blue);
+let a_far=scene.uv_sphere(0.66,28,18,true); a_far.translate(5.0,0.0,0.7); a_far.set_material(blue);
+scene.world_color(0.012,0.016,0.025,0.035);
+scene.point_light(-3.5,-3.0,4.5,1.0,0.83,0.67,1150.0);
+scene.area_light_shape(2.0,-3.0,4.5,2.0,0.0,0.7,1.0,0.8,0.67,1600.0,1.5,1.5,"disk");
+scene.camera_look_at(0.7,-17.0,5.4,0.7,0.0,0.7,46.0);
+scene.render_settings(24,427,true);
+scene.render_png("build/light-falloff.png",64,640,480);
+end _dsl_
+savedsl(p,out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

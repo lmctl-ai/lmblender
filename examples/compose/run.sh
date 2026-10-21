@@ -7,6 +7,8 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 cad_source=${LMCAD_SOURCE:-/home/ubuntu/repos/lmcad}
 cad_bin=${LMCAD_BIN:-/home/ubuntu/lmcad-poc-build/lmcad-build/lmcad}
 host_bin=${LMBLENDER_BIN:-$root/build/lmblender}
+host_dir=$(dirname "$host_bin")
+export PATH="$host_dir:$PATH"
 out="$root/build/compose-input"
 mkdir -p "$out/build"
 
@@ -20,7 +22,6 @@ done
 
 for item in mug plate; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item-render.lms" "$out/$item-render.dslb" >/dev/null
-  "$host_bin" --dsl "$out/$item-render.dslb"
   python3 "$root/tests/png_metrics.py" "$root/build/compose-$item.png"
   if [[ "$item" == mug ]]; then
     python3 "$root/tests/compose_mug_quality.py" "$root/build/compose-mug.png" "$out/build/mug.stl"
@@ -30,19 +31,16 @@ for item in mug plate; do
 done
 
 "${LMSCRIPT:-lmscript}" "$root/examples/compose/bracket-render.lms" "$out/bracket-render.dslb" >/dev/null
-"$host_bin" --dsl "$out/bracket-render.dslb"
 for view in front side rear; do
   python3 "$root/tests/png_metrics.py" "$root/build/compose-bracket-$view.png"
   python3 "$root/tests/compose_bracket_quality.py" "$root/build/compose-bracket-$view.png" "$view"
 done
 for item in turntable-mug turntable-bracket; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item.lms" "$out/$item.dslb" >/dev/null
-  "$host_bin" --dsl "$out/$item.dslb"
 done
 python3 "$root/tests/turntable_quality.py" "$root/build"
 for item in studio-mug studio-bracket studio-plate; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item.lms" "$out/$item.dslb" >/dev/null
-  "$host_bin" --dsl "$out/$item.dslb"
   python3 "$root/tests/studio_quality.py" "$root/build/$item.png"
 done
 echo "Wrote mug/plate/bracket compositions and eight-angle mug/bracket turntable image sets under $root/build/"

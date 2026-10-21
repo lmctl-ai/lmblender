@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-dof.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let near = scene.uv_sphere(0.8,48,32,true);
 near.translate(-2.6,-4.0,0.8);
 let red = scene.material(0.9,0.06,0.03,0.0,0.45,0.0,0.0,0.0,0.0,0.0);
@@ -25,3 +25,5 @@ scene.render_settings(12,314159,true);
 scene.render_png("build/camera-dof.png",96,640,480);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

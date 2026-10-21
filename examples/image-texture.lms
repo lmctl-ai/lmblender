@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/image-texture.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_obj("tests/fixtures/texture-cube.obj");
 let image = scene.image_material("tests/fixtures/checker-texture.png", 0.42);
 mesh.set_material(image);
@@ -13,3 +13,5 @@ scene.camera_look_at(2.4, -4.6, 2.8, 0.0, 0.0, 0.0, 50.0);
 scene.render_png("build/image-texture.png", 64, 640, 480);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-nodes-control.dslb";
-p = _dsl_ schema="../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let a = scene.uv_sphere(1.05, 48, 24, true); a.translate(-1.45,0.0,1.08);
 let red = scene.material(0.68,0.18,0.055,0.08,0.3,0.0,0.0,0.0,0.0,0.0); a.set_material(red);
 let b = scene.uv_sphere(1.05,48,24,true); b.translate(1.45,0.0,1.08);
@@ -14,3 +14,5 @@ scene.camera_look_at(0.0,-9.5,4.0,0.0,0.0,1.0,45.0); scene.render_settings(12,91
 scene.render_png("build/material-nodes-control.png",48,640,480);
 end _dsl_
 savedsl(p,out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

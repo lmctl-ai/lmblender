@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/compose-plate.dslb";
-p = _dsl_ schema="../../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 let mesh = scene.import_stl("build/compose-input/build/plate-with-holes.stl");
 let alloy = scene.material(0.72, 0.34, 0.12, 0.72, 0.32, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(alloy);
@@ -17,3 +17,5 @@ scene.render_settings(10, 23, false);
 scene.render_png("build/compose-plate.png", 384, 512, 384);
 end _dsl_
 savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

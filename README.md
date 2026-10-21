@@ -15,32 +15,52 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 | World | Partial | Color background, Cycles multiple-scattering sky, and equirectangular PNG/EXR/HDR environment node with rotation/strength |
 | Camera and motion | Partial | Perspective/orthographic, look-at/fitting, Cycles aperture/focus DOF, and nine-sample shutter blur from keyed mesh translations and camera transforms (0.1–2 frame shutter) |
 | Animation | Partial | Keyed mesh translation, camera position/target, and material base color with linear/ease interpolation; deterministic PNG sequences, atomic APNG (rational 1/fps delay), and temporal-sample motion blur; mesh rotation/scale and other material parameters remain unsupported |
-| Mesh input | Partial | OBJ, STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms, PBR base-color factor, and external PNG/JPEG base-color textures; binary PLY and embedded glTF images remain unsupported |
-| Gallery QA | Partial | 12 curated renders pass numeric checks and agy/Gemini visual checklists at 640×480; lmcad compositions are checked separately |
+| Mesh input | Partial | OBJ, STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms, PBR base-color/metallic/roughness, `KHR_materials_emissive_strength`, and external PNG/JPEG base-color textures; binary PLY and embedded glTF images remain unsupported |
+| Diagram strands | Partial | Swept tube, capsule, arrow, and label mesh helpers; grass/fur illustrations are deterministic tube assemblies rather than native Cycles hair primitives |
+| Gallery QA | Partial | 18 named 640×480 gallery renders pass numeric and agy/Gemini visual checks; four 640×360 video samples are checked separately; lmcad compositions are checked by their runner |
 | Alpha output | Partial | Transparent world film emits RGBA PNG; shadow-catcher composition remains |
 
 ## Video examples
 
 `examples/video/` contains four one-second visual language samples for agent teams, message routing, human-to-result flow, and a checked pipeline. Run `examples/video/run.sh` for 24-frame 24 fps PNG sequences and optional MP4s. See its [scene and QA notes](examples/video/README.md). The custom font is a simple extruded 5×7 uppercase ASCII mesh; visual effects are geometry and emission, with no bloom post-process.
 
-## Using from another project on this host
+## Using from another project
 
-Run `scripts/release.sh` after building to refresh `/home/ubuntu/lmblender-release`. The stable consumer paths are `bin/lmblender`, `schema/lmblender.dsl.json`, `docs/LLM_GUIDE.md`, and `examples/`; `current` follows `latest`, which points at the installed version. A consumer can set `PATH=/home/ubuntu/lmblender-release/bin:$PATH` and pass the schema path to `lmscript`. The script also writes the standalone binary and its checksum beside the tarball under `dist/`.
+The `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2"` declaration is the recommended install path; see [the consumer guide](docs/USING_FROM_POC.md). For local work, put the build output on `PATH`. `scripts/release.sh` also refreshes a relocatable `bin/`, `schema/`, `docs/`, and `examples/` layout; override its destination with `LMBLENDER_HOST_RELEASE`. It writes exact-name host binaries and checksums beside versioned tarballs under `dist/`.
 
-For the homepage-video POC's preset usage and exact paths, see [USE_FROM_POC.md](USE_FROM_POC.md).
+For a pinned lmscript installation pattern, see [Using lmblender from another project](docs/USING_FROM_POC.md).
 
-## Quick start
+## BlenderCLI interchange
 
-Install the host layout with `./scripts/release.sh`. Save this compact `hello.lms`, compile it with `lmscript hello.lms`, then run `lmblender out.dslb`:
+The paired [bridge example](examples/bridge/README.md) creates a multi-object
+`.blend` scene through BlenderCLI worker operations, exports GLB with PBR factors
+and emissive strength, then imports and renders the file with lmblender. Current
+measured parity on the bridge fixture is silhouette IoU `0.9322` (gate >0.92)
+and common-mask RGB MAD `43.57/255` (gate <44); this is useful interchange coverage, not a pixel-identical
+render. Camera, lights, world, and parent hierarchy are currently recreated or
+flattened by the example rather than transferred. Native Cycles curve hair is
+also not imported; the [strand showcase](examples/strands-showcase.lms) uses
+bounded swept-tube meshes and its numeric pixel checks.
+
+## Install and quick start
+
+Install Node.js and `@lmctl-ai/lmctl` with `npm install -g @lmctl-ai/lmctl@latest`, then run `lmscript hello.lms`. The host is downloaded from the pinned public release if it is not on `PATH`:
 
 ```lmscript
-out="out.dslb"; p=_dsl_ schema="/home/ubuntu/lmblender-release/schema/lmblender.dsl.json";
-let orb=scene.uv_sphere(1.0,24,12,true); orb.set_material(scene.material(0.1,0.45,0.9,0.15,0.28,0.0,0.0,0.0,0.0,0.0));
-scene.studio_setup(); scene.render_preset("draft");
-scene.render_png("hello.png",0,640,480);
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+let ball = scene.uv_sphere(1.0, 32, 20, true);
+scene.studio_setup();
+scene.render_png("hello.png", 8, 640, 480);
 end _dsl_
-savedsl(p,out);
+file = "hello.dslb"; savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file}; delete_file(file);
+if (r.code != 0) { println(trim(r.stderr)); exit(1); }
 ```
+
+The exact host release is selected by lmscript's `install=` pin and SHA-256
+digest. Linux arm64 and x64 are supported; macOS and Windows are currently out
+of scope. Download a binary or tarball from the [releases page](https://github.com/lmctl-ai/lmblender/releases) if you prefer a manual install.
+The runnable installer smoke example is [examples/dsl/install-and-run.lms](examples/dsl/install-and-run.lms).
 
 - The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, `scene.import_stl(path)`, `scene.import_ply(path)`, and `scene.import_gltf(path)`. PLY currently accepts bounded ASCII 1.0 meshes with x/y/z vertices and polygon face indices. glTF 2.0 `.gltf` and `.glb` import traverses the selected scene hierarchy, bakes node transforms into render meshes, preserves TEXCOORD_0, reads metallic/roughness and baseColorFactor, and supports external PNG/JPEG base-color images confined to the glTF directory. Imported meshes expose vertex/triangle counts and bounds. Sparse accessors, non-triangle modes, required extensions, skinning, morph targets, and embedded/data-URI images are rejected with structured glTF errors. Inputs are bounded to 256 MiB glTF containers, 512 MiB aggregate buffers, 64 MiB per texture, 10 million decoded vertices, 20 million triangles, 4096 generated meshes/materials, and 200,000 hierarchy visits. `scene.render_png(path, samples, width, height)` builds Cycles `Scene`, `Mesh`, `Object`, `ShaderGraph`, camera, and light nodes directly through the Cycles C++ API and renders them with an in-process CPU session. The renderer uses a fitted Z-up perspective camera by default, and assigns Cycles emission shaders to direct-light nodes so they participate in the light manager.
 - `scene.render_preset("draft"|"final")` is the legacy 8-spp/no-denoise or 64-spp/high-OIDN quality tier. For homepage diagrams, prefer `scene.use_preset("diagram-dark-16x9-draft")` (960x540, 8 spp, about 0.41 s/frame) or `scene.use_preset("diagram-dark-16x9-final")` (1280x720, 16 spp, fast CPU OIDN, about 2.00 s/frame for a simple emissive scene). Pass `0` as samples to use the preset sample count; render dimensions are still passed to `render_png`/`render_sequence`. `scene.denoise_quality("fast"|"balanced"|"high")` chooses the OIDN quality preset. The measured 16-spp fast vs 256-spp high reference is 47.14 dB PSNR / 0.99451 SSIM on a lit glossy test scene. Rendering uses four host CPU threads by default; call `scene.set_threads(n)` to override. Sequences still create a Cycles session for each frame; setup/BVH is below 1 ms in the measured small scenes. See [docs/THROUGHPUT.md](docs/THROUGHPUT.md) and the [OIDN CPU audit](docs/OIDN_AUDIT.md): optimized NEON kernels and four-thread OIDN were confirmed, and the historical 6.31 s OIDN measurement did not reproduce (controlled 960x540 rerun: 0.91 s). The glossy-scene no-denoise 64/128 spp alternatives were slower and missed the SSIM gate.

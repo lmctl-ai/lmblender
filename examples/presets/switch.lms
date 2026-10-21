@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-switch.dslb";
-p = _dsl_ schema="../../schema/lmblender.dsl.json";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
 scene.cube(1.2);
 scene.use_preset("product-studio");
 let accent = scene.material_from_palette("accent");
@@ -13,3 +13,5 @@ scene.render_settings(2,17,true);
 scene.render_png("build/preset-switch.png",16,320,240);
 end _dsl_
 savedsl(p,out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }
