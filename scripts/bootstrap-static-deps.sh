@@ -32,7 +32,7 @@ targets=(external_zlib external_zstd external_png external_jpeg
   external_openjpeg external_openjph external_brotli external_pugixml external_fmt
   external_tbb external_imath external_openexr external_tiff external_opencolorio
   external_expat external_pystring external_yamlcpp external_minizipng external_openimageio
-  external_epoxy)
+  external_epoxy external_eigen)
 # sse2neon only exists (and is only needed) on arm64 hosts.
 case "$(uname -m)" in aarch64|arm64) targets=(external_sse2neon "${targets[@]}") ;; esac
 cmake --build "$env_build" --parallel "$jobs" --target "${targets[@]}"
@@ -41,7 +41,7 @@ cmake --build "$env_build" --parallel "$jobs" --target "${targets[@]}"
 # only fills HARVEST_TARGET from the full `harvest` target. Copy just the
 # prefixes consumed by build-deps.sh, configure-cycles-static.sh, and the host.
 release_libdir="$env_build/Release"
-for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath expat epoxy sse2neon; do
+for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath expat epoxy eigen sse2neon; do
   if [[ -d "$release_libdir/$name" ]]; then
     rm -rf "${deps_install:?}/$name"
     cp -a "$release_libdir/$name" "$deps_install/$name"

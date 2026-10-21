@@ -83,6 +83,8 @@ cmake -S "$source_overlay" -B "$build" -G Ninja \
   -DOpenColorIO_DIR="$static_prefix/lib/cmake/OpenColorIO" \
   -DOpenImageIO_DIR="$static_prefix/lib/cmake/OpenImageIO" \
   -DTBB_DIR="$static_prefix/lib/cmake/TBB" \
+  -DEigen3_DIR="$deps_install/eigen/share/eigen3/cmake" \
+  -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
   -DTIFF_LIBRARY="$static_prefix/lib/libtiff.a" \
   -DTIFF_INCLUDE_DIR="$static_prefix/include" \
   -DZLIB_LIBRARY="$deps_install/zlib/lib/libz.a" \
