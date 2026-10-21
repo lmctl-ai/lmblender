@@ -61,8 +61,13 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install/include/OpenImageDenoise/oidn.hpp")
     target_include_directories(lmblender PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/build/oidn-static-install/include")
   endif()
-  target_compile_options(lmblender PRIVATE -march=armv8.2-a+dotprod+fp16+lse -include "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h")
-  target_compile_definitions(lmblender PRIVATE WITH_CYCLES_DEVICE_CPU WITH_TBB WITH_OCIO WITH_PUGIXML WITH_SSE2NEON WITH_SYSTEM_PUGIXML OIIO_STATIC_DEFINE=1 OpenColorIO_SKIP_IMPORTS _FILE_OFFSET_BITS=64 _LARGEFILE64_SOURCE _LARGEFILE_SOURCE __LITTLE_ENDIAN__)
+  target_compile_options(lmblender PRIVATE -include "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h")
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+    # Match the arm64 Cycles archives, which use sse2neon for their SIMD types.
+    target_compile_options(lmblender PRIVATE -march=armv8.2-a+dotprod+fp16+lse)
+    target_compile_definitions(lmblender PRIVATE WITH_SSE2NEON)
+  endif()
+  target_compile_definitions(lmblender PRIVATE WITH_CYCLES_DEVICE_CPU WITH_TBB WITH_OCIO WITH_PUGIXML WITH_SYSTEM_PUGIXML OIIO_STATIC_DEFINE=1 OpenColorIO_SKIP_IMPORTS _FILE_OFFSET_BITS=64 _LARGEFILE64_SOURCE _LARGEFILE_SOURCE __LITTLE_ENDIAN__)
   set(CYCLES_LIB "${CYCLES_BUILD_DIR}/lib")
   set(CYCLES_ARCHIVES
     "${CYCLES_LIB}/libcycles_device.a" "${CYCLES_LIB}/libcycles_scene.a"
