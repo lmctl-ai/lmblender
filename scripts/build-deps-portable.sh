@@ -102,7 +102,7 @@ cp "$source_tree/build_files/build_environment/patches/cmakelists_pystring.txt" 
 build_one pystring "$src/pystring"
 build_one minizipng "$src/minizipng" "${zlib_args[@]}" -DMZ_FETCH_LIBS=OFF -DMZ_LIBCOMP=OFF \
   -DMZ_PKCRYPT=OFF -DMZ_WZAES=OFF -DMZ_OPENSSL=OFF -DMZ_SIGNING=OFF -DMZ_LZMA=OFF -DMZ_ZSTD=OFF \
-  -DMZ_BZIP2=OFF -DMZ_ICONV=OFF -DMZ_ZLIB=ON -DCMAKE_INSTALL_INCLUDEDIR=include/minizip-ng
+  -DMZ_BZIP2=OFF -DMZ_ICONV=OFF -DMZ_ZLIB=ON -DMZ_COMPAT=OFF -DCMAKE_INSTALL_INCLUDEDIR=include/minizip-ng
 build_one opencolorio "$src/opencolorio" "${zlib_args[@]}" -DOCIO_BUILD_APPS=OFF -DOCIO_BUILD_TESTS=OFF \
   -DOCIO_BUILD_GPU_TESTS=OFF -DOCIO_BUILD_PYTHON=OFF -DOCIO_BUILD_OPENFX=OFF -DOCIO_BUILD_DOCS=OFF \
   -DOCIO_INSTALL_EXT_PACKAGES=NONE -DImath_ROOT="$P" -DImath_DIR="$P/lib/cmake/Imath" -Dexpat_ROOT="$P" -Dyaml-cpp_ROOT="$P" \
