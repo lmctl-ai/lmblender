@@ -247,22 +247,32 @@ def file_hash(path, algorithm):
 
 
 def fetch(entry, destination):
+    """Download entry["file"], trying each URL until one yields the pinned hash.
+
+    The Blender mirror is preferred (some upstream hosts are unreachable from CI
+    runners) but it has answered with rate-limit pages and stale files, so every
+    candidate is verified before it is accepted and the next one is tried otherwise.
+    """
     candidates = [uri for uri in (entry["blender_mirror_uri"], entry["upstream_uri"]) if uri]
-    last_error = None
+    attempts = []
     for uri in candidates:
         try:
             print(f"fetching {entry['file']} from {uri}")
-            with urllib.request.urlopen(uri, timeout=120) as response, open(destination, "wb") as out:
+            request = urllib.request.Request(uri, headers={"User-Agent": "lmblender-release-source/1.0"})
+            with urllib.request.urlopen(request, timeout=120) as response, open(destination, "wb") as out:
                 while True:
                     chunk = response.read(1 << 20)
                     if not chunk:
                         break
                     out.write(chunk)
-            return
+            actual = file_hash(destination, entry["hash_type"])
+            if actual == entry["hash"]:
+                return
+            attempts.append(f"{uri}: {entry['hash_type']} {actual} != pinned {entry['hash']} ({destination.stat().st_size} bytes)")
         except Exception as error:  # noqa: BLE001 - report every mirror failure
-            last_error = error
-            destination.unlink(missing_ok=True)
-    fail(f"could not download {entry['file']}: {last_error}")
+            attempts.append(f"{uri}: {error}")
+        destination.unlink(missing_ok=True)
+    fail(f"could not download a verified {entry['file']}:\n  " + "\n  ".join(attempts))
 
 
 def attach_shipped(entries, upstream_dir, do_fetch):

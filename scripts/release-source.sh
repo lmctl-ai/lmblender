@@ -61,9 +61,10 @@ tar -C "$stage/overlay/intern" -czf "$pkg/upstream/cycles-overlay-patched-${comm
 
 # 4. Third-party source archives: reuse a local build_environment download cache when present.
 if [[ -d "$packages_dir" ]]; then
-  find "$packages_dir" -maxdepth 1 -type f \( -name '*.tar.*' -o -name '*.zip' -o -name '*.tgz' \) -exec cp -n {} "$pkg/upstream/" \;
+  find "$packages_dir" -maxdepth 1 -type f \( -name '*.tar.*' -o -name '*.zip' -o -name '*.tgz' \) -print0 |
+    while IFS= read -r -d '' file; do [[ -e "$pkg/upstream/$(basename "$file")" ]] || cp "$file" "$pkg/upstream/"; done
 fi
-for extra in ${LMBLENDER_SOURCE_EXTRA_ARCHIVES:-}; do cp -n "$extra" "$pkg/upstream/"; done
+for extra in ${LMBLENDER_SOURCE_EXTRA_ARCHIVES:-}; do [[ -e "$pkg/upstream/$(basename "$extra")" ]] || cp "$extra" "$pkg/upstream/"; done
 fetch_flag=(); [[ "$fetch" == 1 ]] && fetch_flag=(--fetch)
 python3 scripts/source-manifest.py --blender "$source_tree" --version "$version" --commit "$lm_commit" \
   --upstream-dir "$pkg/upstream" "${fetch_flag[@]}" --json "$pkg/SOURCES.json" --markdown "$pkg/SOURCES.md"
