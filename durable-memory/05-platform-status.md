@@ -100,3 +100,39 @@ Known facts:
 - `dumpbin` imports for the host are exactly `KERNEL32.DLL` and `ADVAPI32.DLL`. No VC runtime or third-party DLLs. The required bare executable `lmblender-windows-x64.exe` is 70,555,648 bytes, staged alongside checksums/notices. [CI artifact 12454415884](https://github.com/lmctl-ai/lmblender/actions/runs/39840532704/artifacts/12454415884) contains it; nothing was tagged or published as a release.
 - Warm-cache Windows job: 19:29:30–19:43:21 UTC (13m51s); full suite 19:31:02–19:43:07 (12m05s). Earlier cold dependency build was 28m34s and standalone Cycles about 5m05s; see preceding investigation notes.
 - After green, fetched and ran `git rebase origin/main`; already up to date on `51831ca`. Opus's Windows fixes are reconciled in this branch (one dependency cache and one static dependency/standalone Cycles route). Only this handoff note follows the tested code commit. Lead can merge the branch.
+
+## macOS findings (PlatFable, 2026-10-22, branch platfable/macos)
+
+Runner timings observed (runs 39805494859, 39820850743):
+- macos-15 (arm64, 3 cores): bootstrap-static-deps 26-29 min, build-deps 5-6 min, OIDN <1 min; dependency cache
+  saved after about 36 min; Cycles configure 19 s, build+link 2 min. macos-15-intel (x64, 4 cores): bootstrap
+  51-72 min, build-deps 13-20 min, OIDN 2-3 min; cache saved after 68-95 min; Cycles build 6 min.
+- The workflow `shell: bash` resolves to /bin/bash 3.2 on both macOS runners: no empty-array `"${a[@]}"`
+  under `set -u`, no mapfile. GNU coreutils/gnu-sed/gpatch come from the gnubin PATH entries. Homebrew CMake is
+  4.4.x there (Ubuntu has 3.28), which changes several Find modules (config-first lookups, see below).
+
+Cycles configure/link failures seen on macOS and their causes (fixes landed on main by Opus in aee57c0,
+affd2bb, 09e6abd; PlatFable reproduced them independently on platfable/macos):
+- `platform_apple.cmake:58 Mac OSX requires pre-compiled libs at LIBDIR`: it demands `LIBDIR/.git` (Blender's
+  precompiled-lib checkout marker) -> empty `.git` entry in the build-only LIBDIR view.
+- x64 `missing static Embree archive libembree_avx.a`: AppleClang cannot build a static multi-ISA Embree, so
+  Darwin-x86_64 builds only SSE4.2; only `libembree_sse42.a` exists there (configure script probes; host CMake
+  lists sse42 only on APPLE).
+- Blender's Apple CMake writes the standalone executable to `intern/cycles/app/Blender.app/Contents/MacOS/cycles`,
+  not `bin/cycles`.
+- First macOS `cycles` link depended on `@rpath/png.framework/...` and `@rpath/libz.1.dylib`: OpenImageIO bakes
+  the literal PNG/ZLIB library paths it was configured with into `OpenImageIOTargets.cmake`
+  (INTERFACE_LINK_LIBRARIES), and CMake's find modules prefer the harvest's png.framework/libz.dylib over the
+  archives. Linux never noticed because `-static` forces archives. Fix: bootstrap deletes the shared
+  zlib/png/freetype libraries and frameworks from the harvest on Darwin (passing ZLIB/PNG/JPEG `*_LIBRARY`
+  archives explicitly to TIFF/OCIO/OIIO in build-deps.sh works as well).
+- Avoid exposing the static prefix as a `LIBDIR/*` subdirectory: with CMake 4, FindTIFF then picks
+  `TiffConfig.cmake`, whose `TIFF::tiff` links an undefined `CMath::CMath` (generate-time error). With the
+  explicit `TIFF_LIBRARY` and module-mode lookup this never happens.
+- Blender forces CMAKE_OSX_DEPLOYMENT_TARGET=11.2 for the Cycles archives; the host keeps 13.3. ld64 warns that
+  the 13.3-target OIIO objects are newer than the 11.2 link target; warnings only.
+- With those fixes both macOS `cycles` executables link only /System frameworks + libSystem + libc++ (otool -L).
+
+Host build (test.sh) on macOS:
+- `libbf_intern_libc_compat.a` is Linux-only (Blender adds intern/libc_compat under `UNIX AND NOT APPLE`); the
+  host CMake skips it on Apple and lists only `libembree_sse42.a` on Intel macOS.

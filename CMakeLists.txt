@@ -132,7 +132,11 @@ elseif(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
     "${CYCLES_LIB}/libcycles_subd.a" "${CYCLES_LIB}/libcycles_graph.a"
     "${CYCLES_LIB}/libcycles_util.a" "${CYCLES_LIB}/libcycles_integrator.a"
     "${CYCLES_LIB}/libcycles_kernel_cpu.a" "${CYCLES_LIB}/libbf_intern_sky.a"
-    "${CYCLES_LIB}/libbf_intern_libc_compat.a" "${CYCLES_LIB}/libbf_intern_guardedalloc.a")
+    "${CYCLES_LIB}/libbf_intern_guardedalloc.a")
+  if(NOT APPLE)
+    # Blender builds intern/libc_compat only on UNIX AND NOT APPLE.
+    list(APPEND CYCLES_ARCHIVES "${CYCLES_LIB}/libbf_intern_libc_compat.a")
+  endif()
   set(STATIC_DEPS
     "${LMBLENDER_STATIC_PREFIX}/lib/libOpenImageIO.a"
     "${LMBLENDER_STATIC_PREFIX}/lib/libOpenImageIO_Util.a"
@@ -158,7 +162,13 @@ elseif(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
   if(_cycles_embree_config)
     list(APPEND STATIC_DEPS "${LMBLENDER_STATIC_PREFIX}/lib/libembree4.a")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
-      foreach(_isa IN ITEMS sse42 avx avx2)
+      if(APPLE)
+        # AppleClang cannot build a static multi-ISA Embree; build-deps.sh builds SSE4.2 only.
+        set(_embree_isas sse42)
+      else()
+        set(_embree_isas sse42 avx avx2)
+      endif()
+      foreach(_isa IN LISTS _embree_isas)
         list(APPEND STATIC_DEPS "${LMBLENDER_STATIC_PREFIX}/lib/libembree_${_isa}.a")
       endforeach()
     endif()
