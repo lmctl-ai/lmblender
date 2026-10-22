@@ -71,6 +71,7 @@ method Scene.instance_mesh(Mesh, float, float, float, float, float, float) -> Me
 method Scene.label(string, float, float, float, float) -> Mesh
 method Scene.light_clamp(float, float) -> void
 method Scene.load_preset(string) -> void
+method Scene.loft(string, string, bool) -> Mesh
 method Scene.material(float, float, float, float, float, float, float, float, float, float) -> Material
 method Scene.material_from_palette(string) -> Material
 method Scene.motion_blur(bool, float) -> void
@@ -96,6 +97,7 @@ method Scene.spot_light(float, float, float, float, float, float, float, float, 
 method Scene.strand(string, float, float, int) -> Mesh
 method Scene.studio_setup() -> void
 method Scene.sun_light(float, float, float, float, float, float, float, float) -> void
+method Scene.toon_outline(Mesh, float, float, float, float) -> Mesh
 method Scene.torus(float, float, int, int, bool) -> Mesh
 method Scene.transparent_background(bool) -> void
 method Scene.tube_between(float, float, float, float, float, float, float) -> Mesh
@@ -117,6 +119,8 @@ method Scene.world_color(float, float, float, float) -> void
 | `tube_between(x1,y1,z1,x2,y2,z2,radius)`, `arrow_between(...)` | Cylindrical path or tapered arrow between two 3D points. |
 | `strand("x,y,z; ...",root_radius,tip_radius,sides)` | A swept polyline of 2..512 points with taper; radii are scene units, sides 3..32. The returned mesh accepts `set_material`. |
 | `hair_patch(x,y,z,size,count,height,width)`, `hair_sphere(x,y,z,radius,count,length,width)` | Deterministic curved swept strands (1..2048 per emitter), combined into one material-ready mesh. These are polygonal strands, not simulated/native Cycles hair. |
+| `loft("x,y,z;...", "u,v;...", caps)` | Sweep a strictly convex 2D profile (3..64 corners) through 2..512 3D path points. Parallel-transported orientation avoids abrupt section twists. |
+| `toon_outline(mesh, radius, r,g,b)` | Add dark cylindrical strokes to boundary and sharp feature edges (dihedral over 30 degrees), sharing the source mesh transform. Intended for hard-surface/toon diagrams; it is not a view-dependent silhouette outline on smooth meshes. |
 | `ring_arc(x,y,z,major,minor,start_deg,end_deg,segments)` | Partial torus gauge, angles in degrees, ordered span up to 360. |
 | `checkmark(x,y,z,size,stroke)` | Green check silhouette mesh; assign its material explicitly. |
 | `label(text,x,y,z,cell_size)` | Extruded 5×7 ASCII uppercase letters and spaces, suitable for flat title plates. |

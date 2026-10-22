@@ -1946,11 +1946,19 @@ void append_sweep(Mesh &mesh, const std::vector<std::array<double, 3>> &path,
                   double base_radius, double tip_radius, bool cap)
 {
   const uint32_t base = uint32_t(mesh.vertices.size()), sides = uint32_t(profile.size());
+  std::array<double,3> previous_u{};
   for (size_t i = 0; i < path.size(); ++i) {
     const auto &before = path[i ? i-1 : i], &after = path[i+1 < path.size() ? i+1 : i];
     const auto tangent = unit3({after[0]-before[0], after[1]-before[1], after[2]-before[2]});
-    const auto ref = std::abs(tangent[2]) < 0.9 ? std::array<double,3>{0,0,1} : std::array<double,3>{0,1,0};
-    const auto u = unit3(cross3(tangent, ref));
+    std::array<double,3> u;
+    if (i==0) {
+      const auto ref=std::abs(tangent[2])<0.9 ? std::array<double,3>{0,0,1} : std::array<double,3>{0,1,0};
+      u=unit3(cross3(tangent,ref));
+    } else {
+      const double dot=previous_u[0]*tangent[0]+previous_u[1]*tangent[1]+previous_u[2]*tangent[2];
+      u=unit3({previous_u[0]-dot*tangent[0],previous_u[1]-dot*tangent[1],previous_u[2]-dot*tangent[2]});
+    }
+    previous_u=u;
     const auto v = cross3(tangent, u);
     const double radius = base_radius + (tip_radius-base_radius)*double(i)/double(path.size()-1);
     for (const auto &q : profile)
@@ -2163,6 +2171,76 @@ dslvm::Registry make_registry() {
       append_sweep(*mesh,path,profile,width,width*0.07,true);
     }
     Mesh *result=adopt_mesh(*scene,std::move(mesh));
+    return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene", "loft", {"string","string","bool"}, "Mesh", [](void *p,dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if (scene->meshes.size()>=4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    const auto path=parse_points(a[0].s,3,2,512);
+    auto profile=parse_points(a[1].s,2,3,64);
+    double area=0.0;
+    for (size_t i=0;i<profile.size();++i) {
+      const auto &v=profile[i], &w=profile[(i+1)%profile.size()];
+      area+=v[0]*w[1]-w[0]*v[1];
+    }
+    if (!std::isfinite(area)||std::abs(area)<1e-8) throw dslvm::Error("loft profile must enclose a nonzero area");
+    if (area<0) std::reverse(profile.begin(),profile.end());
+    for (size_t i=0;i<profile.size();++i) {
+      const auto &a0=profile[i],&b=profile[(i+1)%profile.size()],&c=profile[(i+2)%profile.size()];
+      if ((b[0]-a0[0])*(c[1]-b[1])-(b[1]-a0[1])*(c[0]-b[0])<=1e-9)
+        throw dslvm::Error("loft profile must be a strictly convex polygon without duplicate corners");
+    }
+    auto mesh=std::make_unique<Mesh>();mesh->smooth=false;
+    append_sweep(*mesh,path,profile,1.0,1.0,a[2].b);
+    Mesh *result=adopt_mesh(*scene,std::move(mesh));
+    return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene", "toon_outline", {"Mesh","float","float","float","float"}, "Mesh", [](void *p,dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    auto *object=static_cast<Mesh *>(a[0].obj);
+    if (scene->meshes.size()>=4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    if (std::none_of(scene->meshes.begin(),scene->meshes.end(),[object](const auto &mesh){return mesh.get()==object;}))
+      throw dslvm::Error("toon_outline source must belong to the scene");
+    if (!std::isfinite(a[1].f)||a[1].f<=0||a[1].f>100)
+      throw dslvm::Error("toon outline thickness must be in (0,100] local scene units");
+    for (size_t i=2;i<5;++i) if (!std::isfinite(a[i].f)||a[i].f<0||a[i].f>1)
+      throw dslvm::Error("toon outline color channels must be in [0,1]");
+    const Mesh *source=object->geometry_source?object->geometry_source:object;
+    if (source->vertices.empty()||source->triangles.empty()) throw dslvm::Error("toon outline source has no surface triangles");
+    if (source->triangles.size()>10'000) throw dslvm::Error("toon outline supports at most 10000 source triangles");
+    std::map<std::pair<uint32_t,uint32_t>,std::vector<std::array<double,3>>> edges;
+    for (const auto &t:source->triangles) {
+      const auto &v0=source->vertices[t[0]],&v1=source->vertices[t[1]],&v2=source->vertices[t[2]];
+      const std::array<double,3> e1{v1[0]-v0[0],v1[1]-v0[1],v1[2]-v0[2]},
+                                 e2{v2[0]-v0[0],v2[1]-v0[1],v2[2]-v0[2]};
+      auto n=cross3(e1,e2);
+      const double len=std::hypot(n[0],n[1],n[2]);
+      if (len<1e-12) continue;
+      for (double &value:n) value/=len;
+      for (int j=0;j<3;++j) {
+        const uint32_t x=t[j],y=t[(j+1)%3];
+        edges[{std::min(x,y),std::max(x,y)}].push_back(n);
+      }
+    }
+    auto strokes=std::make_unique<Mesh>();
+    std::vector<std::array<double,3>> circle;
+    for (int j=0;j<8;++j) { const double t=2*M_PI*j/8;circle.push_back({std::cos(t),std::sin(t),0}); }
+    for (const auto &[edge,adjacent]:edges) {
+      const bool sharp=adjacent.size()!=2 ||
+        adjacent[0][0]*adjacent[1][0]+adjacent[0][1]*adjacent[1][1]+adjacent[0][2]*adjacent[1][2]<0.8660254;
+      if (!sharp) continue;
+      const auto &start=source->vertices[edge.first],&end=source->vertices[edge.second];
+      if (std::hypot(start[0]-end[0],start[1]-end[1],start[2]-end[2])<1e-8) continue;
+      append_sweep(*strokes,{start,end},circle,a[1].f,a[1].f,true);
+    }
+    if (strokes->triangles.empty()) throw dslvm::Error("toon outline found no boundary or sharp feature edges");
+    strokes->translation=object->translation;strokes->scale=object->scale;strokes->smooth=true;
+    auto ink=std::make_unique<Material>();
+    ink->color={float(a[2].f),float(a[3].f),float(a[4].f)};
+    ink->roughness=1.0f;
+    strokes->material=ink.get();
+    Mesh *result=adopt_mesh(*scene,std::move(strokes));
+    scene->materials.push_back(std::move(ink));
     return dslvm::Value::object("Mesh",result);
   });
   registry.method("Scene","ring_arc",{"float","float","float","float","float","float","float","int"},"Mesh",[](void*p,dslvm::Args&a){

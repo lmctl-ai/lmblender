@@ -97,6 +97,18 @@ illustrative hair, with no grooming/simulation or native Cycles curve hair.
 
 Thumbnail: [strands-showcase.png](img/strands-showcase.png).
 
+## Toon edges and profile loft (`examples/loft-outline.lms`)
+
+A red cube receives a narrow dark stroke on each hard edge; a cyan square
+profile follows a bent 3D path. Against an identical no-outline control,
+the numeric gate measured 2,423 newly darkened red-edge pixels while retaining
+28,458 red core pixels and 16,687 cyan loft pixels at 960×720. Claude visual
+review passed all three checks (clean narrow strokes, connected untwisted
+loft, complete framing), quality 4/5. The outline is a hard-edge stroke,
+not view-dependent silhouette extraction for smooth shapes.
+
+Thumbnail: [loft-outline.png](img/loft-outline.png).
+
 ## Point/area falloff (`examples/light-falloff.lms`)
 
 Two red receivers share a point source and two blue receivers share a disk area
