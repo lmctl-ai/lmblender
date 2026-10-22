@@ -136,3 +136,6 @@ affd2bb, 09e6abd; PlatFable reproduced them independently on platfable/macos):
 Host build (test.sh) on macOS:
 - `libbf_intern_libc_compat.a` is Linux-only (Blender adds intern/libc_compat under `UNIX AND NOT APPLE`); the
   host CMake skips it on Apple and lists only `libembree_sse42.a` on Intel macOS.
+- The host link failed with `ld: library 'Foundation' not found`: `separate_arguments()` splits the recorded
+  `-framework Foundation` into two list items and target_link_libraries turns `Foundation` into `-lFoundation`.
+  The extras are passed through target_link_options instead (verbatim).

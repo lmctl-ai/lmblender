@@ -200,7 +200,10 @@ elseif(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
       file(READ "${CYCLES_BUILD_DIR}/host-link-extras.txt" _cycles_link_extras)
       separate_arguments(_cycles_link_extras UNIX_COMMAND "${_cycles_link_extras}")
     endif()
-    target_link_libraries(lmblender PRIVATE ${CYCLES_ARCHIVES} ${STATIC_DEPS} ${_cycles_link_extras})
+    target_link_libraries(lmblender PRIVATE ${CYCLES_ARCHIVES} ${STATIC_DEPS})
+    # The extras are "-framework X" pairs and -l flags; as link options they
+    # reach ld64 verbatim (as libraries, "X" would become -lX).
+    target_link_options(lmblender PRIVATE ${_cycles_link_extras})
   else()
     target_link_libraries(lmblender PRIVATE "-Wl,--start-group" ${CYCLES_ARCHIVES} ${STATIC_DEPS} "-Wl,--end-group" dl util m pthread)
   endif()
