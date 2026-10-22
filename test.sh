@@ -183,10 +183,11 @@ test ! -e "$build/geometry-budget.png"
 python3 tests/create_image_bomb.py "$build/image-bomb.png"
 expect_dsl_error image-limit IMAGE_LIMIT
 expect_dsl_error image-limit-maps IMAGE_LIMIT
-# Whole-program budget: instruction ceiling and wall-clock deadline (the latter hard-exits
-# five seconds after the deadline while the loop is still running).
+# Whole-program budget: instruction ceiling, then the wall-clock deadline alone (ceiling
+# disabled so a fast runner cannot trip it first); the latter hard-exits five seconds
+# after the deadline while the loop is still running.
 expect_dsl_error run-budget RUN_BUDGET LMBLENDER_MAX_INSTRUCTIONS=1000000
-expect_dsl_error run-budget RUN_TIMEOUT LMBLENDER_RUN_TIMEOUT_SECONDS=1
+expect_dsl_error run-budget RUN_TIMEOUT LMBLENDER_RUN_TIMEOUT_SECONDS=1 LMBLENDER_MAX_INSTRUCTIONS=0
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
@@ -335,13 +336,9 @@ python3 tests/material_maps_quality.py "$build"
 python3 tests/backface_culling_quality.py "$build/backface-culling.png"
 python3 tests/preset_quality.py "$build"
 python3 tests/denoise_speed_quality.py "$build/denoise-speed-fast.png" "$build/denoise-speed-reference.png"
-if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
-  blender="$BLENDERCLI_BLENDER"
-elif command -v blender >/dev/null 2>&1; then
-  blender=$(command -v blender)
-else
-  blender=
-fi
+# Only an explicitly chosen Blender (5.2 with OIDN) can produce the goldens; a random
+# `blender` on PATH is not used.
+blender=${BLENDERCLI_BLENDER:-}
 if [ -n "$blender" ]; then
   "$blender" --background --factory-startup --python tests/make_display_goldens.py -- "$build" >"$build/display-goldens.log" 2>&1
   python3 tests/display_transform_quality.py \
