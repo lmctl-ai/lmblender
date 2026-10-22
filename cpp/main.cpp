@@ -1264,7 +1264,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     const ccl::float3 direction = ccl::make_float3(light.direction[0], light.direction[1], light.direction[2]);
     object->set_tfm(light_transform(ccl::make_float3(0.0f,0.0f,0.0f), direction));
   };
-  if (source.point_lights.empty()) {
+  if (source.point_lights.empty() && source.area_lights.empty() && source.spot_lights.empty() && source.sun_lights.empty()) {
+    /* Unlit scene: a single key light so geometry-only programs still show something. */
     add_point_light(ccl::make_float3(center.x - radius * 2.5f, center.y - radius * 3.2f, center.z + radius * 4.0f),
                     ccl::make_float3(1.0f, 1.0f, 1.0f), 550.0f);
   } else {
