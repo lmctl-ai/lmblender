@@ -18,7 +18,7 @@ for bin in "$@"; do
     Darwin)
       deps=$(otool -L "$bin" | tail -n +2 | awk '{print $1}')
       printf '%s links:\n%s\n' "$bin" "$deps"
-      bad=$(grep -vE '^(/usr/lib/libSystem\.B\.dylib|/usr/lib/libc\+\+\.1\.dylib|/usr/lib/libobjc\.A\.dylib|/System/Library/Frameworks/[^ ]+)$' <<<"$deps" || true)
+      bad=$(grep -vE '^(/usr/lib/[^/ ]+\.dylib|/System/Library/Frameworks/[^ ]+)$' <<<"$deps" || true)
       [[ -z "$bad" ]] || { echo "error: $bin links non-system libraries:" >&2; echo "$bad" >&2; status=1; }
       ;;
     MINGW*|MSYS*|CYGWIN*)

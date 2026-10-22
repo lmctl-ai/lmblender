@@ -59,7 +59,8 @@ done
 # their shared objects can never win a link. openjph, tbb, and imath keep their
 # shared objects because their exported CMake targets reference them; the host
 # links static archives from the static prefix (checked by ldd in CI).
-for name in png brotli; do
+for name in png brotli $([[ "$(uname -s)" == Darwin ]] && echo zlib freetype); do
+  rm -rf "$deps_install/$name"/lib/*.framework 2>/dev/null || true
   find "$deps_install/$name" \( -name '*.so' -o -name '*.so.*' -o -name '*.dylib' \) -delete
 done
 

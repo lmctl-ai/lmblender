@@ -32,7 +32,8 @@ esac
 py=python3; command -v python3 >/dev/null 2>&1 || py=python
 
 "$py" "$repo/scripts/fetch-dep-sources.py" "$(native "$source_tree")" "$(native "$src")" \
-  ZLIB PNG JPEG ZSTD FMT PUGIXML ROBINMAP TBB IMATH OPENEXR TIFF OPENCOLORIO OPENIMAGEIO OIDN
+  ZLIB PNG JPEG ZSTD FMT PUGIXML ROBINMAP TBB IMATH OPENEXR TIFF EXPAT YAMLCPP PYSTRING MINIZIPNG \
+  OPENCOLORIO OPENIMAGEIO OIDN
 
 common=(-G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$P" -DCMAKE_PREFIX_PATH="$P"
   -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
@@ -91,18 +92,30 @@ build_one openexr "$src/openexr" "${zlib_args[@]}" -DBUILD_TESTING=OFF -DOPENEXR
 build_one tiff "$src/tiff" "${zlib_args[@]}" -Dtiff-tools=OFF -Dtiff-tests=OFF -Dtiff-contrib=OFF \
   -Dtiff-docs=OFF -Dtiff-deprecated=OFF -Djbig=OFF -Dlzma=OFF -Dzstd=OFF -Dwebp=OFF -Dlerc=OFF \
   -Dlibdeflate=OFF -Djpeg=ON
+# OpenColorIO's private dependencies, built here so every archive uses the same
+# (static on MSVC) runtime; OCIO's own ext/ builds default to /MD.
+build_one expat "$src/expat/expat" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_EXAMPLES=OFF \
+  -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_TOOLS=OFF -DEXPAT_SHARED_LIBS=OFF -DEXPAT_MSVC_STATIC_CRT=ON
+build_one yamlcpp "$src/yamlcpp" -DYAML_CPP_BUILD_TESTS=OFF -DYAML_CPP_BUILD_TOOLS=OFF \
+  -DYAML_CPP_BUILD_CONTRIB=OFF -DYAML_MSVC_SHARED_RT=OFF -DYAML_BUILD_SHARED_LIBS=OFF
+cp "$source_tree/build_files/build_environment/patches/cmakelists_pystring.txt" "$src/pystring/CMakeLists.txt"
+build_one pystring "$src/pystring"
+build_one minizipng "$src/minizipng" "${zlib_args[@]}" -DMZ_FETCH_LIBS=OFF -DMZ_LIBCOMP=OFF \
+  -DMZ_PKCRYPT=OFF -DMZ_WZAES=OFF -DMZ_OPENSSL=OFF -DMZ_SIGNING=OFF -DMZ_LZMA=OFF -DMZ_ZSTD=OFF \
+  -DMZ_BZIP2=OFF -DMZ_ICONV=OFF -DMZ_ZLIB=ON -DCMAKE_INSTALL_INCLUDEDIR=include/minizip-ng
 build_one opencolorio "$src/opencolorio" "${zlib_args[@]}" -DOCIO_BUILD_APPS=OFF -DOCIO_BUILD_TESTS=OFF \
   -DOCIO_BUILD_GPU_TESTS=OFF -DOCIO_BUILD_PYTHON=OFF -DOCIO_BUILD_OPENFX=OFF -DOCIO_BUILD_DOCS=OFF \
-  -DOCIO_INSTALL_EXT_PACKAGES=ALL -DOCIO_USE_SIMD=ON
+  -DOCIO_INSTALL_EXT_PACKAGES=NONE -DImath_ROOT="$P" -DImath_DIR="$P/lib/cmake/Imath" -Dexpat_ROOT="$P" -Dyaml-cpp_ROOT="$P" \
+  -Dpystring_ROOT="$P" -Dminizip-ng_ROOT="$P" -Dpystring_INCLUDE_DIR="$P/include" \
+  -Dpystring_LIBRARY="$(lib pystring)" -DOCIO_USE_SIMD=ON
 # OCIO's static package config needs its private dependencies (expat, pystring,
 # yaml-cpp, minizip-ng) as targets in every consuming project. Make the prefix
 # self-contained: copy their headers in and write a targets file that OIIO,
 # Cycles, and the host load via CMAKE_PROJECT_INCLUDE.
-ocio_ext="$bld/opencolorio/ext/dist"
-cp -R "$ocio_ext/include/." "$prefix/include/"
+ocio_ext="$prefix"
 find_archive() {
   local pattern=$1 f
-  f=$(find "$prefix/lib" "$ocio_ext/lib" -maxdepth 1 -type f \( -name "*${pattern}*.a" -o -name "*${pattern}*.lib" \) 2>/dev/null | head -1)
+  f=$(find "$prefix/lib" -maxdepth 1 -type f \( -name "*${pattern}*.a" -o -name "*${pattern}*.lib" \) 2>/dev/null | head -1)
   [[ -n "$f" ]] || { echo "missing static archive for $pattern" >&2; exit 1; }
   native "$f"
 }
@@ -118,7 +131,7 @@ mkdir -p "$(dirname "$static_targets")"
 cat > "$static_targets" <<EOF2
 foreach(_spec IN ITEMS
     "expat::expat|$(find_archive expat)|$P/include"
-    "pystring::pystring|$(find_archive pystring)|$P/include/pystring"
+    "pystring::pystring|$(find_archive pystring)|$P/include"
     "yaml-cpp::yaml-cpp|$(find_archive yaml-cpp)|$P/include"
     "MINIZIP::minizip-ng|$(find_archive minizip)|$P/include"
     "openjph|$ojph_installed|$P/include")
@@ -132,7 +145,7 @@ foreach(_spec IN ITEMS
   endif()
 endforeach()
 set(pystring_ROOT "$P")
-set(pystring_INCLUDE_DIR "$P/include/pystring")
+set(pystring_INCLUDE_DIR "$P/include")
 set(pystring_LIBRARY "$(find_archive pystring)")
 set(expat_ROOT "$P")
 set(expat_STATIC_LIBRARY ON)
@@ -150,7 +163,7 @@ build_one openimageio "$src/openimageio" "${zlib_args[@]}" -DOIIO_BUILD_TESTS=OF
   -DOpenColorIO_ROOT="$P" -DTBB_ROOT="$P" -Dfmt_ROOT="$P" -DRobinmap_ROOT="$P" \
   -Dexpat_ROOT="$E" -Dpystring_ROOT="$E" -Dyaml-cpp_ROOT="$E" -Dminizip-ng_ROOT="$E" \
   -Dexpat_STATIC_LIBRARY=ON -Dexpat_LIBRARY="$(find_archive expat)" -Dexpat_INCLUDE_DIR="$E/include" \
-  -Dpystring_LIBRARY="$(find_archive pystring)" -Dpystring_INCLUDE_DIR="$E/include/pystring" \
+  -Dpystring_LIBRARY="$(find_archive pystring)" -Dpystring_INCLUDE_DIR="$E/include" \
   -DCMAKE_PROJECT_INCLUDE="$(native "$static_targets")"
 
 ispc_dir="$root/ispc"
