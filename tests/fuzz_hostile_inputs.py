@@ -23,6 +23,10 @@ environment = os.environ.copy()
 environment["PATH"] = str(binary.parent) + os.pathsep + environment.get("PATH", "")
 environment["ASAN_OPTIONS"] = "detect_leaks=0:halt_on_error=1"
 environment["UBSAN_OPTIONS"] = "halt_on_error=1:print_stacktrace=1"
+# Windows CreateProcess does not search PATHEXT for npm's .cmd launcher.
+lmscript = shutil.which(os.environ.get("LMSCRIPT", "lmscript"))
+if lmscript is None:
+    raise FileNotFoundError("lmscript is not on PATH; set LMSCRIPT to its executable")
 
 
 def compile_case(name, method, file):
@@ -34,7 +38,7 @@ def compile_case(name, method, file):
         'end _dsl_\n'
         f'savedsl(p,"{bytecode}");\n'
     )
-    result = subprocess.run([os.environ.get("LMSCRIPT", "lmscript"), str(source)],
+    result = subprocess.run([lmscript, str(source)],
                             env=environment, text=True, capture_output=True, timeout=10)
     assert result.returncode == 0, (name, result.stdout, result.stderr)
     return bytecode
@@ -124,7 +128,7 @@ source_base = (b'p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@la
 for variant, payload in variants(source_base):
     source = work / "mutant.lms"
     source.write_bytes(payload)
-    result = subprocess.run([os.environ.get("LMSCRIPT", "lmscript"), "--check", str(source)],
+    result = subprocess.run([lmscript, "--check", str(source)],
                             env=environment, text=True, capture_output=True, timeout=8)
     assert result.returncode >= 0 and result.returncode not in (134,139), \
         ("lms/" + variant, result.returncode, result.stderr[-500:])

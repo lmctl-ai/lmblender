@@ -89,3 +89,5 @@ Known facts:
   checksum fixture failed because GNU binary-mode sums mark filenames with `*`,
   while the cross-check assumed a text-mode filename. Accept either marker
   without changing file digests; exercise the existing fixture with both modes.
+
+- Windows run [39833128994](https://github.com/lmctl-ai/lmblender/actions/runs/39833128994), job 120014297816, passed the rendering regression assertions through the direct Cycles/XML oracle. The subsequent hostile corpus failed before compilation: Python CreateProcess does not resolve bare `lmscript` through PATHEXT to npm's `.cmd` launcher. Resolve the compiler once with `shutil.which` (also honors explicit LMSCRIPT), preserving the full corpus and assertions. Run-level success is not evidence: the Windows job failed because jobs use continue-on-error.
