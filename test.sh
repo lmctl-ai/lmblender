@@ -321,6 +321,5 @@ print('DSL v5 runner, mesh import, direct Cycles rendering, motion blur, display
 PY
 for binary in "$exe" "$build/cycles-static/bin/cycles"; do
   [ ! -x "$binary" ] && continue
-  ldd "$binary" >"$build/ldd-check.txt" 2>&1 || true
-  grep -q 'not a dynamic executable' "$build/ldd-check.txt" || { cat "$build/ldd-check.txt" >&2; exit 1; }
+  scripts/check-static.sh "$binary" >"$build/ldd-check.txt" 2>&1 || { cat "$build/ldd-check.txt" >&2; exit 1; }
 done

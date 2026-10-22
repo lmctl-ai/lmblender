@@ -10,10 +10,15 @@ prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix}
 build_root=${LMBLENDER_DEPS_BUILD_DIR:-$repo/build/deps}
 jobs=${BUILD_JOBS:-2}
 cmake=${CMAKE:-cmake}
-c_compiler=${LMBLENDER_CC:-/usr/bin/gcc-14}
-cxx_compiler=${LMBLENDER_CXX:-/usr/bin/g++-14}
-prefix=$(realpath -m "$prefix")
-build_root=$(realpath -m "$build_root")
+case "$(uname -s)" in
+  Darwin) default_cc=clang default_cxx=clang++ ;;
+  *) default_cc=/usr/bin/gcc-14 default_cxx=/usr/bin/g++-14 ;;
+esac
+c_compiler=${LMBLENDER_CC:-$default_cc}
+cxx_compiler=${LMBLENDER_CXX:-$default_cxx}
+abspath() { python3 -c 'import os,sys; print(os.path.abspath(sys.argv[1]))' "$1"; }
+prefix=$(abspath "$prefix")
+build_root=$(abspath "$build_root")
 compiler_id="$($cxx_compiler --version | head -n 1)"
 state_file="$build_root/.compiler-id"
 if [ -f "$state_file" ] && [ "$(cat "$state_file")" != "$compiler_id" ]; then

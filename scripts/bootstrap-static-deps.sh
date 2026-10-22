@@ -10,8 +10,14 @@ deps_install=${BLENDER_DEPS_INSTALL:-$repo/build/blender-deps-harvest}
 libdir=${BLENDER_LIBDIR:-$deps_install}
 ispc_root=${LMBLENDER_ISPC_ROOT:-$repo/build/ispc-toolchain}
 jobs=${BUILD_JOBS:-2}
-cc=${LMBLENDER_CC:-/usr/bin/gcc-14}
-cxx=${LMBLENDER_CXX:-/usr/bin/g++-14}
+case "$(uname -s)" in
+  Darwin) default_cc=clang default_cxx=clang++ ;;
+  *) default_cc=/usr/bin/gcc-14 default_cxx=/usr/bin/g++-14 ;;
+esac
+cc=${LMBLENDER_CC:-$default_cc}
+cxx=${LMBLENDER_CXX:-$default_cxx}
+# Portable checksum verification (macOS lacks md5sum/sha256sum).
+verify_hash() { python3 -c 'import hashlib,sys; a,e,f=sys.argv[1:]; h=hashlib.new(a,open(f,"rb").read()).hexdigest(); sys.exit(0 if h==e else f"{f}: {a} {h} != {e}")' "$@"; }
 
 test -f "$source_tree/build_files/build_environment/CMakeLists.txt" || {
   echo "pinned Blender build_environment is missing; run scripts/fetch-cycles-source.sh" >&2; exit 2;
@@ -35,13 +41,15 @@ targets=(external_zlib external_zstd external_png external_jpeg
   external_epoxy external_eigen)
 # sse2neon only exists (and is only needed) on arm64 hosts.
 case "$(uname -m)" in aarch64|arm64) targets=(external_sse2neon "${targets[@]}") ;; esac
+# platform_apple.cmake always requires FreeType and BZip2 from LIBDIR.
+[[ "$(uname -s)" == Darwin ]] && targets+=(external_freetype external_bzip2)
 cmake --build "$env_build" --parallel "$jobs" --target "${targets[@]}"
 
 # build_environment always installs into its own <build>/Release LIBDIR and
 # only fills HARVEST_TARGET from the full `harvest` target. Copy just the
 # prefixes consumed by build-deps.sh, configure-cycles-static.sh, and the host.
 release_libdir="$env_build/Release"
-for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath expat epoxy eigen sse2neon; do
+for name in zlib zstd png jpeg openjpeg openjph brotli pugixml fmt tbb imath expat epoxy eigen sse2neon freetype bzip2; do
   if [[ -d "$release_libdir/$name" ]]; then
     rm -rf "${deps_install:?}/$name"
     cp -a "$release_libdir/$name" "$deps_install/$name"
@@ -52,7 +60,7 @@ done
 # shared objects because their exported CMake targets reference them; the host
 # links static archives from the static prefix (checked by ldd in CI).
 for name in png brotli; do
-  find "$deps_install/$name" \( -name '*.so' -o -name '*.so.*' \) -delete
+  find "$deps_install/$name" \( -name '*.so' -o -name '*.so.*' -o -name '*.dylib' \) -delete
 done
 
 source_root="$env_build/build"
@@ -61,16 +69,20 @@ oidn_archive="$repo/build/oidn-2.5.0.src.tar.gz"
 curl --fail --location --retry 3 \
   https://github.com/RenderKit/oidn/releases/download/v2.5.0/oidn-2.5.0.src.tar.gz \
   --output "$oidn_archive"
-echo 'ae984ce4cc4c81ec152ab81b241a8738  '"$oidn_archive" | md5sum --check
+verify_hash md5 ae984ce4cc4c81ec152ab81b241a8738 "$oidn_archive"
 tar -xzf "$oidn_archive" --strip-components=1 \
   -C "$source_root/openimagedenoise/src/external_openimagedenoise"
 
-case "$(uname -m)" in
-  aarch64|arm64)
+case "$(uname -s)-$(uname -m)" in
+  Darwin-*)
+    ispc_archive=ispc-v1.30.0-macOS.universal.tar.gz
+    ispc_sha=4a45b95d9cd590acbdcd158d287f9398d4a1961461e9456bda09181e7b34912e
+    ;;
+  *-aarch64|*-arm64)
     ispc_archive=ispc-v1.30.0-linux.aarch64.tar.gz
     ispc_sha=509399c399ec162d746889458a10cc13797a1aed1c0164b2bd3faddf7d023f13
     ;;
-  x86_64|amd64)
+  *-x86_64|*-amd64)
     ispc_archive=ispc-v1.30.0-linux.tar.gz
     ispc_sha=63e7d61037849fa1ed644f0398d21740ee9f880b9bf81f017c65eebe1d42c02b
     ;;
@@ -80,7 +92,7 @@ ispc_tar="$repo/build/$ispc_archive"
 curl --fail --location --retry 3 \
   "https://github.com/ispc/ispc/releases/download/v1.30.0/$ispc_archive" \
   --output "$ispc_tar"
-echo "$ispc_sha  $ispc_tar" | sha256sum --check
+verify_hash sha256 "$ispc_sha" "$ispc_tar"
 tar -xzf "$ispc_tar" -C "$ispc_root"
 ispc=$(find "$ispc_root" -type f -name ispc -perm -u+x -print -quit)
 test -n "$ispc" || { echo 'ISPC executable not found in pinned archive' >&2; exit 2; }

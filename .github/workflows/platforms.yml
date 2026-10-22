@@ -1,0 +1,193 @@
+name: platforms
+
+# Experimental macOS (and later Windows) builds. They stay continue-on-error
+# and outside the Linux release job until they are green; see docs/PLATFORMS.md.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platforms-${{ github.ref }}
+  # Let cold dependency builds finish so their prefix caches are saved.
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PREFIX_CACHE_VERSION: v2
+
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: macos-arm64
+            runner: macos-15
+            machine: arm64
+          - arch: macos-x64
+            runner: macos-15-intel
+            machine: x64
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    timeout-minutes: 330
+    env:
+      CC: clang
+      CXX: clang++
+      LMBLENDER_CC: clang
+      LMBLENDER_CXX: clang++
+      # std::to_chars(double) and the other C++17/20 library pieces need 13.3.
+      MACOSX_DEPLOYMENT_TARGET: "13.3"
+      BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+      BLENDER_DEPS_ENV_BUILD: ${{ github.workspace }}/build/blender-deps-environment
+      BLENDER_DEPS_SOURCE_ROOT: ${{ github.workspace }}/build/blender-deps-environment/build
+      BLENDER_DEPS_INSTALL: ${{ github.workspace }}/build/blender-deps-harvest
+      BLENDER_LIBDIR: ${{ github.workspace }}/build/blender-deps-harvest
+      LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/static-prefix-gcc14
+      LMBLENDER_DEPS_BUILD_DIR: ${{ github.workspace }}/build/deps-gcc14
+      LMBLENDER_CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+      CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+      OIDN_SOURCE: ${{ github.workspace }}/build/blender-deps-environment/build/openimagedenoise/src/external_openimagedenoise
+      OIDN_BUILD_DIR: ${{ github.workspace }}/build/oidn-static-build
+      OIDN_INSTALL_PREFIX: ${{ github.workspace }}/build/oidn-static-install
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: install build tools and Blender build_environment prerequisites
+        id: toolchain
+        run: |
+          # check_software.cmake on macOS: autoconf automake bison dos2unix flex
+          # libtool meson ninja pkg-config yasm (+ Homebrew bison). GNU coreutils
+          # keep the shared bash scripts and test.sh identical to Linux.
+          brew install autoconf automake bison dos2unix flex libtool meson ninja pkg-config yasm nasm coreutils
+          brew_prefix=$(brew --prefix)
+          echo "$brew_prefix/opt/bison/bin" >> "$GITHUB_PATH"
+          echo "$brew_prefix/opt/flex/bin" >> "$GITHUB_PATH"
+          echo "$brew_prefix/opt/coreutils/libexec/gnubin" >> "$GITHUB_PATH"
+          echo "clang=$(clang -dumpversion)" >> "$GITHUB_OUTPUT"
+          echo "jobs=$(sysctl -n hw.ncpu)" >> "$GITHUB_OUTPUT"
+          clang --version | head -1
+          cmake --version | head -1
+          sw_vers
+          df -h "$GITHUB_WORKSPACE"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install pinned DSL v5 compiler
+        run: npm install --global @lmctl-ai/lmctl@0.2.373
+      - name: fetch pinned upstream Blender source (sparse)
+        run: scripts/fetch-cycles-source.sh
+      - name: restore static dependency and Cycles prefix
+        id: prefix-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/blender-deps-harvest
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+            build/cycles-static
+          key: lmblender-prefix-${{ env.PREFIX_CACHE_VERSION }}-${{ matrix.arch }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('.github/cycles-flags.txt', 'scripts/fetch-cycles-source.sh', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh', 'scripts/configure-cycles-static.sh', 'scripts/make-cycles-source-overlay.py', 'patches/*.patch') }}
+      - name: restore static dependency prefix (Cycles cache miss only)
+        id: deps-cache
+        if: steps.prefix-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/blender-deps-harvest
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+          key: lmblender-deps-${{ env.PREFIX_CACHE_VERSION }}-${{ matrix.arch }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh') }}
+      - name: restore pinned Blender package sources (cold cache only)
+        id: packages-cache
+        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.deps-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/blender-deps-environment/packages
+          key: blender-packages-${{ hashFiles('scripts/fetch-cycles-source.sh') }}
+      - name: build pinned Blender dependency sources (cold cache only)
+        id: bootstrap
+        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.deps-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: scripts/bootstrap-static-deps.sh
+      - name: build static image dependencies (cold cache only)
+        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.deps-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: scripts/build-deps.sh
+      - name: build static CPU denoiser (cold cache only)
+        id: build-oidn
+        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.deps-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: |
+          export ISPC_EXECUTABLE="$(cat build/ispc-executable.txt)"
+          scripts/build-oidn-static.sh
+          du -sh build/blender-deps-harvest build/static-prefix-gcc14 build/deps-gcc14 build/oidn-static-install
+      - name: save static dependency prefix even if later steps fail
+        if: always() && steps.build-oidn.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/blender-deps-harvest
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+          key: lmblender-deps-${{ env.PREFIX_CACHE_VERSION }}-${{ matrix.arch }}-clang-${{ steps.toolchain.outputs.clang }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/bootstrap-static-deps.sh', 'scripts/build-deps.sh', 'scripts/build-oidn-static.sh') }}
+      - name: build standalone Cycles with pinned source overlay (cold cache only)
+        id: build-cycles
+        if: steps.prefix-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: |
+          scripts/configure-cycles-static.sh
+          rm -rf build/cycles-static/bin build/cycles-static/CMakeFiles
+          du -sh build/cycles-static
+      - name: drop dependency build trees before caching
+        if: steps.build-cycles.outcome == 'success'
+        run: rm -rf build/blender-deps-environment build/oidn-static-build build/oidn-smoke-build
+      - name: save static dependency and Cycles prefix even if later checks fail
+        if: always() && steps.build-cycles.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/blender-deps-harvest
+            build/static-prefix-gcc14
+            build/deps-gcc14
+            build/oidn-static-install
+            build/cycles-static
+          key: ${{ steps.prefix-cache.outputs.cache-primary-key }}
+      - name: build and test lmblender
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: ./test.sh
+      - name: assert only system libraries are dynamic
+        run: |
+          file build/lmblender
+          scripts/check-static.sh build/lmblender | tee build/lmblender.ldd
+          build/lmblender --version
+      - name: stage release assets
+        env:
+          LMBLENDER_ARCH: ${{ matrix.machine }}
+          LMBLENDER_HOST_RELEASE: ${{ github.workspace }}/build/host-release
+        run: |
+          RELEASE_VERSION=$(cat VERSION)
+          export RELEASE_VERSION
+          scripts/release.sh
+          cp build/lmblender.ldd dist/
+          (cd dist && sha256sum lmblender-${{ matrix.arch }}* > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmblender-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error

@@ -31,6 +31,5 @@ cmake -S "$repo/tests/oidn-static-smoke" -B "$smoke_build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$prefix;$static_prefix"
 cmake --build "$smoke_build" --parallel "$jobs"
 "$smoke_build/oidn_static_smoke"
-ldd "$smoke_build/oidn_static_smoke" > "$smoke_build/ldd.txt" 2>&1 || true
-grep -q 'not a dynamic executable' "$smoke_build/ldd.txt"
-stat -c 'OIDN static smoke binary: %s bytes' "$smoke_build/oidn_static_smoke"
+"$repo/scripts/check-static.sh" "$smoke_build/oidn_static_smoke"
+echo "OIDN static smoke binary: $(wc -c < "$smoke_build/oidn_static_smoke" | tr -d ' ') bytes"

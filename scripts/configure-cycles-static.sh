@@ -8,8 +8,19 @@ source_tree=${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}
 deps_install=${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}
 static_prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix-gcc14}
 build=${LMBLENDER_CYCLES_BUILD_DIR:-$repo/build/cycles-static}
-cc=${LMBLENDER_CC:-/usr/bin/gcc-14}
-cxx=${LMBLENDER_CXX:-/usr/bin/g++-14}
+case "$(uname -s)" in
+  Darwin)
+    default_cc=clang default_cxx=clang++
+    # macOS cannot link fully static executables; libSystem/libc++ stay dynamic.
+    exe_linker_flags=''
+    ;;
+  *)
+    default_cc=/usr/bin/gcc-14 default_cxx=/usr/bin/g++-14
+    exe_linker_flags='-static -static-libstdc++ -static-libgcc'
+    ;;
+esac
+cc=${LMBLENDER_CC:-$default_cc}
+cxx=${LMBLENDER_CXX:-$default_cxx}
 jobs=${BUILD_JOBS:-2}
 test -f "$source_tree/CMakeLists.txt"
 test -f "$static_prefix/lib/libOpenImageIO.a"
@@ -94,7 +105,7 @@ cmake -S "$source_overlay" -B "$build" -G Ninja \
   -DPNG_LIBRARY="$deps_install/png/lib/libpng.a" \
   -DPNG_PNG_INCLUDE_DIR="$deps_install/png/include" \
   -DCMAKE_PROJECT_INCLUDE="$static_targets" \
-  -DCMAKE_EXE_LINKER_FLAGS='-static -static-libstdc++ -static-libgcc' \
+  -DCMAKE_EXE_LINKER_FLAGS="$exe_linker_flags" \
   -DOPENIMAGEDENOISE_ROOT_DIR="$oidn_find_root" \
   -DOPENIMAGEDENOISE_INCLUDE_DIR="$oidn_find_root/include" \
   -DOPENIMAGEDENOISE_LIBRARY="$oidn_find_root/lib/libOpenImageDenoise.a" \
@@ -127,6 +138,29 @@ if [[ ${CYCLES_CONFIGURE_ONLY:-0} == 1 ]]; then
 fi
 cmake --build "$build" --target cycles --parallel "$jobs"
 file "$build/bin/cycles"
-# ldd exits 1 for a static executable; keep pipefail from treating that as failure.
-{ ldd "$build/bin/cycles" 2>&1 || true; } | tee "$build/ldd.txt"
-grep -q 'not a dynamic executable' "$build/ldd.txt"
+"$repo/scripts/check-static.sh" "$build/bin/cycles"
+if [[ "$(uname -s)" == Darwin ]]; then
+  # Record the system frameworks/libraries Cycles' own executable links so the
+  # host (CMakeLists.txt) can reuse them; drop archives and object files.
+  python3 - "$build/build.ninja" "$build/host-link-extras.txt" <<'PY'
+import re, shlex, sys
+text = open(sys.argv[1]).read()
+block = re.search(r"^build bin/cycles: .*?(?=^build |\Z)", text, re.S | re.M).group(0)
+flags = []
+for key in ("LINK_FLAGS", "LINK_LIBRARIES"):
+    m = re.search(rf"^\s+{key} = (.*)$", block, re.M)
+    if m:
+        flags += shlex.split(m.group(1))
+items, i = [], 0
+while i < len(flags):
+    f = flags[i]
+    if f == "-framework" and i + 1 < len(flags):
+        items.append(f"-framework {flags[i + 1]}"); i += 2; continue
+    if f.startswith("-l") or f.startswith("-Wl,-framework"):
+        items.append(f)
+    i += 1
+unique = list(dict.fromkeys(items))
+open(sys.argv[2], "w").write(" ".join(unique) + "\n")
+print("host link extras:", " ".join(unique))
+PY
+fi
