@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "preset": {
+    "name": "no-autoframe-position",
+    "description": "Test fixture: auto_frame off with an explicit camera.position",
+    "render": {
+      "tier": "draft",
+      "threads": 4,
+      "view_transform": "Standard",
+      "samples": 8,
+      "bounces": 2,
+      "denoise": false,
+      "resolution": [
+        960,
+        720
+      ],
+      "fps": 24
+    },
+    "world": {
+      "color": [
+        0.26,
+        0.29,
+        0.34
+      ],
+      "strength": 0.6
+    },
+    "camera": {
+      "fov_degrees": 38,
+      "orthographic": false,
+      "vertical_span": 10,
+      "auto_frame": false,
+      "position": [
+        2.2,
+        -3.0,
+        1.6
+      ],
+      "target": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "ground": {
+      "enabled": true,
+      "color": [
+        0.36,
+        0.38,
+        0.4
+      ],
+      "size_scale": 10,
+      "offset": 0.01
+    },
+    "lights": [
+      {
+        "position": [
+          -3,
+          -4,
+          5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "color": [
+          1,
+          0.94,
+          0.84
+        ],
+        "strength": 450,
+        "size": 5
+      },
+      {
+        "position": [
+          4,
+          -1,
+          3
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "color": [
+          0.78,
+          0.88,
+          1
+        ],
+        "strength": 300,
+        "size": 5
+      }
+    ],
+    "palette": {
+      "accent": {
+        "color": [
+          0.12,
+          0.46,
+          0.88
+        ],
+        "metallic": 0.08,
+        "roughness": 0.35
+      },
+      "neutral": {
+        "color": [
+          0.62,
+          0.64,
+          0.68
+        ],
+        "metallic": 0.15,
+        "roughness": 0.45
+      }
+    }
+  }
+}

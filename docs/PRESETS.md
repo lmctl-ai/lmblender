@@ -23,6 +23,8 @@ own rig. User-authored lights added before selecting a preset are preserved.
 `tests/preset-explicit-overrides.lms` renders before/after images and verifies
 the changed camera mask and saturated green area-light response numerically.
 
+A preset may set `camera.auto_frame` to `false`; it must then give `camera.position` (and optionally `camera.target`) in units of the scene radius relative to the geometry center, the same convention as its light positions, otherwise it is refused with `PRESET_INVALID`. `tests/presets/no-autoframe-position.json` is a minimal example.
+
 `preset_param` accepts integer-valued `samples` (1..65536), `bounces` (0..64), and `threads` (1..64), plus `world_strength` (0..100), vertical `camera_fov_degrees` (5..170), and positive `orthographic_vertical_span` (up to 1,000,000 scene units). The render call continues to set output width/height; catalog resolution and fps are descriptive defaults for caller workflows and do not silently override an explicit output request.
 
 Examples live in `examples/presets/`. `test.sh` renders every preset and verifies dimensions, occupied pixel coverage, image luminance range, CLI listing/show JSON, embedded schema, and DSL signature conformance. The scene examples use an explicit 16-sample denoised preview override so the images are readable while tests remain bounded; their numeric QA checks image bounds, chroma/contrast, and CLI catalog output. The catalog's final-quality settings are also inspected via `--preset-show`.

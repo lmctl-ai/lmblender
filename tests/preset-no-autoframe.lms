@@ -1,0 +1,14 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// An external preset with camera.auto_frame=false and no camera.position used to leave
+// the camera at the world origin (a NaN basis when geometry is centered there). It must
+// now be refused with PRESET_INVALID at load time.
+out = ARGV.len() > 0 ? ARGV[0] : "build/preset-no-autoframe.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(1.0, 32, 16, true);
+scene.load_preset("tests/presets/no-autoframe-missing.json");
+scene.render_png("build/preset-no-autoframe.png", 1, 16, 16);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code == 0) { println("expected PRESET_INVALID for a preset without auto-framing or a camera position"); exit(1); }

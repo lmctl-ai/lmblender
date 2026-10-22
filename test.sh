@@ -109,6 +109,12 @@ compile_dsl tests/geometry-budget.lms "$build/geometry-budget.dslb"
 compile_dsl tests/image-limit.lms "$build/image-limit.dslb"
 compile_dsl tests/image-limit-maps.lms "$build/image-limit-maps.dslb"
 compile_dsl tests/run-budget.lms "$build/run-budget.dslb"
+compile_dsl tests/output-inside.lms "$build/output-inside.dslb"
+compile_dsl tests/output-escape.lms "$build/output-escape.dslb"
+compile_dsl tests/output-symlink.lms "$build/output-symlink.dslb"
+compile_dsl tests/no-default-light.lms "$build/no-default-light.dslb"
+compile_dsl tests/preset-no-autoframe.lms "$build/preset-no-autoframe.dslb"
+compile_dsl tests/preset-no-autoframe-position.lms "$build/preset-no-autoframe-position.dslb"
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
@@ -188,6 +194,24 @@ expect_dsl_error image-limit-maps IMAGE_LIMIT
 # after the deadline while the loop is still running.
 expect_dsl_error run-budget RUN_BUDGET LMBLENDER_MAX_INSTRUCTIONS=1000000
 expect_dsl_error run-budget RUN_TIMEOUT LMBLENDER_RUN_TIMEOUT_SECONDS=1 LMBLENDER_MAX_INSTRUCTIONS=0
+# Output path policy: a confinement root keeps renders inside it, and a symlinked parent
+# directory is refused even without a root.
+LMBLENDER_OUTPUT_ROOT="$build" "$exe" --dsl "$build/output-inside.dslb" >"$build/output-inside-result.json"
+test -s "$build/output-inside.png"
+rm -f /tmp/lmblender-output-escape.png
+expect_dsl_error output-escape OUTPUT_PATH LMBLENDER_OUTPUT_ROOT="$build"
+test ! -e /tmp/lmblender-output-escape.png
+ln -sfn "$build" "$build/linked-out"
+expect_dsl_error output-symlink OUTPUT_PATH
+rm -f "$build/linked-out"
+# The fallback key light exists only for scenes without any light: a black world with a
+# zero-power area light must render black.
+"$exe" --dsl "$build/no-default-light.dslb" >"$build/no-default-light-result.json"
+python3 tests/pixel_bounds_quality.py "$build/no-default-light.png" 0 2
+# Presets that switch auto-framing off must place the camera explicitly.
+expect_dsl_error preset-no-autoframe PRESET_INVALID
+"$exe" --dsl "$build/preset-no-autoframe-position.dslb" >"$build/preset-no-autoframe-position-result.json"
+python3 tests/pixel_bounds_quality.py "$build/preset-no-autoframe-position.png" 20 255
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"

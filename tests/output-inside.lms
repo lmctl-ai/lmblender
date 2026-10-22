@@ -1,0 +1,13 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Output policy: with LMBLENDER_OUTPUT_ROOT=build this render stays inside the root and
+// must succeed (test.sh pairs it with output-escape.lms and output-symlink.lms).
+out = ARGV.len() > 0 ? ARGV[0] : "build/output-inside.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let cube = scene.cube(1.0);
+scene.camera_look_at(3.0, -4.0, 2.5, 0.0, 0.0, 0.0, 40.0);
+scene.render_png("build/output-inside.png", 1, 16, 16);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

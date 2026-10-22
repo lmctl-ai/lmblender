@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// The fallback key light must only appear when the scene has no lights at all. Here the
+// world is black and the only light is an area light with zero power, so every pixel must
+// stay black; the old host added a 550-strength point light whenever there was no *point*
+// light and lit the sphere anyway. tests/pixel_bounds_quality.py checks the maximum.
+out = ARGV.len() > 0 ? ARGV[0] : "build/no-default-light.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(1.0, 32, 16, true);
+ball.set_material(scene.material(0.9, 0.9, 0.9, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.world_color(0.0, 0.0, 0.0, 0.0);
+scene.area_light(-3.0, -4.0, 4.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 2.0);
+scene.camera_look_at(0.0, -5.0, 1.5, 0.0, 0.0, 0.0, 40.0);
+scene.render_png("build/no-default-light.png", 4, 64, 64);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }
