@@ -31,7 +31,7 @@ expected=$(find "$dist" -maxdepth 1 -type f ! -name SHA256SUMS | wc -l | tr -d '
 listed=$(grep -c '' "$dist/SHA256SUMS")
 [[ "$listed" == "$expected" ]] || { echo "SHA256SUMS lists $listed of $expected assets" >&2; cat "$dist/SHA256SUMS" >&2; exit 1; }
 for asset in lmblender-linux-arm64 lmblender-linux-x64 lmblender-macos-arm64-v9.9.9.tar.gz lmblender-windows-x64.exe lmblender-source-v9.9.9.tar.gz lmblender-linux-arm64.ldd; do
-  grep -q "  $asset\$" "$dist/SHA256SUMS" || { echo "SHA256SUMS lacks $asset" >&2; exit 1; }
+  grep -q " [ *]$asset\$" "$dist/SHA256SUMS" || { echo "SHA256SUMS lacks $asset" >&2; exit 1; }
 done
 (cd "$dist" && if command -v sha256sum >/dev/null; then sha256sum --check --strict --quiet SHA256SUMS; else shasum -a 256 --check --strict --quiet SHA256SUMS; fi)
 

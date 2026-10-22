@@ -28,7 +28,8 @@ for sidecar in *.sha256; do
   asset=${sidecar%.sha256}
   [[ -f "$asset" ]] || { echo "release-checksums: $sidecar has no matching asset $asset" >&2; exit 3; }
   expected=$(awk '{print $1}' "$sidecar")
-  actual=$(awk -v a="$asset" '$2 == a {print $1}' SHA256SUMS)
+  # GNU checksum output uses a '*' filename marker in binary mode (Windows).
+  actual=$(awk -v a="$asset" '{ name=$2; sub(/^\*/, "", name); sub(/\r$/, "", name); if (name == a) print $1 }' SHA256SUMS)
   [[ "$expected" == "$actual" ]] || { echo "release-checksums: $sidecar ($expected) disagrees with $asset ($actual)" >&2; exit 3; }
 done
 echo "SHA256SUMS covers ${#assets[@]} assets in $dist"

@@ -84,3 +84,8 @@ Known facts:
   passed forced-include lookup; fmt requires `/utf-8`, and the watchdog's GCC
   `__atomic_load_n` is unavailable on MSVC. Add `/utf-8` and use the pinned
   Blender `atomic_load_uint64` portability helper without disabling the watchdog.
+- Run https://github.com/lmctl-ai/lmblender/actions/runs/39832510840/job/120012076849
+  compiled the host and ran `--version`, then entered `test.sh`. The release
+  checksum fixture failed because GNU binary-mode sums mark filenames with `*`,
+  while the cross-check assumed a text-mode filename. Accept either marker
+  without changing file digests; exercise the existing fixture with both modes.
