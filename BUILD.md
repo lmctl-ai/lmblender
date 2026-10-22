@@ -11,7 +11,7 @@ sudo apt-get update
 sudo apt-get install -y cmake ninja-build gcc-14 g++-14 git curl ca-certificates xz-utils patch flex bison python3 npm pkg-config libtinfo-dev libncurses-dev libssl-dev
 ```
 
-The checked host build used sources under `/home/ubuntu/blender-deps/build/build` and harvested libraries under `/home/ubuntu/blender-deps/install`. A fresh build first fetches the pinned upstream Blender checkout and runs `scripts/bootstrap-static-deps.sh`, which populates the same dependency source layout with Blender's pinned dependency versions, downloads the SHA/MD5-verified OIDN and ISPC inputs, and harvests the support libraries. `scripts/build-deps.sh` then builds the static OIIO/OCIO/OpenEXR/TBB prefix. The host's Blender checkout is not modified by the Cycles overlay.
+Dependency sources live under `build/blender-deps-environment/build` and harvested libraries under `build/blender-deps-harvest` (override with `BLENDER_DEPS_SOURCE_ROOT` and `BLENDER_DEPS_INSTALL`). A fresh build first fetches the pinned upstream Blender checkout and runs `scripts/bootstrap-static-deps.sh`, which populates the same dependency source layout with Blender's pinned dependency versions, downloads the SHA-256-verified OIDN and ISPC inputs, and harvests the support libraries. `scripts/build-deps.sh` then builds the static OIIO/OCIO/OpenEXR/TBB prefix. The host's Blender checkout is not modified by the Cycles overlay.
 
 ## Build Cycles and lmblender
 
@@ -55,7 +55,7 @@ The `ldd` result should say `not a dynamic executable`. The host links CPU Cycle
 
 ## Reproducing dependency sources elsewhere
 
-`scripts/fetch-cycles-source.sh` fetches upstream `blender/blender` v5.2.2 commit `d13f752e3b9c4f8c261cda552b1021f8bcc0382c` and sparsely checks out the CMake/Cycles/allocator/sky/dependency build files used by this build. It skips `release/datafiles`: that tree contains LFS assets that are not needed for the standalone renderer and the pinned repository has a missing LFS object. It does not use the Blender fork or `/home/ubuntu/blender-src`.
+`scripts/fetch-cycles-source.sh` fetches upstream `blender/blender` v5.2.2 commit `d13f752e3b9c4f8c261cda552b1021f8bcc0382c` and sparsely checks out the CMake/Cycles/allocator/sky/dependency build files used by this build. It skips `release/datafiles`: that tree contains LFS assets that are not needed for the standalone renderer and the pinned repository has a missing LFS object. It does not use any other Blender checkout; set `BLENDER_SOURCE_TREE` to reuse an existing clone of the same commit.
 
 The GitHub Actions workflow is at `.github/workflows/ci.yml`. It uses pinned action SHAs, an architecture/compiler/flags-keyed cache, two CPU threads, tests the static link with `ldd`, and attaches bare binaries and tarballs to draft tag releases. The workflow and bootstrap are syntax-checked here but have not yet been run on GitHub Actions; cold-cache and both runner architectures remain unverified. Do not treat a local cache hit as proof of a clean-room build.
 

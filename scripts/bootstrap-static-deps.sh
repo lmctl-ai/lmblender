@@ -69,7 +69,7 @@ oidn_archive="$repo/build/oidn-2.5.0.src.tar.gz"
 curl --fail --location --retry 3 \
   https://github.com/RenderKit/oidn/releases/download/v2.5.0/oidn-2.5.0.src.tar.gz \
   --output "$oidn_archive"
-verify_hash md5 ae984ce4cc4c81ec152ab81b241a8738 "$oidn_archive"
+verify_hash sha256 96c3a46122759803d5f6701ffba4bef6eac0981dced5279e66f2815e3ed3c2cc "$oidn_archive"
 tar -xzf "$oidn_archive" --strip-components=1 \
   -C "$source_root/openimagedenoise/src/external_openimagedenoise"
 
