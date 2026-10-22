@@ -463,6 +463,22 @@ void apply_preset(Scene &scene, const PresetJson &preset)
     const float radius = std::isfinite(lo[0]) ? std::max(0.5f, float(std::sqrt((hi[0]-lo[0])*(hi[0]-lo[0]) + (hi[1]-lo[1])*(hi[1]-lo[1]) + (hi[2]-lo[2])*(hi[2]-lo[2])) * 0.5)) : 1.0f;
     scene.camera.target = center;
     scene.camera.ortho_scale = vertical_span;
+    if (!scene.camera.fit_to_geometry) {
+      /* Without auto-framing the preset must place the camera itself, in units of the
+       * geometry radius relative to its center, like the light positions. */
+      if (!camera.contains("position"))
+        throw dslvm::Error("PRESET_INVALID", "camera.auto_frame=false requires camera.position [x,y,z] (scene-radius units relative to the geometry center); optional camera.target uses the same units");
+      const auto pos = camera.at("position").get<std::array<float, 3>>();
+      const auto look = camera.value("target", std::array<float, 3>{0, 0, 0});
+      for (size_t i = 0; i < 3; ++i) {
+        scene.camera.position[i] = center[i] + pos[i] * radius;
+        scene.camera.target[i] = center[i] + look[i] * radius;
+        if (!std::isfinite(scene.camera.position[i]) || !std::isfinite(scene.camera.target[i]))
+          throw dslvm::Error("PRESET_INVALID", "camera.position and camera.target must be finite");
+      }
+      const float dx = pos[0] - look[0], dy = pos[1] - look[1], dz = pos[2] - look[2];
+      if (dx * dx + dy * dy + dz * dz < 1.0e-12f) throw dslvm::Error("PRESET_INVALID", "camera.position and camera.target must differ");
+    }
     const auto &ground = preset.at("ground");
     if (ground.value("enabled", false)) {
       auto material = std::make_unique<Material>();
@@ -751,6 +767,8 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
     camera_position = center + ccl::make_float3(distance * 0.62f, -distance, distance * 0.8f);
     camera_target = center;
   }
+  if (ccl::len_squared(camera_target - camera_position) < 1.0e-12f)
+    throw dslvm::Error("camera position and target coincide; call camera_look_at or camera_orthographic, or give the preset a camera.position");
   const ccl::float3 camera_forward = ccl::normalize(camera_target - camera_position);
   ccl::float3 camera_right = ccl::cross(camera_forward, ccl::make_float3(0.0f, 0.0f, 1.0f));
   if (ccl::len_squared(camera_right) < 1.0e-8f) camera_right = ccl::cross(camera_forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
@@ -1303,6 +1321,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
         fitted_camera_position(center, fit_radius, source.camera.fov_radians, width, height) : source.camera.position;
     const auto &p = fitted;
     const auto &t = source.camera.target;
+    if (ccl::len_squared(ccl::make_float3(t[0] - p[0], t[1] - p[1], t[2] - p[2])) < 1.0e-12f)
+      throw dslvm::Error("camera position and target coincide; call camera_look_at or camera_orthographic, or give the preset a camera.position");
     ccl::float3 forward = ccl::normalize(ccl::make_float3(t[0] - p[0], t[1] - p[1], t[2] - p[2]));
     ccl::float3 up_ref = ccl::make_float3(0.0f, 0.0f, 1.0f);
     ccl::float3 right = ccl::cross(forward, up_ref);
