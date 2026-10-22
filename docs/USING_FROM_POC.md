@@ -3,7 +3,7 @@
 Install Node.js and lmscript with `npm install -g @lmctl-ai/lmctl@latest`.
 `lmblender` can then be installed by lmscript when it is not already on `PATH`.
 Use `@latest` to follow the newest non-draft release; use an exact tag such as
-`@v0.3.3` for reproducibility or a fixed offline cache. A matching binary on
+`@v0.3.4` for reproducibility or a fixed offline cache. A matching binary on
 `PATH` takes precedence. Run the exact host selected by lmscript with `dsl_cli(p)`:
 
 ```lmscript

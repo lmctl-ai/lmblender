@@ -1,3 +1,13 @@
+## lmblender 0.3.4 — Linux, macOS and Windows (arm64/x64)
+
+First release with `lmblender-macos-arm64`, `lmblender-macos-x64` and
+`lmblender-windows-x64.exe` beside the Linux binaries. macOS binaries link only
+system frameworks, `libSystem` and `libc++`; the Windows executable imports only
+`KERNEL32.DLL` and `ADVAPI32.DLL`. Also: hair strands (`strand`, `hair_sphere`,
+`hair_patch`), convex-profile `loft`, `toon_outline`, a 287-case hostile-input
+corpus, and one merged `SHA256SUMS` over every asset. A failing optional
+platform never blocks or corrupts the Linux assets.
+
 ## lmblender 0.3.3 — Linux arm64 and x64
 
 Static Embree CPU traversal; OBJ `.mtl` materials and texture maps; authored glTF
