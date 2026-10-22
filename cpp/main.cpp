@@ -233,6 +233,36 @@ Mesh *adopt_mesh(Scene &scene, std::unique_ptr<Mesh> mesh)
 }
 
 
+/* Every image an LLM program names goes through here: extension, regular file, byte
+ * cap, and the decoded size read from the header, so a few-kilobyte PNG cannot make
+ * Cycles allocate gigapixels at render time. Returns the absolute path. */
+constexpr uint64_t kImagePixelBudget = 64'000'000;
+std::string checked_image_path(const std::string &path, const char *what,
+                               std::initializer_list<const char *> extensions, const uintmax_t max_bytes)
+{
+  if (path.empty() || path.front() == '-') throw dslvm::Error("IMAGE_INVALID", std::string(what) + " path must not be empty or begin with '-'");
+  const std::string ext = std::filesystem::path(path).extension().string();
+  std::string allowed;
+  bool ok = false;
+  for (const char *candidate : extensions) { ok = ok || ext == candidate; allowed += (allowed.empty() ? "" : "/") + std::string(candidate); }
+  if (!ok) throw dslvm::Error("IMAGE_INVALID", std::string(what) + " must be a " + allowed + " file");
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec) || ec) throw dslvm::Error("IMAGE_INVALID", std::string(what) + " must be a readable regular file");
+  const uintmax_t size = std::filesystem::file_size(path, ec);
+  if (ec || size == 0 || size > max_bytes)
+    throw dslvm::Error("IMAGE_LIMIT", std::string(what) + " must be non-empty and at most " + std::to_string(max_bytes / (1024 * 1024)) + " MiB");
+  std::unique_ptr<OIIO::ImageInput> input = OIIO::ImageInput::open(path);
+  if (!input) throw dslvm::Error("IMAGE_INVALID", std::string(what) + " could not be decoded by OpenImageIO: " + OIIO::geterror());
+  const OIIO::ImageSpec spec = input->spec();
+  input->close();
+  if (spec.width < 1 || spec.height < 1 || spec.nchannels < 1 || uint64_t(spec.width) * uint64_t(spec.height) > kImagePixelBudget)
+    throw dslvm::Error("IMAGE_LIMIT", std::string(what) + " decodes to " + std::to_string(spec.width) + "x" + std::to_string(spec.height) +
+                       " pixels; the limit is " + std::to_string(kImagePixelBudget / 1'000'000) + " megapixels");
+  const auto full = std::filesystem::absolute(path, ec);
+  if (ec) throw dslvm::Error("IMAGE_INVALID", std::string("could not resolve ") + what + " path");
+  return full.string();
+}
+
 using PresetJson = nlohmann::json;
 
 const PresetJson &builtin_presets()
@@ -2147,25 +2177,9 @@ dslvm::Registry make_registry() {
   registry.method("Scene", "environment_texture", {"string", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     if (scene->sky_enabled) throw dslvm::Error("environment_texture and sky_texture are mutually exclusive");
-    const std::string &path = a[0].s;
-    if (path.empty() || path.front() == '-') throw dslvm::Error("environment texture path must not be empty or begin with '-'");
-    const std::string ext = std::filesystem::path(path).extension().string();
-    if (ext != ".png" && ext != ".exr" && ext != ".hdr") throw dslvm::Error("environment texture must be PNG, EXR, or HDR");
-    std::error_code ec;
-    if (!std::filesystem::is_regular_file(path, ec) || ec) throw dslvm::Error("environment texture must be a readable regular file");
-    const uintmax_t size = std::filesystem::file_size(path, ec);
-    if (ec || size == 0 || size > 64u * 1024u * 1024u) throw dslvm::Error("environment texture must be non-empty and at most 64 MiB");
     if (!std::isfinite(a[1].f) || std::abs(a[1].f) > 360.0 || !std::isfinite(a[2].f) || a[2].f < 0 || a[2].f > 100.0)
       throw dslvm::Error("environment rotation must be +/-360 degrees and strength 0..100");
-    std::unique_ptr<OIIO::ImageInput> input = OIIO::ImageInput::open(path);
-    if (!input) throw dslvm::Error("environment texture could not be decoded by OpenImageIO");
-    const OIIO::ImageSpec spec = input->spec();
-    input->close();
-    if (spec.width < 1 || spec.height < 1 || uint64_t(spec.width) * uint64_t(spec.height) > 64'000'000)
-      throw dslvm::Error("environment texture dimensions exceed the 64 megapixel limit");
-    const auto full = std::filesystem::absolute(path, ec);
-    if (ec) throw dslvm::Error("could not resolve environment texture path");
-    scene->environment_image = full.string();
+    scene->environment_image = checked_image_path(a[0].s, "environment texture", {".png", ".exr", ".hdr"}, 64u * 1024u * 1024u);
     scene->environment_rotation = float(a[1].f * M_PI / 180.0);
     scene->environment_strength = float(a[2].f);
     return dslvm::Value::none();
@@ -2362,21 +2376,14 @@ dslvm::Registry make_registry() {
     auto *material = static_cast<Material *>(p);
     std::array<std::string *,4> destinations{&material->normal_map_path,&material->roughness_map_path,
                                              &material->metallic_map_path,&material->ao_map_path};
+    static const char *const labels[4] = {"normal map", "roughness map", "metallic map", "AO map"};
     uint64_t total_bytes = 0;
     for (size_t i=0;i<a.size();++i) {
       if (a[i].s.empty()) { *destinations[i] = {}; continue; }
-      const std::filesystem::path input(a[i].s);
-      const std::string ext = input.extension().string();
+      *destinations[i] = checked_image_path(a[i].s, labels[i], {".png", ".jpg", ".jpeg", ".exr"}, 64u * 1024u * 1024u);
       std::error_code ec;
-      if (a[i].s.front()=='-' || (ext!=".png"&&ext!=".jpg"&&ext!=".jpeg"&&ext!=".exr") ||
-          !std::filesystem::is_regular_file(input,ec) || ec)
-        throw dslvm::Error("texture map must be a readable PNG/JPEG/EXR regular file");
-      const uintmax_t size=std::filesystem::file_size(input,ec);
-      if(ec||size==0||size>64u*1024u*1024u||total_bytes+size>256u*1024u*1024u)
-        throw dslvm::Error("texture maps must total at most 256 MiB (64 MiB per map)");
-      total_bytes += size;
-      *destinations[i]=std::filesystem::absolute(input,ec).string();
-      if(ec) throw dslvm::Error("could not resolve texture map path");
+      total_bytes += std::filesystem::file_size(a[i].s, ec);
+      if (ec || total_bytes > 256u * 1024u * 1024u) throw dslvm::Error("IMAGE_LIMIT", "texture maps must total at most 256 MiB (64 MiB per map)");
     }
     return dslvm::Value::none();
   });
@@ -2398,11 +2405,8 @@ dslvm::Registry make_registry() {
         !other->normal_map_path.empty() || !other->roughness_map_path.empty() || !other->metallic_map_path.empty() ||
         !other->ao_map_path.empty() || other->backface_culling)
       throw dslvm::Error("mix_with_texture needs a distinct plain material as its second layer");
-    const std::filesystem::path path(a[1].s); const std::string ext=path.extension().string(); std::error_code ec;
-    if(a[1].s.empty()||a[1].s.front()=='-'||(ext!=".png"&&ext!=".jpg"&&ext!=".jpeg"&&ext!=".exr")||!std::filesystem::is_regular_file(path,ec)||ec)
-      throw dslvm::Error("mix factor texture must be a readable PNG/JPEG/EXR regular file");
-    const uintmax_t size=std::filesystem::file_size(path,ec);if(ec||size==0||size>64u*1024u*1024u)throw dslvm::Error("mix factor texture must be non-empty and at most 64 MiB");
-    material->mix_material=other;material->mix_factor_image=std::filesystem::absolute(path,ec).string();if(ec)throw dslvm::Error("could not resolve mix factor texture path");
+    const std::string image = checked_image_path(a[1].s, "mix factor texture", {".png", ".jpg", ".jpeg", ".exr"}, 64u * 1024u * 1024u);
+    material->mix_material=other;material->mix_factor_image=image;
     return dslvm::Value::none();
   });
   registry.method("Material", "backface_culling", {"bool"}, "void", [](void *p,dslvm::Args &a) {
@@ -2410,16 +2414,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "image_material", {"string", "float"}, "Material", [](void *p, dslvm::Args &a) {
-    const std::filesystem::path path(a[0].s);
-    const std::string ext = path.extension().string();
-    std::error_code ec;
-    if (a[0].s.empty() || a[0].s.front() == '-' || (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".exr"))
-      throw dslvm::Error("image_material requires a PNG, JPEG, or EXR path that does not begin with '-'");
-    if (!std::filesystem::is_regular_file(path, ec) || ec)
-      throw dslvm::Error("image_material input must be a readable regular file");
-    const uintmax_t size = std::filesystem::file_size(path, ec);
-    if (ec || size == 0 || size > 64u * 1024u * 1024u)
-      throw dslvm::Error("image_material input must be non-empty and at most 64 MiB");
+    const std::string image = checked_image_path(a[0].s, "image_material input", {".png", ".jpg", ".jpeg", ".exr"}, 64u * 1024u * 1024u);
     if (!std::isfinite(a[1].f) || a[1].f < 0.0 || a[1].f > 1.0)
       throw dslvm::Error("image_material roughness must be in [0,1]");
     auto *scene = static_cast<Scene *>(p);
@@ -2428,8 +2423,7 @@ dslvm::Registry make_registry() {
     material->texture_kind = 3;
     material->texture_scale = 1.0f;
     material->roughness = float(a[1].f);
-    material->image_path = std::filesystem::absolute(path, ec).string();
-    if (ec) throw dslvm::Error("could not resolve image_material path");
+    material->image_path = image;
     Material *result = material.get();
     scene->materials.push_back(std::move(material));
     return dslvm::Value::object("Material", result);

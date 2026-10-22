@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Decoded-dimension guard: build/image-bomb.png (tests/create_image_bomb.py) is a few
+// kilobytes on disk but decodes to 400 million pixels. Every image input must refuse it
+// with IMAGE_LIMIT at declaration time instead of letting Cycles allocate it at render.
+out = ARGV.len() > 0 ? ARGV[0] : "build/image-limit.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let cube = scene.cube(1.0);
+let picture = scene.image_material("build/image-bomb.png", 0.5);
+cube.set_material(picture);
+scene.render_png("build/image-limit.png", 1, 16, 16);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code == 0) { println("expected image_material to refuse the oversized image"); exit(1); }

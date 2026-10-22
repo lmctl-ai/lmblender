@@ -104,6 +104,8 @@ compile_dsl examples/material-principled.lms "$build/material-principled.dslb"
 compile_dsl examples/camera-look-at.lms "$build/camera-look-at.dslb"
 compile_dsl examples/render-timeout.lms "$build/render-timeout.dslb"
 compile_dsl tests/geometry-budget.lms "$build/geometry-budget.dslb"
+compile_dsl tests/image-limit.lms "$build/image-limit.dslb"
+compile_dsl tests/image-limit-maps.lms "$build/image-limit-maps.dslb"
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
@@ -173,6 +175,11 @@ PY
 # Scene-wide geometry budget stops accumulation at creation time, before any render.
 expect_dsl_error geometry-budget GEOMETRY_BUDGET
 test ! -e "$build/geometry-budget.png"
+# Decoded-dimension guards: a 48 KB PNG that decodes to 400 megapixels is refused at
+# declaration time by every image input, never handed to Cycles.
+python3 tests/create_image_bomb.py "$build/image-bomb.png"
+expect_dsl_error image-limit IMAGE_LIMIT
+expect_dsl_error image-limit-maps IMAGE_LIMIT
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"

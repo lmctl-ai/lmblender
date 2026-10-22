@@ -225,6 +225,12 @@ inline std::filesystem::path gltf_image_path(const Json &root, const std::filesy
   const bool jpeg = bytes.size() >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff;
   if ((ext == ".png" && !png) || ((ext == ".jpg" || ext == ".jpeg") && !jpeg))
     fail("GLTF_INVALID", "baseColorTexture signature does not match its extension");
+  std::unique_ptr<OIIO::ImageInput> input = OIIO::ImageInput::open(path.string());
+  if (!input) fail("GLTF_INVALID", "baseColorTexture could not be decoded by OpenImageIO");
+  const OIIO::ImageSpec spec = input->spec();
+  input->close();
+  if (spec.width < 1 || spec.height < 1 || uint64_t(spec.width) * uint64_t(spec.height) > kImagePixelBudget)
+    fail("GLTF_LIMIT", "baseColorTexture decodes to " + std::to_string(spec.width) + "x" + std::to_string(spec.height) + " pixels; the limit is 64 megapixels");
   return path;
 }
 
