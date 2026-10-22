@@ -235,9 +235,41 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  # GPL-3.0 corresponding source: one asset per release with the repository
+  # tree, the pinned Blender subset, the patched Cycles overlay, and every
+  # hash-verified third-party source archive (scripts/release-source.sh).
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: fetch pinned upstream Blender source (sparse)
+        run: scripts/fetch-cycles-source.sh
+      - name: build the corresponding-source asset
+        env:
+          TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          VERSION_FILE=$(cat VERSION)
+          if [[ -n "$TAG_VERSION" && "${TAG_VERSION#v}" != "$VERSION_FILE" ]]; then
+            echo "tag $TAG_VERSION does not match VERSION $VERSION_FILE" >&2
+            exit 1
+          fi
+          RELEASE_VERSION=${TAG_VERSION:-$VERSION_FILE} scripts/release-source.sh
+          ls -la dist
+          tar -tzf dist/lmblender-source-v*.tar.gz | grep -E '/(SOURCES\.json|upstream/blender-.*-subset\.tar\.gz|upstream/cycles-overlay-patched-.*\.tar\.gz)$'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmblender-source
+          path: dist/
+          if-no-files-found: error
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build]
+    needs: [build, source]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -247,7 +279,19 @@ jobs:
           pattern: lmblender-linux-*
           path: dist
           merge-multiple: true
-      - name: publish binaries, archives, checksums, and notices
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: lmblender-source
+          path: dist
+      - name: refuse to publish binaries without their corresponding source
+        run: |
+          ls -la dist
+          source_asset=$(ls dist/lmblender-source-v*.tar.gz 2>/dev/null | head -1)
+          [[ -n "$source_asset" ]] || { echo "corresponding-source asset is missing; not publishing" >&2; exit 1; }
+          [[ "$source_asset" == "dist/lmblender-source-${GITHUB_REF_NAME}.tar.gz" ]] || { echo "source asset $source_asset does not match tag $GITHUB_REF_NAME" >&2; exit 1; }
+          (cd dist && sha256sum -c "$(basename "$source_asset").sha256")
+          ls dist/lmblender-linux-*.tar.gz >/dev/null
+      - name: publish binaries, archives, checksums, notices, and corresponding source
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

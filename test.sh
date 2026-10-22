@@ -3,6 +3,11 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
+# Pinned Blender checkout (scripts/fetch-cycles-source.sh) and harvested deps
+# (scripts/bootstrap-static-deps.sh); override both for another layout.
+blender_source=${BLENDER_SOURCE_TREE:-$build/blender-src-upstream-v5.2.2}
+deps_install=${BLENDER_DEPS_INSTALL:-$build/blender-deps-harvest}
+[ -d "$blender_source" ] || { echo "pinned Blender source missing at $blender_source: run scripts/fetch-cycles-source.sh or set BLENDER_SOURCE_TREE" >&2; exit 2; }
 mkdir -p "$build"
 find "$build" -maxdepth 1 -type f \
   \( -name '*.png' -o -name '*.exr' -o -name '*.apng' -o -name '*.dslb' \
@@ -12,13 +17,16 @@ rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
 rm -f "$root/install-and-run.png"
 python3 tests/create_material_maps.py "$build/material-map-assets"
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
-  -DBLENDER_SOURCE_TREE="${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}" \
-  -DBLENDER_DEPS_INSTALL="${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}" \
-  -DBLENDER_LIBDIR="${BLENDER_LIBDIR:-${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}}" \
+  -DBLENDER_SOURCE_TREE="$blender_source" \
+  -DBLENDER_DEPS_INSTALL="$deps_install" \
+  -DBLENDER_LIBDIR="${BLENDER_LIBDIR:-$deps_install}" \
   -DCYCLES_BUILD_DIR="${CYCLES_BUILD_DIR:-$build/cycles-static}" \
   -DLMBLENDER_STATIC_PREFIX="${LMBLENDER_STATIC_PREFIX:-$build/static-prefix-gcc14}"
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
+# The corresponding-source manifest must resolve every dependency pin of the
+# Blender tree this build uses (keeps SOURCES.json in step with the scripts).
+python3 scripts/source-manifest.py --blender "$blender_source" --check
 exe="$build/lmblender"
 export PATH="$build:$PATH"
 compile_dsl() {
@@ -296,8 +304,8 @@ python3 tests/preset_quality.py "$build"
 python3 tests/denoise_speed_quality.py "$build/denoise-speed-fast.png" "$build/denoise-speed-reference.png"
 if [ -n "${BLENDERCLI_BLENDER:-}" ]; then
   blender="$BLENDERCLI_BLENDER"
-elif [ -x /home/ubuntu/blender-install/blender ]; then
-  blender=/home/ubuntu/blender-install/blender
+elif command -v blender >/dev/null 2>&1; then
+  blender=$(command -v blender)
 else
   blender=
 fi

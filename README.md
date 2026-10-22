@@ -1,6 +1,6 @@
 # lmblender
 
-**License:** the combined static executable is distributed under GPL-3.0-or-later because it links GPL Blender intern code. Project-authored files are separately marked MIT where noted; see [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md).
+**License:** the combined static executable is distributed under GPL-3.0-or-later because it links GPL Blender intern code. Project-authored files are separately marked MIT where noted; see [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md). Every release ships its complete corresponding source as `lmblender-source-vX.Y.Z.tar.gz` ([SOURCE_OFFER.md](SOURCE_OFFER.md)).
 
 On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280×720 studio frame at 64 samples with OIDN in 49.88 seconds (about 1.20 frames/minute). This does not meet a few-seconds target; actual speed depends on scene complexity and hardware.
 

@@ -53,7 +53,7 @@ source_offer="$root/dist/lmblender-source-offer-${artifact}-v${version}.md"
 bare="$root/dist/${artifact}${exe}"
 install -m 0755 "$binary" "$bare"
 sha256 "$bare" >"$bare.sha256"
-host_root=${LMBLENDER_HOST_RELEASE:-/home/ubuntu/lmblender-release}
+host_root=${LMBLENDER_HOST_RELEASE:-$root/build/host-release}
 mkdir -p "$host_root/versions/v${version}"
 cp -a "$pkg/." "$host_root/versions/v${version}/"
 ln -sfn "versions/v${version}" "$host_root/latest"
@@ -62,11 +62,18 @@ for path in bin schema docs examples; do ln -sfn "current/$path" "$host_root/$pa
 echo "Installed stable host layout at $host_root (current -> v${version})"
 echo "Created $archive ($(filesize "$archive") bytes compressed); binary=$size bytes; bare=$bare"
 if [[ ${1:-} == --publish ]]; then
+  # GPL-3.0: binaries are never published without the corresponding-source asset
+  # produced by scripts/release-source.sh (CI builds it in the `source` job).
+  source_asset="$root/dist/lmblender-source-v${version}.tar.gz"
+  if [[ ! -f "$source_asset" || ! -f "$source_asset.sha256" ]]; then
+    echo "corresponding-source asset missing: $source_asset (run scripts/release-source.sh first)" >&2; exit 2
+  fi
+  assets=("$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" "$source_asset" "$source_asset.sha256")
   if gh release view "v${version}" --repo lmctl-ai/lmblender >/dev/null 2>&1; then
-    gh release upload "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" --repo lmctl-ai/lmblender --clobber
+    gh release upload "v${version}" "${assets[@]}" --repo lmctl-ai/lmblender --clobber
     gh release edit "v${version}" --repo lmctl-ai/lmblender --draft=false --notes-file docs/RELEASE_NOTES.md
   else
-    gh release create "v${version}" "$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" --repo lmctl-ai/lmblender \
+    gh release create "v${version}" "${assets[@]}" --repo lmctl-ai/lmblender \
       --title "lmblender ${version} (${artifact})" --notes-file docs/RELEASE_NOTES.md
   fi
 fi
