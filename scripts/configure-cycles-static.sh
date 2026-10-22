@@ -24,6 +24,16 @@ cxx=${LMBLENDER_CXX:-$default_cxx}
 jobs=${BUILD_JOBS:-2}
 test -f "$source_tree/CMakeLists.txt"
 test -f "$static_prefix/lib/libOpenImageIO.a"
+embree_libraries=("$static_prefix/lib/libembree4.a")
+case "$(uname -m)" in
+  x86_64|amd64)
+    for isa in sse42 avx avx2; do embree_libraries+=("$static_prefix/lib/libembree_$isa.a"); done ;;
+esac
+for component in lexers math simd sys tasking; do
+  embree_libraries+=("$static_prefix/lib/lib$component.a")
+done
+for archive in "${embree_libraries[@]}"; do test -f "$archive" || { echo "missing static Embree archive: $archive" >&2; exit 1; }; done
+embree_link_list=$(IFS=';'; echo "${embree_libraries[*]}")
 mkdir -p "$build"
 source_overlay=${LMBLENDER_SOURCE_OVERLAY:-$build/blender-source-overlay}
 python3 "$repo/scripts/make-cycles-source-overlay.py" "$source_tree" "$source_overlay"
@@ -94,6 +104,9 @@ cmake -S "$source_overlay" -B "$build" -G Ninja \
   -DOpenColorIO_DIR="$static_prefix/lib/cmake/OpenColorIO" \
   -DOpenImageIO_DIR="$static_prefix/lib/cmake/OpenImageIO" \
   -DTBB_DIR="$static_prefix/lib/cmake/TBB" \
+  -DEMBREE_ROOT_DIR="$static_prefix" \
+  -DEMBREE_INCLUDE_DIRS="$static_prefix/include" \
+  -DEMBREE_LIBRARIES="$embree_link_list" -DEMBREE_MAJOR_VERSION=4 \
   -DEigen3_DIR="$deps_install/eigen/share/eigen3/cmake" \
   -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
   -DTIFF_LIBRARY="$static_prefix/lib/libtiff.a" \
@@ -116,7 +129,7 @@ cmake -S "$source_overlay" -B "$build" -G Ninja \
   -DWITH_BLENDER=OFF -DWITH_CYCLES=OFF -DWITH_CYCLES_STANDALONE=ON \
   -DWITH_CYCLES_STANDALONE_GUI=OFF -DWITH_PYTHON=OFF \
   -DWITH_CYCLES_OSL=OFF -DWITH_CYCLES_TEST_OSL=OFF -DWITH_LLVM=OFF \
-  -DWITH_CYCLES_EMBREE=OFF -DWITH_CYCLES_PATH_GUIDING=OFF \
+  -DWITH_CYCLES_EMBREE=ON -DWITH_CYCLES_PATH_GUIDING=OFF \
   -DWITH_OPENVDB=OFF -DWITH_OPENSUBDIV=OFF \
   -DWITH_OPENIMAGEDENOISE=ON -DWITH_TBB=ON -DWITH_TBB_MALLOC_PROXY=OFF \
   -DWITH_USD=OFF -DWITH_HYDRA=OFF -DWITH_CYCLES_HYDRA_RENDER_DELEGATE=OFF \

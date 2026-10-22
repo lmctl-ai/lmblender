@@ -46,4 +46,18 @@ On the same 640x360 glossy gold sphere/floor scene, fixed-seed no-denoise render
 
 The diagram-dark final preset already renders 1280x720 in about 2.00 s on the simple emissive benchmark, below the 8 s target. Keep its 16 spp + fast OIDN settings. A more complex scene will cost more; the target is not a guarantee for glossy, volumetric, or texture-heavy content.
 
-Embree CPU BVH is not enabled in the current Cycles build (`build/cycles-static/CMakeCache.txt`: `WITH_CYCLES_EMBREE=OFF`). The available Embree dependency was configured with NEON enabled and ISPC support disabled, but its library is shared (`EMBREE_STATIC_LIB=OFF`), so it cannot be added to this fully static executable without rebuilding and relinking the dependency stack. BVH reset is below 1 ms for the measured small scenes; there is no evidence that Embree would improve these workloads. Adaptive sampling is already on in Cycles, though low-sample renders naturally reach their requested maximum. Clamp and bounce choices remain scene-dependent; the diagram preset uses four bounces and no clamp to preserve light/shadow contrast. Async denoising overlap and tile tuning were not enabled: the direct Cycles CPU session uses its own scheduler and the measured OIDN phase is already the dominant serialized tail.
+Static Embree 4.4.1 is enabled for Cycles CPU BVH construction and ray traversal. The dependency build uses TBB, NEON on arm64 or SSE4.2/AVX2 dispatch on x64, and disables ISPC, SYCL and tutorials. The resulting arm64 executable is 90,415,296 bytes versus 81,233,664 bytes without Embree (+9,181,632 bytes); `ldd` still reports `not a dynamic executable`. The Cycles log confirms `Using EMBREE layout`, including on linked mesh instances. With a fixed seed, a repeated instance render was byte identical, and the dense mesh image was 79.71 dB PSNR against the BVH2 build (the test gate is 35 dB).
+
+### Embree versus BVH2 on arm64
+
+Sequential wall-clock comparisons on this shared four-core host, with the same static dependency stack and fixed-seed scene; lower is faster. Other active jobs caused load variation, so these are directional measurements rather than a stable capacity claim.
+
+| Scene | Embree | BVH2 | Image PSNR |
+|---|---:|---:|---:|
+| Four dense spheres, about 520k triangles, 640x480, 16 spp | 12.95 s | 14.25 s | 79.61 dB |
+| Glass sphere, 128 spp | 128.59 s | 135.40 s | 77.89 dB |
+| Hair/strand scene, 64 spp | 52.60 s | 51.88 s | 77.75 dB |
+
+On the standard `tests/throughput-bench.lms` sequence (4 threads, sequential runs, same shared host), draft 960x540 8 spp took 10.66 s with Embree versus 11.14 s with BVH2; draft 1280x720 8 spp took 19.54 versus 19.43 s. Final 960x540 64 spp took 79.39 versus 94.56 s, and final 1280x720 64 spp took 133.05 versus 149.28 s. The absolute times are much higher than the earlier unloaded-host numbers above because another build ran concurrently on this shared machine; these runs do not redefine preset throughput targets.
+
+Embree improves the dense and glass scenes by about 9% and 5%; the hair difference is within shared-host noise. The earlier small-scene phase profile above predates this build and remains useful for identifying the OIDN bottleneck, but is not an Embree comparison. Adaptive sampling is already on in Cycles, though low-sample renders naturally reach their requested maximum. Clamp and bounce choices remain scene-dependent; the diagram preset uses four bounces and no clamp to preserve light/shadow contrast. Async denoising overlap and tile tuning were not enabled: the direct Cycles CPU session uses its own scheduler and the measured OIDN phase is already the dominant serialized tail.

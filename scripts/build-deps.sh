@@ -27,7 +27,39 @@ fi
 mkdir -p "$build_root" "$prefix"
 printf '%s\n' "$compiler_id" > "$state_file"
 
-for name in tbb imath openexr openimageio tiff; do
+# Blender's dependency bootstrap intentionally does not build its shared
+# Embree target (which would also pull in DPC++ on x64). Extract the pinned
+# package here and build our own CPU-only static variant below.
+embree_source="$src_root/embree/src/external_embree"
+if [[ ! -f "$embree_source/CMakeLists.txt" ]]; then
+  embree_archive="${BLENDER_DEPS_ENV_BUILD:-$repo/build/blender-deps-environment}/packages/embree-v4.4.1.zip"
+  if [[ ! -f "$embree_archive" ]]; then
+    mkdir -p "$(dirname "$embree_archive")"
+    curl --fail --location --retry 3 \
+      https://projects.blender.org/blender/lib-source/media/branch/blender-v5.2-release/embree-v4.4.1.zip \
+      --output "$embree_archive" ||
+      curl --fail --location --retry 3 \
+        https://github.com/RenderKit/embree/archive/v4.4.1.zip --output "$embree_archive"
+  fi
+  if command -v sha256sum >/dev/null; then
+    actual_embree_hash=$(sha256sum "$embree_archive" | cut -d' ' -f1)
+  else
+    actual_embree_hash=$(shasum -a 256 "$embree_archive" | cut -d' ' -f1)
+  fi
+  [[ "$actual_embree_hash" == 643b87490b207475872b0721019ebe3947feb9104f36c25795455516e4e85b82 ]] || {
+    echo "Embree archive SHA-256 mismatch: $embree_archive" >&2; exit 1;
+  }
+  mkdir -p "$(dirname "$embree_source")"
+  python3 - "$embree_archive" "$(dirname "$embree_source")" <<'PY'
+import pathlib, sys, zipfile
+archive, parent = sys.argv[1:]
+with zipfile.ZipFile(archive) as zipped:
+    zipped.extractall(parent)
+pathlib.Path(parent, 'embree-4.4.1').rename(pathlib.Path(parent, 'external_embree'))
+PY
+fi
+
+for name in tbb imath openexr openimageio tiff embree; do
   test -f "$src_root/$name/src/external_$name/CMakeLists.txt" || {
     echo "missing Blender dependency source: $src_root/$name/src/external_$name" >&2; exit 1;
   }
@@ -48,6 +80,18 @@ build_one() {
 build_one tbb "$src_root/tbb/src/external_tbb" "$build_root/tbb" \
   -DTBB_TEST=OFF -DTBB_EXAMPLES=OFF -DTBBMALLOC_BUILD=OFF \
   -DTBBMALLOC_PROXY_BUILD=OFF -DTBB4PY_BUILD=OFF -DTBB_ENABLE_IPO=OFF
+
+# Embree's traversal kernels use the native CPU ISA; ISPC support is only
+# needed by its example applications. Keep all CPU geometry types for Cycles.
+case "$(uname -m)" in
+  aarch64|arm64) embree_isa=NEON ;;
+  x86_64|amd64) embree_isa=AVX2 ;;
+  *) echo "unsupported Embree CPU architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+build_one embree "$src_root/embree/src/external_embree" "$build_root/embree" \
+  -DEMBREE_STATIC_LIB=ON -DEMBREE_TUTORIALS=OFF -DEMBREE_ISPC_SUPPORT=OFF \
+  -DEMBREE_SYCL_SUPPORT=OFF -DEMBREE_TASKING_SYSTEM=TBB \
+  -DEMBREE_MAX_ISA="$embree_isa" -DCMAKE_PREFIX_PATH="$prefix"
 
 build_one imath "$src_root/imath/src/external_imath" "$build_root/imath" \
   -DBUILD_TESTING=OFF -DPYTHON=OFF -DPYBIND11=OFF

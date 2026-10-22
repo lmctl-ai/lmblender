@@ -116,6 +116,18 @@ def components(blender_tree):
             "role": role,
             "shipped": None,
         })
+        if key == "EMBREE":
+            # The static build verifies SHA-256 rather than Blender's older MD5 pin.
+            build_script = (ROOT / "scripts/build-deps.sh").read_text()
+            expected_archive = f"embree-v{versions['EMBREE_VERSION']}.zip"
+            if expected_archive not in build_script:
+                fail(f"Embree archive {expected_archive} is not pinned in scripts/build-deps.sh")
+            out[-1]["hash_type"] = "sha256"
+            out[-1]["hash"] = script_pin(
+                "scripts/build-deps.sh",
+                r'\[\[ "\$actual_embree_hash" == ([0-9a-f]{64}) \]\]',
+                "Embree SHA-256",
+            )
 
     bootstrap = "scripts/bootstrap-static-deps.sh"
     oidn_uri = script_pin(bootstrap, r"^\s*(https://github\.com/RenderKit/oidn/releases/download/v[\d.]+/oidn-[\d.]+\.src\.tar\.gz)", "OIDN URL")

@@ -14,6 +14,7 @@ The `lmblender` release is a statically linked executable. This file records the
 | OpenColorIO | color transforms | `licenses/upstream/OpenColorIO-license.txt` |
 | OpenEXR and Imath | EXR support | `licenses/upstream/OpenEXR-license.rst`, `licenses/upstream/Imath-license.md` |
 | oneTBB | task scheduling | `licenses/upstream/oneTBB-license.txt` |
+| Embree 4.4.1 | CPU ray traversal and BVH | `licenses/upstream/Embree-Apache-2.0.txt` |
 | libpng, libjpeg, zlib, zstd | image and compression support | matching files in `licenses/upstream/` |
 | libtiff, OpenJPH | image and compression support | `licenses/upstream/libtiff-license.md`, `OpenJPH-license.txt` |
 | pugixml, fmt, expat, pystring, yaml-cpp, minizip-ng | XML, formatting, OCIO/OIIO support | matching files in `licenses/upstream/` |

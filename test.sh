@@ -27,6 +27,9 @@ cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 # The corresponding-source manifest must resolve every dependency pin of the
 # Blender tree this build uses (keeps SOURCES.json in step with the scripts).
 python3 scripts/source-manifest.py --blender "$blender_source" --check
+grep -q '^WITH_CYCLES_EMBREE:BOOL=ON$' "${CYCLES_BUILD_DIR:-$build/cycles-static}/CMakeCache.txt" || {
+  echo "static Cycles was not configured with Embree CPU BVH" >&2; exit 1;
+}
 exe="$build/lmblender"
 export PATH="$build:$PATH"
 compile_dsl() {
@@ -117,6 +120,7 @@ compile_dsl tests/preset-no-autoframe.lms "$build/preset-no-autoframe.dslb"
 compile_dsl tests/preset-no-autoframe-position.lms "$build/preset-no-autoframe-position.dslb"
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
+compile_dsl examples/embree-heavy.lms "$build/embree-heavy.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
 compile_dsl examples/procedural-materials.lms "$build/procedural-materials.dslb"
 compile_dsl examples/orthographic-camera.lms "$build/orthographic-camera.dslb"
@@ -234,6 +238,10 @@ LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/
 "$exe" --dsl "$build/camera-look-at.dslb" >"$build/camera-look-at-result.json"
 "$exe" --dsl "$build/render-exr.dslb" >"$build/render-exr-result.json"
 "$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-result.json"
+cp "$build/mesh-instances.png" "$build/mesh-instances-first.png"
+"$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-repeat-result.json"
+cmp "$build/mesh-instances-first.png" "$build/mesh-instances.png"
+"$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-result.json"
 "$exe" --dsl "$build/render-settings.dslb" >"$build/render-settings-result.json"
 "$exe" --dsl "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
 "$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
@@ -347,6 +355,7 @@ python3 tests/png_centered_object.py "$build/camera-look-at.png"
 python3 tests/exr_header.py "$build/imported-mesh.exr"
 python3 tests/png_metrics.py "$build/mesh-instances.png"
 python3 tests/png_instances.py "$build/mesh-instances.png"
+python3 tests/embree_quality.py tests/fixtures/embree-heavy-bvh2.png "$build/embree-heavy.png"
 python3 tests/png_metrics.py "$build/render-settings.png"
 python3 tests/procedural_materials_quality.py "$build/procedural-materials.png"
 python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" "$build/orthographic-camera.png"

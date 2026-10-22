@@ -21,7 +21,7 @@ See `docs/OIDN_AUDIT.md` and `docs/THROUGHPUT.md` for build flags, reproduction 
 
 Adds measured homepage-video presets: 960x540 draft at 8 spp/no denoise (0.41 s/frame), and 1280x720 final at 16 spp/fast CPU OIDN (2.00 s/frame on the simple emissive benchmark). Adds a selectable OIDN quality binding and a regression against a 256-spp high-quality reference (47.14 dB PSNR, 0.99451 windowed SSIM at 640x360). The render profiler now reports scene build, BVH/session reset, path tracing, OIDN, PNG transform/encoding, and total time. Full-check passed: 14 gallery dimensions, 4 video sequences, 18/18 visual QA, schema, render/import tests, and static linkage.
 
-Sequences currently create a new Cycles session per frame. A transform-update reuse prototype failed image parity (stale transforms; forcing a full reset removed the world background), so it is documented but not shipped. Embree remains disabled because the available aarch64 build is shared and current BVH/session setup is below 1 ms for the profiled scenes.
+Sequences currently create a new Cycles session per frame. A transform-update reuse prototype failed image parity (stale transforms; forcing a full reset removed the world background), so it is documented but not shipped. Static Embree 4.4.1 is now enabled for CPU BVH and ray traversal on arm64 and x64; see [THROUGHPUT.md](THROUGHPUT.md) for the measured dense-mesh, glass, and hair results.
 
 ## lmblender 0.2.2 — Linux arm64
 
