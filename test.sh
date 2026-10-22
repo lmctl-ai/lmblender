@@ -55,6 +55,8 @@ cmp schema/lmblender.dsl.json <("$exe" --schema --json)
 "$exe" --dsl-signatures >"$build/host-signatures.txt"
 "${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
 diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
+# docs/LLM_GUIDE.md carries the same list for DSL authors; it must not drift from the binary.
+python3 scripts/update-llm-guide.py --binary "$exe" --check
 python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-signatures.txt"
 python3 - <<'PY'
 from pathlib import Path

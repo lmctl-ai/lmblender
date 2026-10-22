@@ -6,23 +6,25 @@ Use the `_dsl_ cli= install=` form above to bind to lmblender. The R44 `import "
 
 ## Coordinates, units, defaults
 
-Coordinates are right-handed, Z-up, with +X right and +Y away from the default viewing side. Distances are scene units; there is no implicit conversion from millimeters or meters. Color channels are linear floats in [0,1] unless noted. All APIs are positional and have no optional arguments; where an API needs a default, set it explicitly using the listed method. Render methods use CPU Cycles, a deterministic configured seed (default 0), and two worker threads. Output directories must already exist. Common limits: meshes/materials <=4096; image inputs <=64 MiB; render dimensions <=4096 each and 16 million pixels; samples <=65536; APNG <=240 frames and 64 million total frame-pixels.
+Coordinates are right-handed, Z-up, with +X right and +Y away from the default viewing side. Distances are scene units; there is no implicit conversion from millimeters or meters. Color channels are linear floats in [0,1] unless noted. All APIs are positional and have no optional arguments; where an API needs a default, set it explicitly using the listed method. Render methods use CPU Cycles, a deterministic configured seed (default 0), and four worker threads capped by the available cores (`set_threads` overrides). Output directories must already exist. Common limits: meshes/materials <=4096; scene geometry <=10 million vertices and 20 million triangles in total (`GEOMETRY_BUDGET`; instances are free); image inputs <=64 MiB on disk and <=64 megapixels decoded (`IMAGE_LIMIT`); render dimensions <=4096 each and 16 million pixels; samples <=65536; APNG <=240 frames and 64 million total frame-pixels. A whole program may run for 7200 s of wall clock and 100 million VM instructions by default (`LMBLENDER_RUN_TIMEOUT_SECONDS`, `LMBLENDER_MAX_INSTRUCTIONS`; 0 disables), independent of the per-render `render_timeout`.
 
 ## Host API signatures
 
-This list is generated from `lmblender --dsl-signatures` and should match the DSL schema:
+This list is generated from `lmblender --dsl-signatures` by `scripts/update-llm-guide.py`; `test.sh` fails when it drifts:
 
 ```text
 context scene: Scene
+method Material.backface_culling(bool) -> void
 method Material.bump(float, float, float) -> void
 method Material.keyframe_color(int, float, float, float, string) -> void
-method Material.texture_maps(string, string, string, string) -> void
+method Material.keyframe_emission_strength(int, float, string) -> void
 method Material.mix_with(Material, float) -> void
 method Material.mix_with_texture(Material, string) -> void
-method Material.backface_culling(bool) -> void
 method Material.subsurface(float, float, float, float, float) -> void
+method Material.texture_maps(string, string, string, string) -> void
 method Material.volume(string, float, float, float, float) -> void
 method Mesh.keyframe_transform(int, float, float, float, string) -> void
+method Mesh.keyframe_visible(int, bool, string) -> void
 method Mesh.max_x() -> float
 method Mesh.max_y() -> float
 method Mesh.max_z() -> float
@@ -38,27 +40,24 @@ method Mesh.triangle_count() -> int
 method Mesh.vertex_count() -> int
 method Scene.area_light(float, float, float, float, float, float, float, float, float, float, float) -> void
 method Scene.area_light_shape(float, float, float, float, float, float, float, float, float, float, float, float, string) -> void
-method Scene.camera_dof(float, float) -> void
-method Scene.capsule(float, float, int, int) -> Mesh
-method Scene.glow_orb(float, float, float, float, float, float, float, float) -> Mesh
-method Scene.tube_between(float, float, float, float, float, float, float) -> Mesh
 method Scene.arrow_between(float, float, float, float, float, float, float) -> Mesh
-method Scene.ring_arc(float, float, float, float, float, float, float, int) -> Mesh
-method Scene.checkmark(float, float, float, float, float) -> Mesh
-method Scene.label(string, float, float, float, float) -> Mesh
+method Scene.camera_dof(float, float) -> void
 method Scene.camera_keyframe(int, float, float, float, float, float, float, string) -> void
 method Scene.camera_look_at(float, float, float, float, float, float, float) -> void
+method Scene.camera_optics_keyframe(int, float, float, string) -> void
 method Scene.camera_orthographic(float, float, float, float, float, float, float) -> void
-method Scene.motion_blur(bool, float) -> void
+method Scene.capsule(float, float, int, int) -> Mesh
 method Scene.checker_ground(float, float) -> void
 method Scene.checker_material(float, float, float, float, float, float, float, float) -> Material
+method Scene.checkmark(float, float, float, float, float) -> Mesh
 method Scene.cone(float, float, int, bool) -> Mesh
 method Scene.cube(float) -> Mesh
 method Scene.cylinder(float, float, int, bool) -> Mesh
+method Scene.denoise_quality(string) -> void
 method Scene.environment_texture(string, float, float) -> void
 method Scene.expect_int(int, int) -> void
 method Scene.fit_camera(float) -> void
-method Scene.studio_setup() -> void
+method Scene.glow_orb(float, float, float, float, float, float, float, float) -> Mesh
 method Scene.ground_plane(float, float, float, float, float) -> void
 method Scene.image_material(string, float) -> Material
 method Scene.import_gltf(string) -> Mesh
@@ -66,26 +65,37 @@ method Scene.import_obj(string) -> Mesh
 method Scene.import_ply(string) -> Mesh
 method Scene.import_stl(string) -> Mesh
 method Scene.instance_mesh(Mesh, float, float, float, float, float, float) -> Mesh
+method Scene.label(string, float, float, float, float) -> Mesh
 method Scene.light_clamp(float, float) -> void
+method Scene.load_preset(string) -> void
 method Scene.material(float, float, float, float, float, float, float, float, float, float) -> Material
+method Scene.material_from_palette(string) -> Material
+method Scene.motion_blur(bool, float) -> void
 method Scene.noise_material(float, float, float, float, float, float, float, float) -> Material
 method Scene.plane(float) -> Mesh
 method Scene.point_light(float, float, float, float, float, float, float) -> void
+method Scene.point_light_keyframe(int, int, float, string) -> void
+method Scene.preset_param(string, float) -> void
 method Scene.ramp_material(float, float, float, float, float, float, float, float) -> Material
 method Scene.render_apng(string, int, int, int, int, int, int) -> void
 method Scene.render_exr(string, int, int, int) -> void
 method Scene.render_passes(string, int, int, int) -> void
 method Scene.render_png(string, int, int, int) -> void
+method Scene.render_preset(string) -> void
 method Scene.render_sequence(string, int, int, int, int, int) -> void
 method Scene.render_settings(int, int, bool) -> void
-method Scene.render_preset(string) -> void
 method Scene.render_timeout(int) -> void
+method Scene.ring_arc(float, float, float, float, float, float, float, int) -> Mesh
+method Scene.set_threads(int) -> void
 method Scene.set_view_transform(string) -> void
 method Scene.sky_texture(float, float, float) -> void
 method Scene.spot_light(float, float, float, float, float, float, float, float, float, float, float, float) -> void
+method Scene.studio_setup() -> void
 method Scene.sun_light(float, float, float, float, float, float, float, float) -> void
 method Scene.torus(float, float, int, int, bool) -> Mesh
 method Scene.transparent_background(bool) -> void
+method Scene.tube_between(float, float, float, float, float, float, float) -> Mesh
+method Scene.use_preset(string) -> void
 method Scene.uv_sphere(float, int, int, bool) -> Mesh
 method Scene.version() -> string
 method Scene.wall_plane_y(float, float, float, float, float) -> void
@@ -116,19 +126,21 @@ method Scene.world_color(float, float, float, float) -> void
 | `area_light(px,py,pz,tx,ty,tz,r,g,b,power,size)` | Area-light position/target, linear color, power, square side length. |
 | `area_light_shape(...,power,size_x,size_y,shape)` | `rectangle`, `disk`, or `ellipse`; sizes are in scene units. |
 | `spot_light(px,py,pz,tx,ty,tz,r,g,b,power,angle_degrees,blend)` | Cone angle 1..170 degrees; softness/blend 0..1. |
-| `point_light(x,y,z,r,g,b,power)`; `sun_light(dx,dy,dz,r,g,b,power,angle)` | World-space position or direction; power in renderer units and sun angle in radians. |
+| `point_light(x,y,z,r,g,b,power)`; `sun_light(dx,dy,dz,r,g,b,power,angle_degrees)` | World-space position or direction; power in renderer units and the sun's angular diameter in **degrees** (0..90). |
 | `camera_look_at(px,py,pz,tx,ty,tz,fov_degrees)` | Perspective camera; **vertical** FOV 5..170 degrees, so the horizontal coverage follows render aspect. |
 | `camera_orthographic(px,py,pz,tx,ty,tz,vertical_span)` | Orthographic camera; visible vertical span in scene units, with horizontal span adjusted to output aspect. |
 | `camera_dof(aperture,focus_distance)` | Aperture 0..10; focus distance in scene units. |
 | `motion_blur(enabled,shutter_frames)` | Cycles transform blur for keyed mesh translations and camera keys; shutter is 0.1..2 frames. |
 | `world_color(r,g,b,strength)`, `sky_texture(elevation_degrees,rotation_degrees,intensity)` | Linear RGB world or built-in procedural sky. |
-| `render_settings(max_bounces,seed,denoise)` | Max bounces 0..64; seed is a nonnegative 32-bit integer. |
+| `render_settings(max_bounces,seed,denoise)` | Max bounces 0..64; seed is an integer in 0..2147483647. |
+| `set_threads(n)`, `denoise_quality(name)` | 1..64 CPU threads (capped by cores); OIDN quality `fast`, `balanced`, or `high`. |
+| `Mesh.keyframe_transform/keyframe_visible`, `Material.keyframe_color/keyframe_emission_strength`, `camera_keyframe`, `camera_optics_keyframe`, `point_light_keyframe` | Frame keys with `linear` or `ease` interpolation; visibility keys hold their value between frames (the interpolation argument is accepted for uniformity but has no effect). See [ANIMATION.md](ANIMATION.md). |
 | `render_preset(name)` | Legacy `draft` = 8 samples, 2 bounces, no denoise; legacy `final` = 64 samples, 8 bounces, CPU OIDN high quality. For video diagrams use named `use_preset("diagram-dark-16x9-draft"|"diagram-dark-16x9-final")` profiles below. Pass `0` for samples to `render_png` or `render_sequence` to use the selected preset count. `Scene.set_threads(n)` selects 1–64 CPU threads; default four is capped by available cores. See [throughput measurements](THROUGHPUT.md). |
 | `denoise_quality(name)` | Set CPU OIDN quality to `fast`, `balanced`, or `high`. Fast uses Cycles' prefiltered auxiliary albedo/normal passes and is the diagram-final preset default. |
 | `use_preset(name)` / `load_preset(path)` | Apply one embedded presentation preset or a version-1 external JSON preset. Later explicit DSL calls override its settings: explicit camera position/target calls disable auto-frame; the first explicit light call removes the preset light rig, and later user lights add to it. `fit_camera` explicitly opts back into framing. `lmblender --presets` lists names; `--preset-show NAME` prints the embedded JSON. |
 | `preset_param(name,value)` | Numeric overrides: `samples`, `bounces`, `threads`, `world_strength`, `camera_fov_degrees`, `orthographic_vertical_span`. |
 | `material_from_palette(name)` | Create a material from the active preset palette (`color`, `metallic`, `roughness`, optional `transmission` and `emission`). |
-| `render_png/exr(path,samples,width,height)` | Single frame, samples 1..65536, dimensions and total pixel bounds apply. |
+| `render_png/exr(path,samples,width,height)` | Single frame, samples 1..65536 (`render_png` also accepts 0 = preset count), dimensions and total pixel bounds apply. Set `LMBLENDER_OUTPUT_ROOT` to confine every output path to one directory. |
 | `render_sequence(pattern,start,end,samples,width,height)` | Inclusive integer frames; path includes `{frame}` or `####`; key interpolation is `linear` or `ease`. |
 | `render_apng(path,start,end,samples,width,height,fps)` | Inclusive frames; exact rational frame delay is 1/fps; fps 1..240. |
 | `render_passes(prefix,samples,width,height)` | Writes combined/depth/normal/albedo EXR and normalized PNGs. |
@@ -151,7 +163,15 @@ For an animated loop, add mesh and camera keys at the first, middle, and final f
 
 ## Errors and recovery
 
-The host returns a JSON result with `ok`, `code`, and a human-readable `message`; direct `--version`, `--schema`, and `--dsl-signatures` commands print plain text or JSON to stdout. `LOAD_BAD_BYTECODE` means compile the `.lms` against the current schema again. `RUN_ERROR`/`VALIDATION_ERROR` means check method signatures, finite values, ranges, input paths, or output extensions. `RENDER_TIMEOUT` means increase `render_timeout(seconds)` within 1..3600 or lower samples/resolution. Import errors identify the expected format, malformed header, resource budget, or unreadable regular-file condition. Use the error message as the first diagnostic; do not retry unchanged invalid values.
+The host prints one JSON line with `ok`, `code`, and a human-readable `message` (plus `line`/`column` when a DSL statement is to blame); direct `--version`, `--schema`, and `--dsl-signatures` commands print plain text or JSON to stdout. Codes:
+
+- `LOAD_BAD_BYTECODE`, `LOAD_SCHEMA_MISMATCH`, `LOAD_UNBOUND`: recompile the `.lms` against the current schema (exit 3, phase `load`).
+- `RUN_HOST`: a host validation failure (range, non-finite value, missing file, wrong extension, unsupported combination); the message names the method and the accepted bounds. `RUN_ERROR` is a VM fault such as division by zero.
+- `GEOMETRY_BUDGET`, `IMAGE_LIMIT`, `IMAGE_INVALID`, `GLTF_INVALID`/`GLTF_LIMIT`/`GLTF_UNSUPPORTED`, `PRESET_INVALID`/`PRESET_NOT_FOUND`/`PRESET_UNSUPPORTED`, `OUTPUT_PATH`: structured resource or input problems; fix the input rather than retrying.
+- `RENDER_TIMEOUT`: one render exceeded `render_timeout(seconds)` (1..3600); lower samples or resolution, or raise the timeout.
+- `RUN_TIMEOUT`, `RUN_BUDGET`: the whole program exceeded its wall-clock or VM-instruction budget (see limits above); a running render is cancelled first, a pure loop is terminated after a five-second grace period.
+
+Use the error message as the first diagnostic; do not retry unchanged invalid values.
 
 ## Named presets
 
