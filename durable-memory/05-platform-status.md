@@ -73,3 +73,8 @@ Known facts:
   stall. Windows now builds one SSE4.2 Embree ISA (same feature coverage; no
   AVX/AVX2 dispatch variants) to reduce cold cost. Cycles uses the exported
   `embree` target instead of its legacy finder that assumes all ISA archives.
+- Run https://github.com/lmctl-ai/lmblender/actions/runs/39826754516/job/119991962316
+  built and cached the complete static prefix in 28m34s, then built Cycles and
+  passed its OS-DLL import gate. Host compile failed because `/FI"path"` in
+  CMake preserved literal quotes in the header filename. Use one quoted CMake
+  argument `"/FI${path}"`; the next run reuses the Cycles cache.

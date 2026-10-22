@@ -76,7 +76,7 @@ if(EXISTS "${CYCLES_BUILD_DIR}/lmblender-portable-cycles.txt")
   target_compile_definitions(lmblender PRIVATE WITH_CYCLES_DEVICE_CPU WITH_TBB WITH_OCIO WITH_PUGIXML WITH_SYSTEM_PUGIXML
     OIIO_STATIC_DEFINE=1 OIDN_STATIC_LIB OpenColorIO_SKIP_IMPORTS)
   if(MSVC)
-    target_compile_options(lmblender PRIVATE /FI"${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h" /Zc:__cplusplus /permissive- /bigobj)
+    target_compile_options(lmblender PRIVATE "/FI${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h" /Zc:__cplusplus /permissive- /bigobj)
     target_compile_definitions(lmblender PRIVATE _USE_MATH_DEFINES NOMINMAX WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS __TBB_NO_IMPLICIT_LINKAGE=1)
     set_property(TARGET lmblender PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)
   else()
