@@ -336,6 +336,39 @@ void run_with_budget(const dslvm::Program &program, const dslvm::Context &contex
   watchdog.join();
 }
 
+/* Output policy: the parent directory must exist and must not be a symlink, and when
+ * LMBLENDER_OUTPUT_ROOT is set every output must resolve inside that directory. */
+void check_output_path(const std::string &output, const char *what)
+{
+  if (output.empty() || output.front() == '-') throw dslvm::Error("OUTPUT_PATH", std::string(what) + " path must not be empty or begin with '-'");
+  std::error_code ec;
+  const std::filesystem::path path(output);
+  std::filesystem::path parent = path.parent_path();
+  if (parent.empty()) parent = ".";
+  if (!std::filesystem::is_directory(parent, ec) || ec) throw dslvm::Error("OUTPUT_PATH", std::string(what) + " directory does not exist: " + parent.string());
+  if (std::filesystem::is_symlink(parent, ec)) throw dslvm::Error("OUTPUT_PATH", std::string(what) + " directory must not be a symlink: " + parent.string());
+  if (std::filesystem::is_symlink(path, ec)) throw dslvm::Error("OUTPUT_PATH", std::string(what) + " must not replace an existing symlink: " + output);
+  const char *root_text = std::getenv("LMBLENDER_OUTPUT_ROOT");
+  if (root_text && *root_text) {
+    const auto root = std::filesystem::canonical(root_text, ec);
+    if (ec || !std::filesystem::is_directory(root, ec)) throw dslvm::Error("OUTPUT_PATH", std::string("LMBLENDER_OUTPUT_ROOT is not an existing directory: ") + root_text);
+    const auto resolved = std::filesystem::canonical(parent, ec);
+    if (ec) throw dslvm::Error("OUTPUT_PATH", std::string("could not resolve the ") + what + " directory: " + parent.string());
+    auto r = root.begin();
+    auto f = resolved.begin();
+    for (; r != root.end() && f != resolved.end() && *r == *f; ++r, ++f) {}
+    if (r != root.end()) throw dslvm::Error("OUTPUT_PATH", std::string(what) + " must stay inside LMBLENDER_OUTPUT_ROOT (" + root.string() + "): " + output);
+  }
+}
+
+/* Staged files use predictable names; drop whatever sits there (including a planted
+ * symlink) before the image writer opens the path. */
+void clear_temporary(const std::string &path)
+{
+  std::error_code ec;
+  if (std::filesystem::is_symlink(path, ec) || std::filesystem::exists(path, ec)) std::filesystem::remove(path, ec);
+}
+
 using PresetJson = nlohmann::json;
 
 const PresetJson &builtin_presets()
@@ -593,6 +626,8 @@ class PassOutputDriver final : public ccl::OutputDriver {
     const std::string temp_png = prefix_ + "-" + name + suffix + ".png";
     outputs_.push_back({temp_exr, final_exr});
     outputs_.push_back({temp_png, final_png});
+    clear_temporary(temp_exr);
+    clear_temporary(temp_png);
 
     auto exr = std::unique_ptr<OIIO::ImageOutput>(OIIO::ImageOutput::create(temp_exr));
     if (!exr) return false;
@@ -693,10 +728,8 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
       uint64_t(width) * uint64_t(height) > 16'000'000)
     throw dslvm::Error("render_png samples or dimensions exceed supported limits");
-  const auto parent = std::filesystem::path(output).parent_path();
   std::error_code ec;
-  if (!parent.empty() && !std::filesystem::is_directory(parent, ec))
-    throw dslvm::Error("render_png output directory does not exist");
+  check_output_path(output, "render output");
 
   std::array<double, 3> lo{std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
   std::array<double, 3> hi{-lo[0], -lo[1], -lo[2]};
@@ -773,6 +806,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   }
   xml << "</cycles>\n";
   const auto scene_path = output + ".tmp-" + std::to_string(getpid()) + ".xml";
+  clear_temporary(scene_path);
   {
     std::ofstream xml_file(scene_path, std::ios::binary | std::ios::trunc);
     const std::string contents = xml.str();
@@ -786,6 +820,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   scene->passes[0]->set_name(ccl::ustring("combined"));
 
   const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
+  clear_temporary(tmp);
   if (extension == ".png")
     session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
   else
@@ -818,10 +853,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   if (samples < 1 || samples > 65536 || width < 16 || width > 4096 || height < 16 || height > 4096 ||
       uint64_t(width) * uint64_t(height) > 16'000'000)
     throw dslvm::Error("render_png samples or dimensions exceed supported limits");
-  const auto parent = std::filesystem::path(output).parent_path();
   std::error_code ec;
-  if (!parent.empty() && !std::filesystem::is_directory(parent, ec))
-    throw dslvm::Error("render_png output directory does not exist");
+  check_output_path(output, "render output");
 
   std::array<double, 3> lo{std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
   std::array<double, 3> hi{-lo[0], -lo[1], -lo[2]};
@@ -1341,6 +1374,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
   const auto tmp = output + ".tmp-" + std::to_string(getpid()) + (emit_passes ? ".png" : extension);
+  clear_temporary(tmp);
   PassOutputDriver *pass_driver = nullptr;
   ViewTransformOutputDriver *png_driver = nullptr;
   if (emit_passes) {
@@ -1410,6 +1444,7 @@ void render_image(const Scene &source, const std::string &output, int samples, i
     const float old_fov = scene.camera.fov_radians, old_ortho = scene.camera.ortho_scale;
     std::vector<std::string> temporaries;
     const std::string staged = output + ".motion-" + std::to_string(getpid()) + ".png";
+    clear_temporary(staged);
     try {
       scene.motion_blur = false;
       constexpr int temporal_samples = 9;
@@ -1442,6 +1477,7 @@ void render_image(const Scene &source, const std::string &output, int samples, i
         }
         const std::string temp = output + ".shutter-" + std::to_string(getpid()) + "-" + std::to_string(i) + ".png";
         temporaries.push_back(temp);
+        clear_temporary(temp);
         scene.render_frame = old_frame;
         render_direct(scene, temp, samples, width, height);
       }
@@ -1652,9 +1688,10 @@ void write_apng_from_pngs(const std::string &output,const std::vector<std::strin
     if(i==0)png_chunk(out,"IDAT",frame_data[i]);else{std::vector<unsigned char> d;png_put32(d,seq++);d.insert(d.end(),frame_data[i].begin(),frame_data[i].end());png_chunk(out,"fdAT",d);}
   }
   png_chunk(out,"IEND",{});
-  const std::filesystem::path dest(output); std::error_code ec;
-  if(!dest.parent_path().empty()&&!std::filesystem::is_directory(dest.parent_path(),ec))throw dslvm::Error("APNG output directory does not exist");
+  std::error_code ec;
+  check_output_path(output, "APNG output");
   std::string tmp=output+".tmp."+std::to_string(::getpid());
+  clear_temporary(tmp);
   {std::ofstream file(tmp,std::ios::binary|std::ios::trunc);if(!file||!file.write(reinterpret_cast<const char*>(out.data()),std::streamsize(out.size())))throw dslvm::Error("could not write staged APNG");}
   std::filesystem::rename(tmp,output,ec);if(ec){std::filesystem::remove(tmp);throw dslvm::Error("could not atomically publish APNG");}
 }
