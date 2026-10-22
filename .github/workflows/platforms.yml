@@ -158,7 +158,7 @@ jobs:
           BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
         run: |
           scripts/configure-cycles-static.sh
-          rm -rf build/cycles-static/bin build/cycles-static/CMakeFiles
+          rm -rf build/cycles-static/bin build/cycles-static/CMakeFiles build/cycles-static/intern/cycles/app/Blender.app
           du -sh build/cycles-static
       - name: drop dependency build trees before caching
         if: steps.build-cycles.outcome == 'success'

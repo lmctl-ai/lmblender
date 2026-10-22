@@ -153,15 +153,18 @@ if [[ ${CYCLES_CONFIGURE_ONLY:-0} == 1 ]]; then
   exit 0
 fi
 cmake --build "$build" --target cycles --parallel "$jobs"
-file "$build/bin/cycles"
-"$repo/scripts/check-static.sh" "$build/bin/cycles"
+# Linux puts the standalone binary in bin/; macOS builds a Blender.app bundle.
+cycles_bin="$build/bin/cycles"
+[[ -x "$cycles_bin" ]] || cycles_bin="$build/intern/cycles/app/Blender.app/Contents/MacOS/cycles"
+file "$cycles_bin"
+"$repo/scripts/check-static.sh" "$cycles_bin"
 if [[ "$(uname -s)" == Darwin ]]; then
   # Record the system frameworks/libraries Cycles' own executable links so the
   # host (CMakeLists.txt) can reuse them; drop archives and object files.
   python3 - "$build/build.ninja" "$build/host-link-extras.txt" <<'PY'
 import re, shlex, sys
 text = open(sys.argv[1]).read()
-block = re.search(r"^build bin/cycles: .*?(?=^build |\Z)", text, re.S | re.M).group(0)
+block = re.search(r"^build (?:bin/cycles|\S*Blender\.app/Contents/MacOS/cycles): .*?(?=^build |\Z)", text, re.S | re.M).group(0)
 flags = []
 for key in ("LINK_FLAGS", "LINK_LIBRARIES"):
     m = re.search(rf"^\s+{key} = (.*)$", block, re.M)

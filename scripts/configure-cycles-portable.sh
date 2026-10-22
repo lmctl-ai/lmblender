@@ -47,6 +47,9 @@ rm -rf "$work/patch-root" "$work/patched"; mkdir -p "$work/patch-root/intern"
 cp -R "$source_tree/intern/cycles" "$work/patch-root/intern/cycles"
 py=python3; command -v python3 >/dev/null 2>&1 || py=python
 "$py" "$repo/scripts/make-cycles-source-overlay.py" "$(native "$work/patch-root")" "$(native "$work/patched")"
+# Backport from the standalone Cycles repository: MSVC Release builds have no
+# std::_Container_proxy. Harmless elsewhere (the block is MSVC-only).
+patch --batch -p1 -d "$work/patched" -i "$repo/patches/cycles-msvc-guarded-allocator.patch"
 for d in "$work/patched/intern/cycles"/*; do
   name=$(basename "$d")
   case "$name" in cmake|CMakeLists.txt) continue ;; esac
