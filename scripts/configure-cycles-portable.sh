@@ -67,7 +67,11 @@ EOF
 P=$(native "$prefix")
 extra=()
 case "$(uname -s)" in
-  MINGW*|MSYS*|CYGWIN*) extra+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW) ;;
+  MINGW*|MSYS*|CYGWIN*)
+    # FindZstd only searches zstd/libzstd, but MSVC installs zstd_static.lib.
+    extra+=(-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+      -DZSTD_LIBRARY="$P/lib/zstd_static.lib")
+    ;;
 esac
 case "$(uname -m)" in
   aarch64|arm64) [[ -n "${SSE2NEON_ROOT_DIR:-}" ]] && extra+=(-DSSE2NEON_ROOT_DIR="$(native "$SSE2NEON_ROOT_DIR")") ;;

@@ -14,3 +14,13 @@ Known facts:
 - Windows: `/MT` static CRT on every archive, Git Bash `shell: bash`, `cygpath -m` for CMake paths.
 - Shared dev host lesson: heavy parallel C++ jobs OOM the 15 GB box; the memguard compiler shim and the CI
   per-job concurrency exist because of it.
+
+## Windows investigation (PlatAstra, 2026-10-22)
+
+- Branch: `platastra/windows-static`; using standalone Cycles + MSVC `/MT`.
+- Main Windows job https://github.com/lmctl-ai/lmblender/actions/runs/39805494859/job/119917500529
+  built the portable dependencies successfully in 8m10s (15:31:27–15:39:37 UTC),
+  then failed at Cycles configuration: `Could NOT find Zstd (missing: ZSTD_LIBRARY)`.
+  The installed archive is `prefix/lib/zstd_static.lib`; provide that explicit
+  Windows-only hint. The successful dependency build favors continuing MSVC
+  over introducing a MinGW port. End-to-end runtime validation remains pending.
