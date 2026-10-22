@@ -1,3 +1,13 @@
+## lmblender 0.3.3 — Linux arm64 and x64
+
+Static Embree CPU traversal; OBJ `.mtl` materials and texture maps; authored glTF
+`TEXCOORD_0` for textured meshes; output-path policy (`LMBLENDER_OUTPUT_ROOT`,
+symlink refusal); scene geometry budget, decoded-image dimension checks and a
+wall-clock/instruction ceiling per program; fallback key light only for scenes
+without lights; `auto_frame:false` presets require an explicit camera; one
+`SHA256SUMS` over every release asset and verified corresponding-source
+archives. macOS and Windows builds are experimental in CI and not yet released.
+
 ## lmblender 0.3.2 — Linux arm64 and x64
 
 Adopts the lmscript host protocol: `--dsl-schema` prints a human summary and

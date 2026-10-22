@@ -26,7 +26,7 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 
 ## Using from another project
 
-The `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"` declaration is the recommended install path; lmscript resolves the newest non-draft release and refreshes a cached binary when its `--version` changes. Use an exact tag such as `@v0.3.2` for reproducibility or a fixed offline cache. A matching binary already on `PATH` takes precedence. See [the consumer guide](docs/USING_FROM_POC.md). For local work, put the build output on `PATH`. `scripts/release.sh` also refreshes a relocatable `bin/`, `schema/`, `docs/`, and `examples/` layout; override its destination with `LMBLENDER_HOST_RELEASE`. It writes exact-name host binaries and checksums beside versioned tarballs under `dist/`.
+The `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"` declaration is the recommended install path; lmscript resolves the newest non-draft release and refreshes a cached binary when its `--version` changes. Use an exact tag such as `@v0.3.3` for reproducibility or a fixed offline cache. A matching binary already on `PATH` takes precedence. See [the consumer guide](docs/USING_FROM_POC.md). For local work, put the build output on `PATH`. `scripts/release.sh` also refreshes a relocatable `bin/`, `schema/`, `docs/`, and `examples/` layout; override its destination with `LMBLENDER_HOST_RELEASE`. It writes exact-name host binaries and checksums beside versioned tarballs under `dist/`.
 
 For latest-release and pinned installation patterns, see [Using lmblender from another project](docs/USING_FROM_POC.md).
 
