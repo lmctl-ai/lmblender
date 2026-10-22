@@ -106,6 +106,7 @@ compile_dsl examples/render-timeout.lms "$build/render-timeout.dslb"
 compile_dsl tests/geometry-budget.lms "$build/geometry-budget.dslb"
 compile_dsl tests/image-limit.lms "$build/image-limit.dslb"
 compile_dsl tests/image-limit-maps.lms "$build/image-limit-maps.dslb"
+compile_dsl tests/run-budget.lms "$build/run-budget.dslb"
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
@@ -180,6 +181,10 @@ test ! -e "$build/geometry-budget.png"
 python3 tests/create_image_bomb.py "$build/image-bomb.png"
 expect_dsl_error image-limit IMAGE_LIMIT
 expect_dsl_error image-limit-maps IMAGE_LIMIT
+# Whole-program budget: instruction ceiling and wall-clock deadline (the latter hard-exits
+# five seconds after the deadline while the loop is still running).
+expect_dsl_error run-budget RUN_BUDGET LMBLENDER_MAX_INSTRUCTIONS=1000000
+expect_dsl_error run-budget RUN_TIMEOUT LMBLENDER_RUN_TIMEOUT_SECONDS=1
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"

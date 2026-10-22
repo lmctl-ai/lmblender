@@ -263,6 +263,79 @@ std::string checked_image_path(const std::string &path, const char *what,
   return full.string();
 }
 
+/* Whole-program budget. The DSL VM imposes no limits of its own, so the host owns a
+ * wall-clock deadline and an instruction ceiling for untrusted bytecode. Renders in
+ * progress cancel through run_session_with_timeout; a pure VM loop is stopped by the
+ * watchdog thread in run_with_budget. */
+struct RunBudget {
+  std::chrono::steady_clock::time_point deadline;
+  bool has_deadline = false;
+  uint64_t max_instructions = 0;
+  std::atomic<bool> expired{false};
+};
+RunBudget &run_budget() { static RunBudget budget; return budget; }
+
+long long env_integer(const char *name, const long long fallback, const long long lo, const long long hi)
+{
+  const char *text = std::getenv(name);
+  if (!text || !*text) return fallback;
+  char *end = nullptr;
+  const long long value = std::strtoll(text, &end, 10);
+  if (end == text || *end != '\0' || value < lo || value > hi)
+    throw dslvm::Error("RUN_BUDGET", std::string(name) + " must be an integer in [" + std::to_string(lo) + "," + std::to_string(hi) + "]");
+  return value;
+}
+
+/* Executes the program under the whole-program budget. Defaults: 7200 s of wall clock
+ * and 100 million VM instructions; LMBLENDER_RUN_TIMEOUT_SECONDS and
+ * LMBLENDER_MAX_INSTRUCTIONS override them and 0 disables either. When the deadline
+ * passes, a running render is cancelled (RUN_TIMEOUT through the normal error path);
+ * a program still executing five seconds later, such as a pure VM loop, is terminated
+ * after printing the standard JSON error line. */
+void run_with_budget(const dslvm::Program &program, const dslvm::Context &context, const dslvm::Registry &registry)
+{
+  RunBudget &budget = run_budget();
+  const long long timeout_seconds = env_integer("LMBLENDER_RUN_TIMEOUT_SECONDS", 7200, 0, 7 * 86400);
+  budget.max_instructions = uint64_t(env_integer("LMBLENDER_MAX_INSTRUCTIONS", 100'000'000, 0, 1'000'000'000'000LL));
+  budget.has_deadline = timeout_seconds > 0;
+  budget.deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
+  dslvm::Program::RunStats stats;
+  std::atomic<bool> finished{false};
+  std::thread watchdog([&] {
+    constexpr auto grace = std::chrono::seconds(5);
+    while (!finished.load(std::memory_order_acquire)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      /* The VM increments this counter without atomics; a relaxed load of the aligned
+       * 64-bit word is a best-effort monitor. The wall clock is the authoritative guard. */
+      const uint64_t executed = __atomic_load_n(&stats.instructions, __ATOMIC_RELAXED);
+      if (budget.max_instructions && executed > budget.max_instructions) {
+        budget.expired.store(true, std::memory_order_release);
+        dslvm::report_error("run", dslvm::Error("RUN_BUDGET", "program exceeded LMBLENDER_MAX_INSTRUCTIONS=" +
+                                                 std::to_string(budget.max_instructions) + " VM instructions; simplify its loops or raise the limit"));
+        std::_Exit(3);
+      }
+      const auto now = std::chrono::steady_clock::now();
+      if (budget.has_deadline && now >= budget.deadline) {
+        budget.expired.store(true, std::memory_order_release);
+        if (now >= budget.deadline + grace) {
+          dslvm::report_error("run", dslvm::Error("RUN_TIMEOUT", "program exceeded LMBLENDER_RUN_TIMEOUT_SECONDS=" +
+                                                   std::to_string(timeout_seconds) + " seconds of wall-clock time"));
+          std::_Exit(3);
+        }
+      }
+    }
+  });
+  try {
+    program.run(context, registry, &stats);
+  } catch (...) {
+    finished.store(true, std::memory_order_release);
+    watchdog.join();
+    throw;
+  }
+  finished.store(true, std::memory_order_release);
+  watchdog.join();
+}
+
 using PresetJson = nlohmann::json;
 
 const PresetJson &builtin_presets()
@@ -590,7 +663,8 @@ template<typename SessionType> void run_session_with_timeout(SessionType *sessio
   std::atomic<bool> timed_out{false};
   std::thread watchdog([&] {
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
-    while (!finished.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline)
+    while (!finished.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline &&
+           !run_budget().expired.load(std::memory_order_acquire))
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (!finished.exchange(true, std::memory_order_acq_rel)) {
       timed_out.store(true, std::memory_order_release);
@@ -604,6 +678,8 @@ template<typename SessionType> void run_session_with_timeout(SessionType *sessio
   if (timed_out.load(std::memory_order_acquire)) {
     std::error_code ec;
     std::filesystem::remove(temporary_output, ec);
+    if (run_budget().expired.load(std::memory_order_acquire))
+      throw dslvm::Error("RUN_TIMEOUT", "render cancelled: the program exceeded its LMBLENDER_RUN_TIMEOUT_SECONDS wall-clock budget");
     throw dslvm::Error("RENDER_TIMEOUT", "render timed out after " + std::to_string(timeout_seconds) + " seconds");
   }
 }
@@ -2748,7 +2824,7 @@ int main(int argc, char **argv) {
     Scene scene;
     dslvm::Context context;
     context.set("scene", &scene);
-    program.run(context, registry);
+    run_with_budget(program, context, registry);
     dslvm::report_ok();
     return 0;
   } catch (const dslvm::Error &error) {

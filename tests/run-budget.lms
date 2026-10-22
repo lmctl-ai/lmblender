@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Whole-program budget: a long loop of cheap host calls. test.sh runs this bytecode with
+// LMBLENDER_MAX_INSTRUCTIONS lowered (expects RUN_BUDGET) and with
+// LMBLENDER_RUN_TIMEOUT_SECONDS=1 (expects RUN_TIMEOUT); both must exit non-zero with the
+// standard JSON result line instead of running to completion.
+out = ARGV.len() > 0 ? ARGV[0] : "build/run-budget.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+for (i in range(0, 40000000)) {
+  scene.expect_int(i, i);
+}
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code == 0) { println("expected the program budget to stop this loop"); exit(1); }
