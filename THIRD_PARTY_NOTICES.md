@@ -11,6 +11,7 @@ The `lmblender` release is a statically linked executable. This file records the
 | OpenImageDenoise 2.5 | CPU denoising | `licenses/upstream/OpenImageDenoise-Apache-2.0.txt` |
 | ISPC-generated OIDN CPU kernels | OIDN CPU device routines generated from OIDN `.ispc` source; ISPC is a build-time compiler, not linked | OIDN Apache-2.0 applies to OIDN code; compiler provenance: `licenses/upstream/ISPC-BSD-3-Clause.txt` |
 | OpenImageIO | PNG/EXR input and output | `licenses/upstream/OpenImageIO-BSD.txt` |
+| robin-map | Header-only hash tables used by OpenImageIO | `licenses/upstream/robin-map-MIT.txt` |
 | OpenColorIO | color transforms | `licenses/upstream/OpenColorIO-license.txt` |
 | OpenEXR and Imath | EXR support | `licenses/upstream/OpenEXR-license.rst`, `licenses/upstream/Imath-license.md` |
 | oneTBB | task scheduling | `licenses/upstream/oneTBB-license.txt` |

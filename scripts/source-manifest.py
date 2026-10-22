@@ -33,6 +33,7 @@ COMPONENTS = [
     ("OPENJPH", "OpenJPH", "linked"),
     ("PUGIXML", "pugixml", "linked"),
     ("FMT", "fmt", "linked"),
+    ("ROBINMAP", "robin-map", "header-only (OpenImageIO)"),
     ("TBB", "oneTBB", "linked"),
     ("IMATH", "Imath", "linked"),
     ("OPENEXR", "OpenEXR", "linked"),
