@@ -16,6 +16,7 @@ find "$build" -maxdepth 1 -type f \
 rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
 rm -f "$root/install-and-run.png"
 python3 tests/create_material_maps.py "$build/material-map-assets"
+python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
   -DBLENDER_SOURCE_TREE="$blender_source" \
   -DBLENDER_DEPS_INSTALL="$deps_install" \
@@ -87,6 +88,11 @@ grep -q '^Cycles [0-9]\+\.[0-9]\+\.[0-9]\+' "$build/version.txt"
 grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.txt"
 compile_dsl examples/version.lms "$build/version.dslb"
 compile_dsl examples/import-mesh.lms "$build/import-mesh.dslb"
+compile_dsl examples/obj-mtl-gallery.lms "$build/obj-mtl-gallery.dslb"
+compile_dsl tests/obj-mtl-control.lms "$build/obj-mtl-control.dslb"
+compile_dsl tests/obj-mtl-no-bump.lms "$build/obj-mtl-no-bump.dslb"
+compile_dsl tests/obj-mtl-invalid.lms "$build/obj-mtl-invalid.dslb"
+compile_dsl tests/obj-huge-coordinate.lms "$build/obj-huge-coordinate.dslb"
 compile_dsl examples/import-ply.lms "$build/import-ply.dslb"
 compile_dsl examples/gltf-import.lms "$build/gltf-import.dslb"
 compile_dsl examples/glb-import.lms "$build/glb-import.dslb"
@@ -156,6 +162,10 @@ compile_dsl examples/presets/external-load.lms "$build/preset-external.dslb"
 compile_dsl examples/presets/switch.lms "$build/preset-switch.dslb"
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
 "$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
+"$exe" --dsl "$build/obj-mtl-gallery.dslb" >"$build/obj-mtl-gallery-result.json"
+"$exe" --dsl "$build/obj-mtl-control.dslb" >"$build/obj-mtl-control-result.json"
+"$exe" --dsl "$build/obj-mtl-no-bump.dslb" >"$build/obj-mtl-no-bump-result.json"
+python3 tests/obj_mtl_quality.py "$build/obj-mtl-gallery.png" "$build/obj-mtl-control.png" "$build/obj-mtl-no-bump.png"
 "$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
 "$exe" --dsl "$build/gltf-import.dslb" >"$build/gltf-import-result.json"
 python3 tests/gltf_emission_quality.py "$build/import-gltf-gltf.png"
@@ -186,6 +196,9 @@ print(f"{sys.argv[1].rsplit('/', 1)[-1]}: refused with {sys.argv[2]}: {r.get('me
 PY
 }
 # Scene-wide geometry budget stops accumulation at creation time, before any render.
+expect_dsl_error obj-mtl-invalid OBJ_MTL_INVALID
+expect_dsl_error obj-huge-coordinate OBJ_INVALID
+test ! -e "$build/obj-mtl-invalid.png"
 expect_dsl_error geometry-budget GEOMETRY_BUDGET
 test ! -e "$build/geometry-budget.png"
 # Decoded-dimension guards: a 48 KB PNG that decodes to 400 megapixels is refused at

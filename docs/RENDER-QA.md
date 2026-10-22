@@ -2,6 +2,12 @@
 
 All feature-gallery outputs are 640×480 CPU Cycles PNGs. Numeric checks run from `test.sh`; checks are based on image pixels and reject missing/clipped subjects, flat outputs, fireflies, and the expected effect being absent.
 
+## OBJ/MTL materials, UVs, and per-face slots
+
+`examples/obj-mtl-gallery.lms` imports two OBJ cubes with explicit corner UVs and normals. `usemtl` assigns a red checker/bump material to the left cube and a glossy blue material with an opacity map to the right. Flat-material and no-bump controls use the same geometry and lighting. `tests/obj_mtl_quality.py` requires more than 2,500 pixels of each color, image margins, a color-texture/control difference above 7/255, an opacity-map/control difference above 1/255, and a bump/no-bump difference above 0.5/255. Measured: 18,126 red and 21,524 blue pixels; texture MAD 69.96/255, opacity MAD 7.46/255, and bump MAD 4.34/255. An MTL path escaping the OBJ directory returns structured `OBJ_MTL_INVALID` before rendering; a huge coordinate returns `OBJ_INVALID`. I viewed the 640×480 gallery image: both cubes are fully framed, their color assignment is distinct, and the red checker follows the UVs.
+
+Thumbnail: [obj-mtl-gallery.png](img/obj-mtl-gallery.png).
+
 ## glTF JSON and GLB mesh import
 
 `examples/gltf-import.lms` and `examples/glb-import.lms` load the same fixture: two nodes reference one textured vertical quad mesh, translated to opposite sides. Both produce a 640×480 Cycles render with the external PNG checker multiplied by the glTF base-color factor. The numeric gate checks at least 2,500 colored surface pixels, at least 800 pixels on each side, a left/right subject centroid gap above 100 px, and at least three quantized color bins. Current results for each format: 32,869 subject pixels, 171.6 px centroid gap, and 39 color bins. `tests/gltf-invalid.lms` additionally asserts malformed GLB JSON returns structured `GLTF_INVALID` with a readable message.
@@ -37,7 +43,7 @@ Thumbnail: [camera-dof.png](img/camera-dof.png).
 
 ## Volume scatter (`examples/volume-fog.lms`)
 
-A large low-density scattering volume encloses a lit coral subject over a checker floor; an area key and blue spot produce broad haze without a tight glass-dome outline. The no-volume control has the same lights and geometry but no shell or scatter node. `tests/material_effect_quality.py` compares the pair and checks the lit subject, blue-tinted haze, and distant-floor contrast attenuation. Latest measurements: pair MAD `36.936/255`, `5,264` lit red subject pixels, `54,736` blue haze pixels, blue-minus-red haze `28.6`, and far/near checker contrast ratios `0.723`/`0.812` relative to the control. The viewed render shows the sphere and cyan spot through visible blue-gray haze; the checker floor remains legible.
+A large low-density scattering volume encloses a lit coral subject over a checker floor; an area key and a blue spot behind the subject produce broad haze without a tight glass-dome outline. The no-volume control has the same lights and geometry but no shell or scatter node. The rear spot placement keeps the distant checker visibly more attenuated after removal of the implicit fallback light. `tests/material_effect_quality.py` compares the pair and checks the lit subject, blue-tinted haze, and distant-floor contrast attenuation. Latest measurements: pair MAD `38.268/255`, `5,626` lit red subject pixels, `50,486` blue haze pixels, blue-minus-red haze `28.0`, and far/near checker contrast ratios `0.596`/`0.806` relative to the control. The viewed render shows the sphere and cyan spot through visible blue-gray haze; the checker floor remains legible.
 
 Thumbnail: [volume-fog.png](img/volume-fog.png).
 

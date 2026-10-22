@@ -25,6 +25,7 @@ method Material.texture_maps(string, string, string, string) -> void
 method Material.volume(string, float, float, float, float) -> void
 method Mesh.keyframe_transform(int, float, float, float, string) -> void
 method Mesh.keyframe_visible(int, bool, string) -> void
+method Mesh.material_count() -> int
 method Mesh.max_x() -> float
 method Mesh.max_y() -> float
 method Mesh.max_z() -> float
@@ -114,7 +115,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `ring_arc(x,y,z,major,minor,start_deg,end_deg,segments)` | Partial torus gauge, angles in degrees, ordered span up to 360. |
 | `checkmark(x,y,z,size,stroke)` | Green check silhouette mesh; assign its material explicitly. |
 | `label(text,x,y,z,cell_size)` | Extruded 5×7 ASCII uppercase letters and spaces, suitable for flat title plates. |
-| `import_obj/stl/ply/gltf(path)` | Import mesh from a regular file; formats and size limits are validated. |
+| `import_obj/stl/ply/gltf(path)` | Import mesh from a regular file; formats and size limits are validated. OBJ also loads confined `.mtl` libraries with per-face `usemtl`, corner UVs/normals, `Kd`/`Ks`/`Ns`/`d`/`Tr`/`Ke`, and PNG/JPEG/EXR color/bump/opacity maps; `Mesh.material_count()` counts used slots. |
 | `mesh.translate(x,y,z)`, `scale(x,y,z)`, `rotate_x(degrees)` | Relative translation/scale and baked X-axis rotation. |
 | `material(r,g,b,metallic,roughness,transmission,emission_r,g,b,emission_strength)` | Principled BSDF factors; color [0,1], emission strength [0,10000]. |
 | `checker_material(c1 RGB,c2 RGB,scale,roughness)`, `noise_material(...)`, `ramp_material(...)` | Two RGB colors, procedural scale, roughness. Ramp uses Generated coordinates and Noise → RGB Ramp. |
@@ -167,7 +168,7 @@ The host prints one JSON line with `ok`, `code`, and a human-readable `message` 
 
 - `LOAD_BAD_BYTECODE`, `LOAD_SCHEMA_MISMATCH`, `LOAD_UNBOUND`: recompile the `.lms` against the current schema (exit 3, phase `load`).
 - `RUN_HOST`: a host validation failure (range, non-finite value, missing file, wrong extension, unsupported combination); the message names the method and the accepted bounds. `RUN_ERROR` is a VM fault such as division by zero.
-- `GEOMETRY_BUDGET`, `IMAGE_LIMIT`, `IMAGE_INVALID`, `GLTF_INVALID`/`GLTF_LIMIT`/`GLTF_UNSUPPORTED`, `PRESET_INVALID`/`PRESET_NOT_FOUND`/`PRESET_UNSUPPORTED`, `OUTPUT_PATH`: structured resource or input problems; fix the input rather than retrying.
+- `GEOMETRY_BUDGET`, `IMAGE_LIMIT`, `IMAGE_INVALID`, `OBJ_INVALID`/`OBJ_LIMIT`, `OBJ_MTL_INVALID`/`OBJ_MTL_LIMIT`/`OBJ_MTL_UNSUPPORTED`, `GLTF_INVALID`/`GLTF_LIMIT`/`GLTF_UNSUPPORTED`, `PRESET_INVALID`/`PRESET_NOT_FOUND`/`PRESET_UNSUPPORTED`, `OUTPUT_PATH`: structured resource or input problems; fix the input rather than retrying.
 - `RENDER_TIMEOUT`: one render exceeded `render_timeout(seconds)` (1..3600); lower samples or resolution, or raise the timeout.
 - `RUN_TIMEOUT`, `RUN_BUDGET`: the whole program exceeded its wall-clock or VM-instruction budget (see limits above); a running render is cancelled first, a pure loop is terminated after a five-second grace period.
 

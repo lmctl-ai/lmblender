@@ -65,6 +65,9 @@ struct Mesh {
   std::vector<std::array<double, 3>> vertices;
   std::vector<std::array<uint32_t, 3>> triangles;
   std::vector<std::array<float, 2>> uvs;
+  std::vector<std::array<float, 3>> corner_normals;
+  std::vector<struct Material *> material_slots;
+  std::vector<uint16_t> triangle_materials;
   struct Material *material = nullptr;
   Mesh *geometry_source = nullptr;
   std::array<float, 3> translation{0.0f, 0.0f, 0.0f};
@@ -83,6 +86,9 @@ struct Material {
   std::array<float, 3> emission{0.0f, 0.0f, 0.0f};
   float metallic = 0.0f;
   float roughness = 0.5f;
+  float alpha = 1.0f;
+  float specular_level = 0.5f;
+  std::array<float, 3> specular_tint{1.0f, 1.0f, 1.0f};
   float transmission = 0.0f;
   float subsurface = 0.0f;
   std::array<float, 3> subsurface_radius{1.0f, 0.2f, 0.1f};
@@ -98,6 +104,8 @@ struct Material {
   float texture_scale = 5.0f;
   std::string image_path;
   std::string normal_map_path, roughness_map_path, metallic_map_path, ao_map_path;
+  std::string bump_map_path, alpha_map_path;
+  float bump_map_strength = 1.0f;
   bool image_factor_enabled = false;
   bool backface_culling = false;
   Material *mix_material = nullptr;
@@ -521,6 +529,7 @@ bool sample_visibility(const std::vector<Mesh::VisibilityKey> &keys, int frame, 
 template<typename Key> float sample_scalar_keys(const std::vector<Key> &keys, double frame, float base);
 
 #include "gltf_import.hpp"
+#include "obj_import.hpp"
 
 const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &view_lut(const std::string &name)
 {
@@ -932,6 +941,9 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     principled->set_base_color(ccl::make_float3(material.color[0], material.color[1], material.color[2]));
     principled->set_metallic(material.metallic);
     principled->set_roughness(material.roughness);
+    principled->set_alpha(material.alpha);
+    principled->set_specular_ior_level(material.specular_level);
+    principled->set_specular_tint(ccl::make_float3(material.specular_tint[0], material.specular_tint[1], material.specular_tint[2]));
     principled->set_transmission_weight(material.transmission);
     principled->set_subsurface_weight(material.subsurface);
     principled->set_subsurface_radius(ccl::make_float3(material.subsurface_radius[0], material.subsurface_radius[1], material.subsurface_radius[2]));
@@ -1010,6 +1022,14 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       base_color_source = multiply->output("Result");
     }
     if (base_color_source) graph->connect(base_color_source, principled->input("Base Color"));
+    if (!material.alpha_map_path.empty()) {
+      ccl::ImageTextureNode *map = data_texture(material.alpha_map_path);
+      ccl::MathNode *multiply = graph->create_node<ccl::MathNode>();
+      multiply->set_math_type(ccl::NODE_MATH_MULTIPLY);
+      multiply->set_value2(material.alpha);
+      graph->connect(map->output("Color"), multiply->input("Value1"));
+      graph->connect(multiply->output("Value"), principled->input("Alpha"));
+    }
     if (!material.normal_map_path.empty()) {
       ccl::ImageTextureNode *map = data_texture(material.normal_map_path);
       ccl::NormalMapNode *normal = graph->create_node<ccl::NormalMapNode>();
@@ -1023,6 +1043,14 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       graph->connect(coordinates->output("Generated"),height->input("Vector"));
       ccl::BumpNode *bump=graph->create_node<ccl::BumpNode>();bump->set_strength(material.bump_strength);bump->set_distance(material.bump_distance);
       graph->connect(height->output("Fac"),bump->input("Height"));graph->connect(bump->output("Normal"),principled->input("Normal"));
+    }
+    if (!material.bump_map_path.empty()) {
+      ccl::ImageTextureNode *height = data_texture(material.bump_map_path);
+      ccl::BumpNode *bump = graph->create_node<ccl::BumpNode>();
+      bump->set_strength(material.bump_map_strength);
+      bump->set_distance(0.1f);
+      graph->connect(height->output("Color"), bump->input("Height"));
+      graph->connect(bump->output("Normal"), principled->input("Normal"));
     }
     if (material.volume_only) {
       ccl::TransparentBsdfNode *transparent = graph->create_node<ccl::TransparentBsdfNode>();
@@ -1129,7 +1157,11 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     if (!source_mesh->visible) continue;
     const Mesh *mesh_data = source_mesh->geometry_source ? source_mesh->geometry_source : source_mesh.get();
     const Material *material = source_mesh->material ? source_mesh->material : mesh_data->material;
-    const bool object_transform = !(material && material->texture_kind == 3);
+    const bool needs_generated_uv = mesh_data->uvs.empty() &&
+        ((material && material->texture_kind == 3) ||
+         (!material && std::any_of(mesh_data->material_slots.begin(), mesh_data->material_slots.end(),
+                                   [](const Material *slot) { return slot && slot->texture_kind == 3; })));
+    const bool object_transform = !needs_generated_uv;
     const auto key = std::make_tuple(mesh_data, material, source_mesh->smooth);
     ccl::Mesh *mesh = nullptr;
     if (object_transform) {
@@ -1137,9 +1169,13 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       if (cached != geometry_cache.end()) mesh = cached->second;
     }
     if (mesh == nullptr) {
-      ccl::Shader *surface = material ? make_principled_shader(*material) : default_surface;
       ccl::array<ccl::Node *> used_shaders;
-      used_shaders.push_back_slow(surface);
+      if (material || mesh_data->material_slots.empty()) {
+        used_shaders.push_back_slow(material ? make_principled_shader(*material) : default_surface);
+      } else {
+        for (const Material *slot : mesh_data->material_slots)
+          used_shaders.push_back_slow(slot ? make_principled_shader(*slot) : default_surface);
+      }
       mesh = scene->create_node<ccl::Mesh>();
       mesh->resize_mesh(int(mesh_data->vertices.size()), int(mesh_data->triangles.size()));
       ccl::packed_float3 *positions = mesh->get_position_for_write();
@@ -1154,8 +1190,24 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       for (size_t i = 0; i < mesh_data->triangles.size(); ++i)
         for (size_t j = 0; j < 3; ++j) tris[i * 3 + j] = int(mesh_data->triangles[i][j]);
       std::fill(mesh->get_shader().begin(), mesh->get_shader().end(), 0);
-      std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), source_mesh->smooth);
+      if (!material && !mesh_data->triangle_materials.empty()) {
+        if (mesh_data->triangle_materials.size() != mesh_data->triangles.size())
+          throw dslvm::Error("OBJ triangle material count does not match triangle count");
+        for (size_t i = 0; i < mesh_data->triangle_materials.size(); ++i)
+          mesh->get_shader()[i] = int(mesh_data->triangle_materials[i]);
+      }
+      std::fill(mesh->get_smooth().begin(), mesh->get_smooth().end(), source_mesh->smooth || !mesh_data->corner_normals.empty());
       mesh->set_used_shaders(used_shaders);
+      if (!mesh_data->corner_normals.empty()) {
+        if (mesh_data->corner_normals.size() != mesh_data->triangles.size() * 3)
+          throw dslvm::Error("OBJ corner normal count does not match triangle count");
+        ccl::Attribute *normal_attr = mesh->attributes.add(ccl::ATTR_STD_CORNER_NORMAL);
+        ccl::packed_normal *normal = normal_attr->data_for_write<ccl::packed_normal>();
+        for (size_t i = 0; i < mesh_data->corner_normals.size(); ++i) {
+          const auto &n = mesh_data->corner_normals[i];
+          normal[i] = ccl::packed_normal(ccl::make_float3(n[0], n[1], n[2]));
+        }
+      }
       if (!mesh_data->uvs.empty()) {
         ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
         ccl::float2 *uv = uv_attr->data_for_write<ccl::float2>();
@@ -1164,7 +1216,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
         for (size_t i = 0; i < mesh_data->uvs.size(); ++i)
           uv[i] = ccl::make_float2(mesh_data->uvs[i][0], mesh_data->uvs[i][1]);
       }
-      if (!object_transform) {
+      if (!object_transform && mesh_data->uvs.empty()) {
         /* Build a cube-style per-corner projection. A vertex generated-coordinate
          * attribute collapses one UV axis on each side face, smearing 2D images. */
         ccl::Attribute *uv_attr = mesh->attributes.add(ccl::ATTR_STD_UV);
@@ -1715,49 +1767,6 @@ void write_apng_from_pngs(const std::string &output,const std::vector<std::strin
   clear_temporary(tmp);
   {std::ofstream file(tmp,std::ios::binary|std::ios::trunc);if(!file||!file.write(reinterpret_cast<const char*>(out.data()),std::streamsize(out.size())))throw dslvm::Error("could not write staged APNG");}
   std::filesystem::rename(tmp,output,ec);if(ec){std::filesystem::remove(tmp);throw dslvm::Error("could not atomically publish APNG");}
-}
-
-Mesh read_obj(const std::string &path) {
-  std::error_code ec;
-  if (!std::filesystem::is_regular_file(path, ec) || ec) throw dslvm::Error("OBJ input must be a readable regular file");
-  const auto size = std::filesystem::file_size(path, ec);
-  if (ec || size > 256u * 1024u * 1024u) throw dslvm::Error("OBJ input exceeds the 256 MiB limit or cannot be read");
-  std::ifstream in(path);
-  if (!in) throw dslvm::Error("could not open OBJ input");
-  Mesh mesh;
-  std::string line;
-  while (std::getline(in, line)) {
-    std::istringstream row(line);
-    std::string kind;
-    row >> kind;
-    if (kind == "v") {
-      std::array<double, 3> p{};
-      if (!(row >> p[0] >> p[1] >> p[2]) || !std::isfinite(p[0]) || !std::isfinite(p[1]) || !std::isfinite(p[2]))
-        throw dslvm::Error("OBJ contains an invalid vertex");
-      mesh.vertices.push_back(p);
-      if (mesh.vertices.size() > 10'000'000) throw dslvm::Error("OBJ vertex budget exceeded");
-    } else if (kind == "f") {
-      std::vector<uint32_t> face;
-      std::string token;
-      while (row >> token) {
-        const auto slash = token.find('/');
-        const std::string index_text = token.substr(0, slash);
-        if (index_text.empty()) throw dslvm::Error("OBJ face has no vertex index");
-        long long index;
-        try { index = std::stoll(index_text); } catch (...) { throw dslvm::Error("OBJ face has an invalid vertex index"); }
-        if (index < 0) index = static_cast<long long>(mesh.vertices.size()) + index;
-        else --index;
-        if (index < 0 || static_cast<size_t>(index) >= mesh.vertices.size()) throw dslvm::Error("OBJ face index is out of range");
-        face.push_back(static_cast<uint32_t>(index));
-      }
-      if (face.size() < 3) throw dslvm::Error("OBJ face must have at least three vertices");
-      for (size_t i = 1; i + 1 < face.size(); ++i) mesh.triangles.push_back({face[0], face[i], face[i + 1]});
-      if (mesh.triangles.size() > 20'000'000) throw dslvm::Error("OBJ triangle budget exceeded");
-    }
-  }
-  if (!in.eof()) throw dslvm::Error("error reading OBJ input");
-  if (mesh.vertices.empty() || mesh.triangles.empty()) throw dslvm::Error("OBJ contains no triangle mesh");
-  return mesh;
 }
 
 Mesh read_ply_ascii(const std::string &path) {
@@ -2566,7 +2575,7 @@ dslvm::Registry make_registry() {
     auto *scene = static_cast<Scene *>(p);
     if (args[0].s.empty()) throw dslvm::Error("mesh input path must not be empty");
     if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
-    auto mesh = std::make_unique<Mesh>(stl ? read_stl(args[0].s) : read_obj(args[0].s));
+    auto mesh = stl ? std::make_unique<Mesh>(read_stl(args[0].s)) : obj_import::read(*scene, args[0].s);
     Mesh *result = mesh.get();
     adopt_mesh(*scene, std::move(mesh));
     return dslvm::Value::object("Mesh", result);
@@ -2790,6 +2799,11 @@ dslvm::Registry make_registry() {
       return dslvm::Value::integer(static_cast<int64_t>(std::string(field) == "vertex_count" ? mesh->vertices.size() : mesh->triangles.size()));
     });
   }
+  registry.method("Mesh", "material_count", {}, "int", [](void *p, dslvm::Args &) {
+    const auto *mesh = static_cast<const Mesh *>(p);
+    const auto *data = mesh->geometry_source ? mesh->geometry_source : mesh;
+    return dslvm::Value::integer(int64_t(data->material_slots.size()));
+  });
   for (const char *field : {"min_x", "min_y", "min_z", "max_x", "max_y", "max_z"}) {
     registry.method("Mesh", field, {}, "float", [field](void *p, dslvm::Args &) {
       auto *mesh = static_cast<Mesh *>(p);
