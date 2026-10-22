@@ -26,7 +26,7 @@
 #include <cctype>
 #include <chrono>
 #include <set>
-#include <unistd.h>
+#include "platform.hpp"
 #include <nlohmann/json.hpp>
 
 #include "device/device.h"
@@ -637,7 +637,7 @@ class PassOutputDriver final : public ccl::OutputDriver {
                   ordered.data() + size_t(y) * width * channels);
     const std::string final_exr = prefix_ + "-" + name + ".exr";
     const std::string final_png = prefix_ + "-" + name + ".png";
-    const std::string suffix = ".tmp-" + std::to_string(getpid());
+    const std::string suffix = ".tmp-" + std::to_string(lmblender::platform::process_id());
     const std::string temp_exr = prefix_ + "-" + name + suffix + ".exr";
     const std::string temp_png = prefix_ + "-" + name + suffix + ".png";
     outputs_.push_back({temp_exr, final_exr});
@@ -823,7 +823,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
     xml << "\"/></state>\n";
   }
   xml << "</cycles>\n";
-  const auto scene_path = output + ".tmp-" + std::to_string(getpid()) + ".xml";
+  const auto scene_path = output + ".tmp-" + std::to_string(lmblender::platform::process_id()) + ".xml";
   clear_temporary(scene_path);
   {
     std::ofstream xml_file(scene_path, std::ios::binary | std::ios::trunc);
@@ -837,7 +837,7 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
 
-  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + extension;
+  const auto tmp = output + ".tmp-" + std::to_string(lmblender::platform::process_id()) + extension;
   clear_temporary(tmp);
   if (extension == ".png")
     session->set_output_driver(ccl::make_unique<ViewTransformOutputDriver>(tmp, source.view_transform));
@@ -1394,7 +1394,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
 
   if (scene->passes.empty()) throw dslvm::Error("Cycles did not initialize its combined render pass");
   scene->passes[0]->set_name(ccl::ustring("combined"));
-  const auto tmp = output + ".tmp-" + std::to_string(getpid()) + (emit_passes ? ".png" : extension);
+  const auto tmp = output + ".tmp-" + std::to_string(lmblender::platform::process_id()) + (emit_passes ? ".png" : extension);
   clear_temporary(tmp);
   PassOutputDriver *pass_driver = nullptr;
   ViewTransformOutputDriver *png_driver = nullptr;
@@ -1464,7 +1464,7 @@ void render_image(const Scene &source, const std::string &output, int samples, i
     std::vector<float> old_light_strengths; for (const auto &light : scene.point_lights) old_light_strengths.push_back(light.strength);
     const float old_fov = scene.camera.fov_radians, old_ortho = scene.camera.ortho_scale;
     std::vector<std::string> temporaries;
-    const std::string staged = output + ".motion-" + std::to_string(getpid()) + ".png";
+    const std::string staged = output + ".motion-" + std::to_string(lmblender::platform::process_id()) + ".png";
     clear_temporary(staged);
     try {
       scene.motion_blur = false;
@@ -1496,7 +1496,7 @@ void render_image(const Scene &source, const std::string &output, int samples, i
           scene.camera.position={camera[0],camera[1],camera[2]};
           scene.camera.target={camera[3],camera[4],camera[5]};
         }
-        const std::string temp = output + ".shutter-" + std::to_string(getpid()) + "-" + std::to_string(i) + ".png";
+        const std::string temp = output + ".shutter-" + std::to_string(lmblender::platform::process_id()) + "-" + std::to_string(i) + ".png";
         temporaries.push_back(temp);
         clear_temporary(temp);
         scene.render_frame = old_frame;
@@ -1711,7 +1711,7 @@ void write_apng_from_pngs(const std::string &output,const std::vector<std::strin
   png_chunk(out,"IEND",{});
   std::error_code ec;
   check_output_path(output, "APNG output");
-  std::string tmp=output+".tmp."+std::to_string(::getpid());
+  std::string tmp=output+".tmp."+std::to_string(lmblender::platform::process_id());
   clear_temporary(tmp);
   {std::ofstream file(tmp,std::ios::binary|std::ios::trunc);if(!file||!file.write(reinterpret_cast<const char*>(out.data()),std::streamsize(out.size())))throw dslvm::Error("could not write staged APNG");}
   std::filesystem::rename(tmp,output,ec);if(ec){std::filesystem::remove(tmp);throw dslvm::Error("could not atomically publish APNG");}
@@ -2760,7 +2760,7 @@ dslvm::Registry make_registry() {
     const AnimationBase base = capture_animation(*scene);
     const int old_timeout=scene->render_timeout_seconds;
     const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(old_timeout);
-    std::string tmpdir="/tmp/lmblender-apng-XXXXXX";std::vector<char> tmpbuf(tmpdir.begin(),tmpdir.end());tmpbuf.push_back('\0');char *made=::mkdtemp(tmpbuf.data());if(!made)throw dslvm::Error("could not create APNG staging directory");
+    std::string made_dir;try{made_dir=lmblender::platform::make_temp_dir("lmblender-apng").string();}catch(const std::exception &){throw dslvm::Error("could not create APNG staging directory");}const char *made=made_dir.c_str();
     std::vector<std::string> frames;
     try{for(int frame=int(a[1].i);frame<=int(a[2].i);++frame){const auto remaining=std::chrono::duration_cast<std::chrono::seconds>(deadline-std::chrono::steady_clock::now()).count();if(remaining<1)throw dslvm::Error("RENDER_TIMEOUT","render_apng exceeded its total "+std::to_string(old_timeout)+" second time budget before frame "+std::to_string(frame));scene->render_timeout_seconds=int(remaining);apply_animation(*scene,frame,base);std::string path=std::string(made)+"/frame-"+std::to_string(frame)+".png";render_image(*scene,path,int(a[3].i),int(a[4].i),int(a[5].i));frames.push_back(path);}write_apng_from_pngs(a[0].s,frames,int(a[6].i));}
     catch(...){scene->render_timeout_seconds=old_timeout;restore_animation(*scene,base);std::error_code ec;std::filesystem::remove_all(made,ec);throw;}
