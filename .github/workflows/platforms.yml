@@ -195,3 +195,109 @@ jobs:
           name: lmblender-${{ matrix.arch }}
           path: dist/
           if-no-files-found: error
+
+  windows:
+    runs-on: windows-2022
+    continue-on-error: true
+    timeout-minutes: 330
+    env:
+      CC: cl
+      CXX: cl
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+      BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
+      LMBLENDER_DEPS_ROOT: ${{ github.workspace }}/build/portable-deps
+      LMBLENDER_PREFIX: ${{ github.workspace }}/build/portable-deps/prefix
+      LMBLENDER_CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+      - name: toolchain
+        id: toolchain
+        run: |
+          command -v ninja >/dev/null 2>&1 || choco install -y ninja
+          # Git Bash ships no python3; give the shared scripts and test.sh one.
+          mkdir -p "$HOME/bin"
+          printf '#!/bin/sh\nexec python "$@"\n' > "$HOME/bin/python3"
+          chmod +x "$HOME/bin/python3"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          cl 2>&1 | head -1
+          echo "msvc=$(cl 2>&1 | head -1 | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' | head -1)" >> "$GITHUB_OUTPUT"
+          echo "jobs=$NUMBER_OF_PROCESSORS" >> "$GITHUB_OUTPUT"
+          cmake --version | head -1
+          which link
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install pinned DSL v5 compiler
+        run: npm install --global @lmctl-ai/lmctl@0.2.373
+      - name: fetch pinned upstream Blender source (sparse)
+        run: scripts/fetch-cycles-source.sh
+      - name: restore portable static prefix and Cycles
+        id: prefix-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/portable-deps/prefix
+            build/cycles-static
+          key: lmblender-portable-${{ env.PREFIX_CACHE_VERSION }}-windows-x64-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh', 'scripts/configure-cycles-portable.sh', 'patches/*.patch') }}
+      - name: build portable static dependencies (cold cache only)
+        id: build-deps
+        if: steps.prefix-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: scripts/build-deps-portable.sh
+      - name: build static Cycles with the standalone build system (cold cache only)
+        id: build-cycles
+        if: steps.prefix-cache.outputs.cache-hit != 'true'
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: |
+          scripts/configure-cycles-portable.sh
+          scripts/check-static.sh build/cycles-static/bin/cycles.exe || true
+      - name: save portable static prefix and Cycles even if later checks fail
+        if: always() && steps.build-cycles.outcome == 'success'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/portable-deps/prefix
+            build/cycles-static
+          key: ${{ steps.prefix-cache.outputs.cache-primary-key }}
+      - name: build lmblender
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+        run: |
+          native() { cygpath -m "$1"; }
+          cmake -S . -B build/host -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBLENDER_SOURCE_TREE="$(native "$BLENDER_SOURCE_TREE")" \
+            -DCYCLES_BUILD_DIR="$(native "$LMBLENDER_CYCLES_BUILD_DIR")" \
+            -DLMBLENDER_STATIC_PREFIX="$(native "$LMBLENDER_PREFIX")"
+          cmake --build build/host --parallel "$BUILD_JOBS"
+          cp build/host/lmblender.exe build/lmblender.exe
+          build/lmblender.exe --version
+      - name: assert only OS DLLs are imported
+        run: scripts/check-static.sh build/lmblender.exe | tee build/lmblender.ldd
+      - name: render smoke test
+        run: |
+          mkdir -p build
+          PATH="$PWD/build:$PATH" lmscript examples/render-settings.lms build/render-settings.dslb
+          ls -l build/render-settings.png
+          python3 tests/png_metrics.py build/render-settings.png
+      - name: stage release assets
+        env:
+          LMBLENDER_ARCH: x64
+          LMBLENDER_HOST_RELEASE: ${{ github.workspace }}/build/host-release
+        run: |
+          RELEASE_VERSION=$(cat VERSION)
+          export RELEASE_VERSION
+          scripts/release.sh
+          cp build/lmblender.ldd dist/
+          (cd dist && sha256sum lmblender-windows-x64* > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lmblender-windows-x64
+          path: dist/
+          if-no-files-found: error

@@ -22,7 +22,11 @@ for bin in "$@"; do
       [[ -z "$bad" ]] || { echo "error: $bin links non-system libraries:" >&2; echo "$bad" >&2; status=1; }
       ;;
     MINGW*|MSYS*|CYGWIN*)
-      deps=$(objdump -p "$bin" | awk '/DLL Name:/ {print toupper($3)}')
+      if command -v dumpbin >/dev/null 2>&1; then
+        deps=$(dumpbin -nologo -dependents "$(cygpath -w "$bin")" | tr -d '\r' | awk 'tolower($1) ~ /\.dll$/ {print toupper($1)}')
+      else
+        deps=$(objdump -p "$bin" | awk '/DLL Name:/ {print toupper($3)}')
+      fi
       printf '%s imports:\n%s\n' "$bin" "$deps"
       bad=$(grep -vE '^(KERNEL32|KERNELBASE|ADVAPI32|USER32|GDI32|SHELL32|OLE32|OLEAUT32|WS2_32|BCRYPT|CRYPT32|SHLWAPI|VERSION|DBGHELP|PSAPI|WINMM|NTDLL|RPCRT4|SECUR32|IPHLPAPI|API-MS-WIN-[A-Z0-9-]+)\.DLL$' <<<"$deps" || true)
       [[ -z "$bad" ]] || { echo "error: $bin imports non-OS DLLs:" >&2; echo "$bad" >&2; status=1; }
