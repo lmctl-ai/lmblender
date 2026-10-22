@@ -43,13 +43,14 @@ print(f'Gallery image dimensions: {len(images)} images >=640x480')
 PY
 
 qa_dir="$build/full-check-qa"
+qa_model=${LMBLENDER_QA_MODEL:-gemini-3.8-flash-high}
 mkdir -p "$qa_dir"
 : > "$qa_dir/results.txt"
 qa_image() {
   local name=$1 image=$2 checks=$3
   local path="$build/$image"
   local response
-  response=$(lmctl prompt /home/ubuntu/lmblender.lmctl QA \
+  response=$(lmctl prompt --provider agy --model "$qa_model" \
     "Inspect the local image $path directly. Checklist for $name: $checks Reply PASS only if every numbered item is visibly true; otherwise reply FAIL followed by failed item numbers and a short reason. Give a quality score from 1 to 5.")
   printf '%s\n' "$response" | tee "$qa_dir/$name.txt" | tail -n 2
   printf '%s\n' "$response" | grep -q '^PASS ' || {
@@ -95,7 +96,7 @@ fi
   # shellcheck disable=SC2016
   printf 'Source revision tested: `%s`\n\n' "$tested_revision"
   # shellcheck disable=SC2016
-  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 18 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/gemini-4-argon-medium`: PASS on all 22 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles"
+  printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 18 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/%s`: PASS on all 22 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles" "$qa_model"
   while IFS= read -r line; do printf -- '- %s\n' "$line"; done < "$qa_dir/results.txt"
 } > docs/STATUS.md
 cat docs/STATUS.md
