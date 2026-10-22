@@ -53,7 +53,7 @@ if(EXISTS "${CYCLES_BUILD_DIR}/CMakeCache.txt")
   endif()
 endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
-  "#pragma once\n#include <cstring>\n#include <memory>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
+  "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
 if(MSVC)
@@ -65,7 +65,8 @@ target_compile_definitions(lmblender PRIVATE LMBLENDER_VERSION="${PROJECT_VERSIO
 if(EXISTS "${CYCLES_BUILD_DIR}/lmblender-portable-cycles.txt")
   # Cycles built by scripts/configure-cycles-portable.sh (standalone Cycles
   # build system) against scripts/build-deps-portable.sh; used for Windows.
-  set(CYCLES_SOURCE "${BLENDER_SOURCE_TREE}/intern/cycles")
+  # Use the same patched headers and app sources as the standalone archives.
+  set(CYCLES_SOURCE "${CYCLES_BUILD_DIR}-source/overlay/src")
   target_sources(lmblender PRIVATE "${CYCLES_SOURCE}/app/oiio_output_driver.cpp" "${CYCLES_SOURCE}/app/cycles_xml.cpp")
   target_include_directories(lmblender PRIVATE "${CYCLES_SOURCE}" "${BLENDER_SOURCE_TREE}/intern/atomic"
     "${LMBLENDER_STATIC_PREFIX}/include" "${LMBLENDER_STATIC_PREFIX}/include/OpenEXR" "${LMBLENDER_STATIC_PREFIX}/include/Imath")

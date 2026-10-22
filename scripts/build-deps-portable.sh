@@ -98,6 +98,16 @@ build_one expat "$src/expat/expat" -DEXPAT_BUILD_DOCS=OFF -DEXPAT_BUILD_EXAMPLES
 build_one yamlcpp "$src/yamlcpp" -DYAML_CPP_BUILD_TESTS=OFF -DYAML_CPP_BUILD_TOOLS=OFF \
   -DYAML_CPP_BUILD_CONTRIB=OFF -DYAML_MSVC_SHARED_RT=OFF -DYAML_BUILD_SHARED_LIBS=OFF
 cp "$source_tree/build_files/build_environment/patches/cmakelists_pystring.txt" "$src/pystring/CMakeLists.txt"
+# The pinned wrapper puts project() before cmake_minimum_required(), which
+# initializes MSVC's runtime before CMP0091 can select the static runtime.
+"$py" - "$(native "$src/pystring/CMakeLists.txt")" <<'PYPOLICY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text().replace("project(pystring)", "").replace("cmake_minimum_required(VERSION 3.10)",
+    "cmake_minimum_required(VERSION 3.15)\nproject(pystring)")
+path.write_text(text)
+PYPOLICY
 build_one pystring "$src/pystring"
 build_one minizipng "$src/minizipng" "${zlib_args[@]}" -DMZ_FETCH_LIBS=OFF -DMZ_LIBCOMP=OFF \
   -DMZ_PKCRYPT=OFF -DMZ_WZAES=OFF -DMZ_OPENSSL=OFF -DMZ_SIGNING=OFF -DMZ_LZMA=OFF -DMZ_ZSTD=OFF \

@@ -51,3 +51,11 @@ Known facts:
   in-flight Embree-enabled cache build. There is one dependency-cache path.
 - First branch cold timing breakdown: OCIO about 3m02s, OIIO about 3m51s,
   OIDN about 1m11s. Archive fetch/extraction took about 38s.
+- Adopted main `09e6abd`'s direct expat/yaml-cpp/pystring/minizip-ng builds:
+  OCIO ExternalProjects did not inherit `/MT`. This supersedes copying their
+  archives from the OCIO build tree. The pystring wrapper must call
+  `cmake_minimum_required` before `project` to initialize CMP0091 correctly.
+- Adopted main's `cycles-msvc-guarded-allocator.patch`, which also gates the
+  MSVC container-proxy specialization on `_ITERATOR_DEBUG_LEVEL`. The portable
+  host now compiles against that same source overlay; full prefix caches include
+  the overlay. This supersedes the forced `<memory>` host-header workaround.

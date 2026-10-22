@@ -66,16 +66,13 @@ EOF
 
 # The standalone build system hard-codes /MD in configuration flags. Remove
 # those flags so CMP0091 and CMAKE_MSVC_RUNTIME_LIBRARY control the CRT.
-"$py" - "$(native "$overlay/src/cmake/configure_build.cmake")" "$(native "$overlay/src/util/guarded_allocator.h")" <<'PYCRT'
+"$py" - "$(native "$overlay/src/cmake/configure_build.cmake")" <<'PYCRT'
 from pathlib import Path
 import re, sys
 path = Path(sys.argv[1])
 text = re.sub(r" /MDd?\b", "", path.read_text())
 text += "\nif(MSVC)\n  add_compile_definitions(__TBB_NO_IMPLICIT_LINKAGE=1)\nendif()\n"
 path.write_text(text)
-# MSVC's allocator specialization needs <memory>, not just <new>.
-header = Path(sys.argv[2])
-header.write_text(header.read_text().replace("#include <new>", "#include <memory>\n#include <new>"))
 PYCRT
 
 P=$(native "$prefix")

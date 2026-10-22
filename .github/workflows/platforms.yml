@@ -259,6 +259,7 @@ jobs:
           path: |
             build/portable-deps/prefix
             build/cycles-static
+            build/cycles-static-source/overlay
           key: lmblender-portable-${{ env.PREFIX_CACHE_VERSION }}-windows-x64-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh', 'scripts/configure-cycles-portable.sh', 'patches/*.patch') }}
       - name: restore portable static dependencies
         id: windows-deps-cache
@@ -294,6 +295,7 @@ jobs:
           path: |
             build/portable-deps/prefix
             build/cycles-static
+            build/cycles-static-source/overlay
           key: ${{ steps.prefix-cache.outputs.cache-primary-key }}
       - name: build lmblender
         env:
