@@ -247,13 +247,13 @@ jobs:
           pattern: lmblender-linux-*
           path: dist
           merge-multiple: true
-      - name: attach binaries, archives, checksums, and notices to a draft release
+      - name: publish binaries, archives, checksums, and notices
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber dist/*
-            gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft
+            gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft=false --latest
           else
-            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "$GITHUB_REF_NAME" --generate-notes dist/*
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --latest dist/*
           fi
