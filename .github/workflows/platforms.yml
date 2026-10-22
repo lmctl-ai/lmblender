@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: platforms-${{ github.ref }}
-  # Let cold dependency builds finish so their prefix caches are saved.
-  cancel-in-progress: false
 
 defaults:
   run:
@@ -37,6 +33,11 @@ jobs:
             machine: x64
     runs-on: ${{ matrix.runner }}
     continue-on-error: true
+    # Per-job groups: let cold dependency builds finish so their prefix caches
+    # are saved, without making Windows wait behind macOS (and vice versa).
+    concurrency:
+      group: platforms-${{ matrix.arch }}-${{ github.ref }}
+      cancel-in-progress: false
     timeout-minutes: 330
     env:
       CC: clang
@@ -199,6 +200,9 @@ jobs:
   windows:
     runs-on: windows-2022
     continue-on-error: true
+    concurrency:
+      group: platforms-windows-x64-${{ github.ref }}
+      cancel-in-progress: false
     timeout-minutes: 330
     env:
       CC: cl
