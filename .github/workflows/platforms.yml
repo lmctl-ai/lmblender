@@ -71,12 +71,14 @@ jobs:
           # check_software.cmake on macOS: autoconf automake bison dos2unix flex
           # libtool meson ninja pkg-config yasm (+ Homebrew bison). GNU coreutils
           # keep the shared bash scripts and test.sh identical to Linux.
-          brew install autoconf automake bison dos2unix flex libtool meson ninja pkg-config yasm nasm coreutils gnu-sed
+          brew install autoconf automake bison dos2unix flex libtool meson ninja pkg-config yasm nasm coreutils gnu-sed gpatch
           brew_prefix=$(brew --prefix)
           echo "$brew_prefix/opt/bison/bin" >> "$GITHUB_PATH"
           echo "$brew_prefix/opt/flex/bin" >> "$GITHUB_PATH"
           echo "$brew_prefix/opt/coreutils/libexec/gnubin" >> "$GITHUB_PATH"
           echo "$brew_prefix/opt/gnu-sed/libexec/gnubin" >> "$GITHUB_PATH"
+          # BSD patch rejects hunks GNU patch applies; the overlay uses GNU patch.
+          echo "$brew_prefix/opt/gpatch/libexec/gnubin" >> "$GITHUB_PATH"
           echo "clang=$(clang -dumpversion)" >> "$GITHUB_OUTPUT"
           echo "jobs=$(sysctl -n hw.ncpu)" >> "$GITHUB_OUTPUT"
           clang --version | head -1

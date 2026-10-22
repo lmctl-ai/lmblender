@@ -83,15 +83,20 @@ build_one tbb "$src_root/tbb/src/external_tbb" "$build_root/tbb" \
 
 # Embree's traversal kernels use the native CPU ISA; ISPC support is only
 # needed by its example applications. Keep all CPU geometry types for Cycles.
-case "$(uname -m)" in
-  aarch64|arm64) embree_isa=NEON ;;
-  x86_64|amd64) embree_isa=AVX2 ;;
+embree_isa_args=()
+case "$(uname -s)-$(uname -m)" in
+  *-aarch64|*-arm64) embree_isa_args=(-DEMBREE_MAX_ISA=NEON) ;;
+  # AppleClang cannot build a static Embree with several ISAs; every Intel Mac
+  # supported by macOS 13 has SSE4.2, so build exactly that one.
+  Darwin-x86_64) embree_isa_args=(-DEMBREE_MAX_ISA=NONE -DEMBREE_ISA_SSE2=OFF -DEMBREE_ISA_SSE42=ON
+    -DEMBREE_ISA_AVX=OFF -DEMBREE_ISA_AVX2=OFF -DEMBREE_ISA_AVX512=OFF) ;;
+  *-x86_64|*-amd64) embree_isa_args=(-DEMBREE_MAX_ISA=AVX2) ;;
   *) echo "unsupported Embree CPU architecture: $(uname -m)" >&2; exit 1 ;;
 esac
 build_one embree "$src_root/embree/src/external_embree" "$build_root/embree" \
   -DEMBREE_STATIC_LIB=ON -DEMBREE_TUTORIALS=OFF -DEMBREE_ISPC_SUPPORT=OFF \
   -DEMBREE_SYCL_SUPPORT=OFF -DEMBREE_TASKING_SYSTEM=TBB \
-  -DEMBREE_MAX_ISA="$embree_isa" -DCMAKE_PREFIX_PATH="$prefix"
+  "${embree_isa_args[@]}" -DCMAKE_PREFIX_PATH="$prefix"
 
 build_one imath "$src_root/imath/src/external_imath" "$build_root/imath" \
   -DBUILD_TESTING=OFF -DPYTHON=OFF -DPYBIND11=OFF

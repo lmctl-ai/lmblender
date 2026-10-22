@@ -40,10 +40,13 @@ git -C "$standalone" checkout -q --detach FETCH_HEAD
 rm -rf "$overlay"; mkdir -p "$overlay/src" "$work/patched/intern"
 cp -R "$standalone/CMakeLists.txt" "$standalone/third_party" "$overlay/"
 cp -R "$standalone/src/CMakeLists.txt" "$standalone/src/cmake" "$overlay/src/"
-rm -rf "$work/patched/intern/cycles"; cp -R "$source_tree/intern/cycles" "$work/patched/intern/cycles"
-for p in "$repo"/patches/cycles-*.patch; do
-  patch --batch -p1 -d "$work/patched" -i "$p"
-done
+# Reuse the Linux overlay script so both build paths get identical patched
+# Cycles sources (patches/cycles-*.patch plus its scripted source edits). Give
+# it a minimal source root holding only intern/cycles.
+rm -rf "$work/patch-root" "$work/patched"; mkdir -p "$work/patch-root/intern"
+cp -R "$source_tree/intern/cycles" "$work/patch-root/intern/cycles"
+py=python3; command -v python3 >/dev/null 2>&1 || py=python
+"$py" "$repo/scripts/make-cycles-source-overlay.py" "$(native "$work/patch-root")" "$(native "$work/patched")"
 for d in "$work/patched/intern/cycles"/*; do
   name=$(basename "$d")
   case "$name" in cmake|CMakeLists.txt) continue ;; esac
