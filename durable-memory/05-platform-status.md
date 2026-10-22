@@ -59,3 +59,11 @@ Known facts:
   MSVC container-proxy specialization on `_ITERATOR_DEBUG_LEVEL`. The portable
   host now compiles against that same source overlay; full prefix caches include
   the overlay. This supersedes the forced `<memory>` host-header workaround.
+- Main Windows log https://github.com/lmctl-ai/lmblender/actions/runs/39823687761/job/119981239882
+  exposed OCIO discovery failures for expat/yaml-cpp/minizip-ng. OCIO's find
+  modules skip installed CONFIG packages when `*_ROOT` is defined. Let
+  `CMAKE_PREFIX_PATH` discover those packages, retain their static definitions
+  in the generated targets file, and build minizip with `MZ_COMPAT=OFF` and
+  the default include directory (the prior override nested include paths twice).
+- Stopped obsolete runs 39816999171 and 39818470239 after adopting the direct
+  OCIO dependency builds; their old helpers cannot satisfy the static CRT gate.

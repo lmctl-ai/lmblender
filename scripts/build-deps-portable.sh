@@ -111,17 +111,16 @@ PYPOLICY
 build_one pystring "$src/pystring"
 build_one minizipng "$src/minizipng" "${zlib_args[@]}" -DMZ_FETCH_LIBS=OFF -DMZ_LIBCOMP=OFF \
   -DMZ_PKCRYPT=OFF -DMZ_WZAES=OFF -DMZ_OPENSSL=OFF -DMZ_SIGNING=OFF -DMZ_LZMA=OFF -DMZ_ZSTD=OFF \
-  -DMZ_BZIP2=OFF -DMZ_ICONV=OFF -DMZ_ZLIB=ON -DMZ_COMPAT=OFF -DCMAKE_INSTALL_INCLUDEDIR=include/minizip-ng
+  -DMZ_BZIP2=OFF -DMZ_ICONV=OFF -DMZ_ZLIB=ON -DMZ_COMPAT=OFF -DMZ_BUILD_TESTS=OFF
 build_one opencolorio "$src/opencolorio" "${zlib_args[@]}" -DOCIO_BUILD_APPS=OFF -DOCIO_BUILD_TESTS=OFF \
   -DOCIO_BUILD_GPU_TESTS=OFF -DOCIO_BUILD_PYTHON=OFF -DOCIO_BUILD_OPENFX=OFF -DOCIO_BUILD_DOCS=OFF \
-  -DOCIO_INSTALL_EXT_PACKAGES=NONE -DImath_ROOT="$P" -DImath_DIR="$P/lib/cmake/Imath" -Dexpat_ROOT="$P" -Dyaml-cpp_ROOT="$P" \
-  -Dpystring_ROOT="$P" -Dminizip-ng_ROOT="$P" -Dpystring_INCLUDE_DIR="$P/include" \
+  -DOCIO_INSTALL_EXT_PACKAGES=NONE -DImath_ROOT="$P" -DImath_DIR="$P/lib/cmake/Imath"  \
+  -Dpystring_ROOT="$P" -Dpystring_INCLUDE_DIR="$P/include" \
   -Dpystring_LIBRARY="$(lib pystring)" -DOCIO_USE_SIMD=ON
 # OCIO's static package config needs its private dependencies (expat, pystring,
 # yaml-cpp, minizip-ng) as targets in every consuming project. Make the prefix
-# self-contained: copy their headers in and write a targets file that OIIO,
-# Cycles, and the host load via CMAKE_PROJECT_INCLUDE.
-ocio_ext="$prefix"
+# self-contained: load the installed CMake packages (including static compile
+# definitions), plus the two dependencies without complete package configs.
 find_archive() {
   local pattern=$1 f
   f=$(find "$prefix/lib" -maxdepth 1 -type f \( -name "*${pattern}*.a" -o -name "*${pattern}*.lib" \) 2>/dev/null | head -1)
@@ -138,11 +137,15 @@ ojph_installed=$(native "$prefix/lib/$(basename "$ojph_lib")")
 static_targets="$prefix/lib/cmake/lmblender-static-targets.cmake"
 mkdir -p "$(dirname "$static_targets")"
 cat > "$static_targets" <<EOF2
+find_package(expat CONFIG REQUIRED)
+if(NOT TARGET expat::expat AND TARGET expat::libexpat)
+  add_library(expat::expat ALIAS expat::libexpat)
+endif()
+find_package(yaml-cpp CONFIG REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(minizip-ng CONFIG REQUIRED)
 foreach(_spec IN ITEMS
-    "expat::expat|$(find_archive expat)|$P/include"
     "pystring::pystring|$(find_archive pystring)|$P/include"
-    "yaml-cpp::yaml-cpp|$(find_archive yaml-cpp)|$P/include"
-    "MINIZIP::minizip-ng|$(find_archive minizip)|$P/include"
     "openjph|$ojph_installed|$P/include")
   string(REPLACE "|" ";" _parts "\${_spec}")
   list(GET _parts 0 _target)
@@ -156,12 +159,9 @@ endforeach()
 set(pystring_ROOT "$P")
 set(pystring_INCLUDE_DIR "$P/include")
 set(pystring_LIBRARY "$(find_archive pystring)")
-set(expat_ROOT "$P")
 set(expat_STATIC_LIBRARY ON)
 set(expat_INCLUDE_DIR "$P/include")
 set(expat_LIBRARY "$(find_archive expat)")
-set(yaml-cpp_ROOT "$P")
-set(minizip-ng_ROOT "$P")
 EOF2
 E=$P
 build_one openimageio "$src/openimageio" "${zlib_args[@]}" -DOIIO_BUILD_TESTS=OFF -DOIIO_BUILD_TOOLS=OFF \
@@ -170,7 +170,7 @@ build_one openimageio "$src/openimageio" "${zlib_args[@]}" -DOIIO_BUILD_TESTS=OF
   -DUSE_PTEX=OFF -DUSE_DCMTK=OFF -DUSE_LIBHEIF=OFF -DUSE_JXL=OFF -DUSE_LIBUHDR=OFF -DUSE_QT=OFF \
   -DOpenImageIO_BUILD_MISSING_DEPS=none -DLINKSTATIC=ON -DOIIO_INSTALL_FONTS=OFF \
   -DOpenColorIO_ROOT="$P" -DTBB_ROOT="$P" -Dfmt_ROOT="$P" -DRobinmap_ROOT="$P" \
-  -Dexpat_ROOT="$E" -Dpystring_ROOT="$E" -Dyaml-cpp_ROOT="$E" -Dminizip-ng_ROOT="$E" \
+  -Dpystring_ROOT="$E" \
   -Dexpat_STATIC_LIBRARY=ON -Dexpat_LIBRARY="$(find_archive expat)" -Dexpat_INCLUDE_DIR="$E/include" \
   -Dpystring_LIBRARY="$(find_archive pystring)" -Dpystring_INCLUDE_DIR="$E/include" \
   -DCMAKE_PROJECT_INCLUDE="$(native "$static_targets")"
