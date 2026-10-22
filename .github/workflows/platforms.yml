@@ -45,6 +45,9 @@ jobs:
       LMBLENDER_CXX: clang++
       # std::to_chars(double) and the other C++17/20 library pieces need 13.3.
       MACOSX_DEPLOYMENT_TARGET: "13.3"
+      # Runner CMake is 4.x; several pinned dependencies still declare
+      # cmake_minimum_required(< 3.5), which CMake 4 rejects without this.
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
       BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
       BLENDER_DEPS_ENV_BUILD: ${{ github.workspace }}/build/blender-deps-environment
       BLENDER_DEPS_SOURCE_ROOT: ${{ github.workspace }}/build/blender-deps-environment/build
