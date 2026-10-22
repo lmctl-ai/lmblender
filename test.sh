@@ -25,6 +25,8 @@ cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STAT
   -DLMBLENDER_STATIC_PREFIX="${LMBLENDER_STATIC_PREFIX:-$build/static-prefix-gcc14}"
 cmake --build "$build" --parallel "${BUILD_JOBS:-2}"
 ./scripts/sync-sdk.sh --verify
+# Release assembly dry run: one SHA256SUMS over merged per-platform artifacts.
+bash tests/release_checksums_test.sh
 # The corresponding-source manifest must resolve every dependency pin of the
 # Blender tree this build uses (keeps SOURCES.json in step with the scripts).
 python3 scripts/source-manifest.py --blender "$blender_source" --check
