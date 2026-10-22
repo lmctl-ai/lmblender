@@ -138,4 +138,5 @@ Host build (test.sh) on macOS:
   host CMake skips it on Apple and lists only `libembree_sse42.a` on Intel macOS.
 - The host link failed with `ld: library 'Foundation' not found`: `separate_arguments()` splits the recorded
   `-framework Foundation` into two list items and target_link_libraries turns `Foundation` into `-lFoundation`.
-  The extras are passed through target_link_options instead (verbatim).
+  As plain link options CMake then de-duplicates the repeated `-framework` token; each pair is passed as a
+  `SHELL:-framework X` link option group.
