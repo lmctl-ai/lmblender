@@ -38,3 +38,10 @@ Known facts:
   host suppress TBB headers' implicit `tbb12.lib` linkage: our explicitly linked
   archive is `tbb.lib`, and the old FindTBB path does not propagate the modern
   imported target's static-link compile definitions.
+- First branch CI: https://github.com/lmctl-ai/lmblender/actions/runs/39816335988/job/119955746633
+  passed Zstd discovery and CMake generation. Cold dependencies took about
+  11m19s. Cycles then failed compiling `util/guarded_allocator.h`: missing
+  `std::_Container_proxy` and `std::allocator`. Add `<memory>` in the portable
+  overlay and the host's forced configuration header (the host includes the
+  pristine pinned source headers). The log also confirms `/MT` overrode the
+  earlier hard-coded `/MD`; removing `/MD` eliminates that conflicting flag.

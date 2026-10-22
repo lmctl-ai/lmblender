@@ -53,7 +53,7 @@ if(EXISTS "${CYCLES_BUILD_DIR}/CMakeCache.txt")
   endif()
 endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
-  "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
+  "#pragma once\n#include <cstring>\n#include <memory>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
 if(MSVC)
