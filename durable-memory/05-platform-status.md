@@ -78,3 +78,9 @@ Known facts:
   passed its OS-DLL import gate. Host compile failed because `/FI"path"` in
   CMake preserved literal quotes in the header filename. Use one quoted CMake
   argument `"/FI${path}"`; the next run reuses the Cycles cache.
+- Single-ISA Embree measured 16m53s. Cycles built in about 5m05s and imports
+  only `KERNEL32.DLL` and `ADVAPI32.DLL`.
+- Host retry https://github.com/lmctl-ai/lmblender/actions/runs/39832095729/job/120010582714
+  passed forced-include lookup; fmt requires `/utf-8`, and the watchdog's GCC
+  `__atomic_load_n` is unavailable on MSVC. Add `/utf-8` and use the pinned
+  Blender `atomic_load_uint64` portability helper without disabling the watchdog.

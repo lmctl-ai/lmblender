@@ -27,6 +27,7 @@
 #include <chrono>
 #include <set>
 #include "platform.hpp"
+#include "atomic_ops.h"
 #include <nlohmann/json.hpp>
 
 #include "device/device.h"
@@ -313,9 +314,9 @@ void run_with_budget(const dslvm::Program &program, const dslvm::Context &contex
     constexpr auto grace = std::chrono::seconds(5);
     while (!finished.load(std::memory_order_acquire)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      /* The VM increments this counter without atomics; a relaxed load of the aligned
+      /* The VM increments this counter without atomics; an atomic load of the aligned
        * 64-bit word is a best-effort monitor. The wall clock is the authoritative guard. */
-      const uint64_t executed = __atomic_load_n(&stats.instructions, __ATOMIC_RELAXED);
+      const uint64_t executed = atomic_load_uint64(&stats.instructions);
       if (budget.max_instructions && executed > budget.max_instructions) {
         budget.expired.store(true, std::memory_order_release);
         dslvm::report_error("run", dslvm::Error("RUN_BUDGET", "program exceeded LMBLENDER_MAX_INSTRUCTIONS=" +
