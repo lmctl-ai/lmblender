@@ -192,7 +192,45 @@ struct Scene {
   struct CameraOpticsKey { int frame; std::array<float,2> value; std::string interpolation; };
   std::vector<CameraOpticsKey> camera_optics_keys;
   int render_frame = 0;
+  /* Scene-wide totals of owned (non-instance) mesh data, enforced at creation time. */
+  size_t geometry_vertices = 0;
+  size_t geometry_triangles = 0;
 };
+
+/* Every mesh builder and importer already caps one mesh; these cap the whole scene so a
+ * program cannot accumulate unbounded geometry before (or without) rendering. The limits
+ * match the per-render Cycles budget checked again in render_direct. */
+constexpr size_t kSceneVertexBudget = 10'000'000;
+constexpr size_t kSceneTriangleBudget = 20'000'000;
+
+void reserve_geometry(Scene &scene, const size_t vertices, const size_t triangles)
+{
+  if (vertices > kSceneVertexBudget - scene.geometry_vertices || triangles > kSceneTriangleBudget - scene.geometry_triangles)
+    throw dslvm::Error("GEOMETRY_BUDGET", "scene geometry budget exceeded: adding " + std::to_string(vertices) + " vertices and " +
+                       std::to_string(triangles) + " triangles to " + std::to_string(scene.geometry_vertices) + "/" +
+                       std::to_string(scene.geometry_triangles) + " would pass the " + std::to_string(kSceneVertexBudget) + " vertex / " +
+                       std::to_string(kSceneTriangleBudget) + " triangle scene limit; use instance_mesh for copies or fewer/simpler meshes");
+  scene.geometry_vertices += vertices;
+  scene.geometry_triangles += triangles;
+}
+
+void recount_geometry(Scene &scene)
+{
+  scene.geometry_vertices = scene.geometry_triangles = 0;
+  for (const auto &mesh : scene.meshes) if (!mesh->geometry_source) {
+    scene.geometry_vertices += mesh->vertices.size();
+    scene.geometry_triangles += mesh->triangles.size();
+  }
+}
+
+/* The one place a mesh joins the scene: charges its geometry to the scene budget first. */
+Mesh *adopt_mesh(Scene &scene, std::unique_ptr<Mesh> mesh)
+{
+  if (!mesh->geometry_source) reserve_geometry(scene, mesh->vertices.size(), mesh->triangles.size());
+  Mesh *result = mesh.get();
+  scene.meshes.push_back(std::move(mesh));
+  return result;
+}
 
 
 using PresetJson = nlohmann::json;
@@ -274,6 +312,7 @@ void apply_preset(Scene &scene, const PresetJson &preset)
     scene.area_lights.erase(std::remove_if(scene.area_lights.begin(), scene.area_lights.end(), [](const auto &light) { return light.preset_generated; }), scene.area_lights.end());
     scene.preset_area_light_count = 0;
     scene.meshes.erase(std::remove_if(scene.meshes.begin(), scene.meshes.end(), [](const auto &mesh) { return mesh->preset_generated; }), scene.meshes.end());
+    recount_geometry(scene);
 
     std::array<float,3> center{0,0,0};
     std::array<double,3> lo{INFINITY,INFINITY,INFINITY}, hi{-INFINITY,-INFINITY,-INFINITY};
@@ -301,7 +340,7 @@ void apply_preset(Scene &scene, const PresetJson &preset)
       auto mesh = std::make_unique<Mesh>();
       mesh->vertices = {{{center[0]-side,center[1]-side,z},{center[0]+side,center[1]-side,z},{center[0]+side,center[1]+side,z},{center[0]-side,center[1]+side,z}}};
       mesh->triangles = {{{0,1,2},{0,2,3}}}; mesh->material=mat; mesh->ground_plane=true; mesh->preset_generated=true;
-      scene.meshes.push_back(std::move(mesh));
+      adopt_mesh(scene, std::move(mesh));
     }
     for (const auto &light_json : preset.at("lights")) {
       AreaLightData light;
@@ -1771,7 +1810,7 @@ dslvm::Registry make_registry() {
     std::array<double,3> lo{INFINITY,INFINITY,INFINITY},hi{-INFINITY,-INFINITY,-INFINITY};
     for(const auto &q:mesh->vertices)for(int k=0;k<3;++k){lo[k]=std::min(lo[k],q[k]);hi[k]=std::max(hi[k],q[k]);}
     for(const auto &t:mesh->triangles)for(int k=0;k<3;++k){const auto &q=mesh->vertices[t[k]];mesh->uvs.push_back({float((q[0]-lo[0])/std::max(hi[0]-lo[0],1e-9)),float((q[1]-lo[1])/std::max(hi[1]-lo[1],1e-9))});}
-    Mesh *result=mesh.get();scene->meshes.push_back(std::move(mesh));return dslvm::Value::object("Mesh",result);
+    Mesh *result=mesh.get();adopt_mesh(*scene, std::move(mesh));return dslvm::Value::object("Mesh",result);
   };
   registry.method("Scene","plane",{"float"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("plane size must be in (0,10000]");return primitive(p,"plane",&a[0].f,1,false);});
   registry.method("Scene","cube",{"float"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("cube size must be in (0,10000]");return primitive(p,"cube",&a[0].f,1,false);});
@@ -1794,7 +1833,7 @@ dslvm::Registry make_registry() {
     for(int i=1;i<=hemi;++i){double t=(M_PI*0.5)*i/hemi;profile.push_back({half+r*std::sin(t),r*std::cos(t)});}
     for(const auto &ring:profile)for(int x=0;x<seg;++x){double t=2*M_PI*x/seg;m->vertices.push_back({ring.second*std::cos(t),ring.second*std::sin(t),ring.first});}
     for(size_t y=0;y+1<profile.size();++y)for(int x=0;x<seg;++x){uint32_t a0=uint32_t(y*seg+x),b=uint32_t(y*seg+(x+1)%seg),c=uint32_t((y+1)*seg+(x+1)%seg),d=uint32_t((y+1)*seg+x);append_triangle(*m,a0,b,c);append_triangle(*m,a0,c,d);}
-    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+    Mesh *result=m.get();adopt_mesh(*scene, std::move(m));return dslvm::Value::object("Mesh",result);
   });
   auto path_mesh = [](void *p,dslvm::Args&a,bool arrow) {
     auto *scene=static_cast<Scene*>(p); if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");
@@ -1809,7 +1848,7 @@ dslvm::Registry make_registry() {
     for(int ring=0;ring<rings;++ring){double t=arrow?(ring==0?0.0:ring==1?(len-head_len)/len:1.0):(ring?1.0:0.0);double rr=arrow?(ring==2?0.0:ring==1?r*2.8:r):r;
       for(int s=0;s<sides;++s){double q=2*M_PI*s/sides;double cs=std::cos(q),sn=std::sin(q);m->vertices.push_back({x0+d[0]*len*t+rr*(u[0]*cs+v[0]*sn),y0+d[1]*len*t+rr*(u[1]*cs+v[1]*sn),z0+d[2]*len*t+rr*(u[2]*cs+v[2]*sn)});}}
     for(int ring=0;ring+1<rings;++ring)for(int s=0;s<sides;++s){uint32_t a0=ring*sides+s,b=ring*sides+(s+1)%sides,c=(ring+1)*sides+(s+1)%sides,e=(ring+1)*sides+s;append_triangle(*m,a0,b,c);append_triangle(*m,a0,c,e);}
-    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+    Mesh *result=m.get();adopt_mesh(*scene, std::move(m));return dslvm::Value::object("Mesh",result);
   };
   registry.method("Scene","tube_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,false);});
   registry.method("Scene","arrow_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,true);});
@@ -1820,13 +1859,13 @@ dslvm::Registry make_registry() {
     auto m=std::make_unique<Mesh>();m->smooth=true;
     for(int x=0;x<=seg;++x){double th=start+(end-start)*x/seg;for(int y=0;y<sides;++y){double ph=2*M_PI*y/sides,rr=R+r*std::cos(ph);m->vertices.push_back({a[0].f+rr*std::cos(th),a[1].f+rr*std::sin(th),a[2].f+r*std::sin(ph)});}}
     for(int x=0;x<seg;++x)for(int y=0;y<sides;++y){uint32_t q=x*sides+y,q1=x*sides+(y+1)%sides,q2=(x+1)*sides+(y+1)%sides,q3=(x+1)*sides+y;append_triangle(*m,q,q1,q2);append_triangle(*m,q,q2,q3);}
-    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+    Mesh *result=m.get();adopt_mesh(*scene, std::move(m));return dslvm::Value::object("Mesh",result);
   });
   registry.method("Scene","checkmark",{"float","float","float","float","float"},"Mesh",[](void*p,dslvm::Args&a){
     auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");for(const auto &v:a)if(!std::isfinite(v.f))throw dslvm::Error("check mark values must be finite");const double x=a[0].f,y=a[1].f,z=a[2].f,s=a[3].f,w=a[4].f;
     if(s<=0||s>10000||w<=0||w>s*0.4)throw dslvm::Error("check mark size must be positive and stroke width <=40% of size");
     auto m=std::make_unique<Mesh>();append_prism_segment(*m,{x-s*0.42,y+s*0.02,0},{x-s*0.12,y-s*0.28,0},w,s*0.12);append_prism_segment(*m,{x-s*0.12,y-s*0.28,0},{x+s*0.45,y+s*0.34,0},w,s*0.12);for(auto &vertex:m->vertices)vertex[2]+=z;
-    Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+    Mesh *result=m.get();adopt_mesh(*scene, std::move(m));return dslvm::Value::object("Mesh",result);
   });
   registry.method("Scene","label",{"string","float","float","float","float"},"Mesh",[](void*p,dslvm::Args&a){
     auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");if(a[0].s.empty()||a[0].s.size()>64)throw dslvm::Error("label text length must be 1..64 ASCII letters/spaces");
@@ -1834,7 +1873,7 @@ dslvm::Registry make_registry() {
     if(u<=0||u>1000||std::abs(x)>1e6||std::abs(y)>1e6||std::abs(z)>1e6)throw dslvm::Error("label size or position outside supported bounds");
     auto m=std::make_unique<Mesh>();const double thick=u*0.14,step=u/6.0;
     for(size_t ci=0;ci<a[0].s.size();++ci){auto rows=glyph_rows(a[0].s[ci]);for(int row=0;row<7;++row)for(int col=0;col<5;++col)if(rows[row]&(1u<<(4-col)))append_box(*m,{x+(ci*6+col)*step,y+(6-row)*step,z},{step*0.82,step*0.82,thick});}
-    if(m->vertices.size()>100000)throw dslvm::Error("label geometry exceeds 100,000 vertices");Mesh *result=m.get();scene->meshes.push_back(std::move(m));return dslvm::Value::object("Mesh",result);
+    if(m->vertices.size()>100000)throw dslvm::Error("label geometry exceeds 100,000 vertices");Mesh *result=m.get();adopt_mesh(*scene, std::move(m));return dslvm::Value::object("Mesh",result);
   });
   registry.method("Scene", "camera_look_at", {"float", "float", "float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
@@ -1956,7 +1995,7 @@ dslvm::Registry make_registry() {
     add_area(0.1f,1.8f,1.8f,{1.0f,1.0f,1.0f},78.0f,0.9f);
     auto floor=std::make_unique<Material>(); floor->color={0.32f,0.34f,0.37f}; floor->roughness=0.86f; Material *mat=floor.get(); scene->materials.push_back(std::move(floor));
     auto ground=std::make_unique<Mesh>(); const float z=float(lo[2])-std::max(0.01f,radius*0.004f), side=std::max(10.0f,radius*10.0f);
-    ground->vertices={{{cx-side,cy-side,z},{cx+side,cy-side,z},{cx+side,cy+side,z},{cx-side,cy+side,z}}}; ground->triangles={{{0,1,2},{0,2,3}}}; ground->material=mat; ground->ground_plane=true; scene->meshes.push_back(std::move(ground));
+    ground->vertices={{{cx-side,cy-side,z},{cx+side,cy-side,z},{cx+side,cy+side,z},{cx-side,cy+side,z}}}; ground->triangles={{{0,1,2},{0,2,3}}}; ground->material=mat; ground->ground_plane=true; adopt_mesh(*scene, std::move(ground));
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_timeout", {"int"}, "void", [](void *p, dslvm::Args &a) {
@@ -2234,14 +2273,14 @@ dslvm::Registry make_registry() {
     auto mesh = std::make_unique<Mesh>();
     mesh->vertices = {{{-a[1].f,-a[1].f,a[0].f},{a[1].f,-a[1].f,a[0].f},{a[1].f,a[1].f,a[0].f},{-a[1].f,a[1].f,a[0].f}}};
     mesh->triangles = {{{0,1,2},{0,2,3}}}; mesh->material = mat; mesh->ground_plane = true;
-    scene->meshes.push_back(std::move(mesh));
+    adopt_mesh(*scene, std::move(mesh));
     return dslvm::Value::none();
   });
   registry.method("Scene", "checker_ground", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene=static_cast<Scene *>(p);
     if(!std::isfinite(a[0].f)||!std::isfinite(a[1].f)||a[0].f<=0||a[0].f>10000||a[1].f<0.1||a[1].f>1000)throw dslvm::Error("checker ground size must be (0,10000] and tile scale 0.1..1000");
     auto material=std::make_unique<Material>();material->color={0.035f,0.045f,0.06f};material->texture_color2={0.72f,0.75f,0.78f};material->texture_scale=float(a[1].f);material->texture_kind=1;material->roughness=0.82f;Material *mat=material.get();scene->materials.push_back(std::move(material));
-    const double s=a[0].f;auto mesh=std::make_unique<Mesh>();mesh->vertices={{{-s,-s,-0.02},{s,-s,-0.02},{s,s,-0.02},{-s,s,-0.02}}};mesh->triangles={{{0,2,1},{0,3,2}}};mesh->uvs={{0,0},{1,1},{1,0},{0,0},{0,1},{1,1}};mesh->material=mat;mesh->ground_plane=true;scene->meshes.push_back(std::move(mesh));return dslvm::Value::none();
+    const double s=a[0].f;auto mesh=std::make_unique<Mesh>();mesh->vertices={{{-s,-s,-0.02},{s,-s,-0.02},{s,s,-0.02},{-s,s,-0.02}}};mesh->triangles={{{0,2,1},{0,3,2}}};mesh->uvs={{0,0},{1,1},{1,0},{0,0},{0,1},{1,1}};mesh->material=mat;mesh->ground_plane=true;adopt_mesh(*scene, std::move(mesh));return dslvm::Value::none();
   });
   registry.method("Scene", "wall_plane_y", {"float", "float", "float", "float", "float"}, "void", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
@@ -2257,7 +2296,7 @@ dslvm::Registry make_registry() {
     auto mesh = std::make_unique<Mesh>(); const double s = a[1].f, y = a[0].f;
     mesh->vertices = {{{-s,y,-s},{s,y,-s},{s,y,s},{-s,y,s}}};
     mesh->triangles = {{{0,1,2},{0,2,3}}}; mesh->material = mat; mesh->ground_plane = true;
-    scene->meshes.push_back(std::move(mesh));
+    adopt_mesh(*scene, std::move(mesh));
     return dslvm::Value::none();
   });
   registry.method("Scene", "material", {"float", "float", "float", "float", "float", "float", "float", "float", "float", "float"}, "Material", [](void *p, dslvm::Args &a) {
@@ -2401,7 +2440,7 @@ dslvm::Registry make_registry() {
     if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
     auto mesh = std::make_unique<Mesh>(stl ? read_stl(args[0].s) : read_obj(args[0].s));
     Mesh *result = mesh.get();
-    scene->meshes.push_back(std::move(mesh));
+    adopt_mesh(*scene, std::move(mesh));
     return dslvm::Value::object("Mesh", result);
   };
   registry.method("Scene", "import_obj", {"string"}, "Mesh", [import](void *p, dslvm::Args &a) { return import(p, a, false); });
@@ -2411,7 +2450,7 @@ dslvm::Registry make_registry() {
     if (scene->meshes.size() >= 4096) throw dslvm::Error("mesh object limit exceeded (4096)");
     auto mesh = std::make_unique<Mesh>(read_ply_ascii(a[0].s));
     Mesh *result = mesh.get();
-    scene->meshes.push_back(std::move(mesh));
+    adopt_mesh(*scene, std::move(mesh));
     return dslvm::Value::object("Mesh", result);
   });
   registry.method("Scene", "import_gltf", {"string"}, "Mesh", [](void *p, dslvm::Args &a) {
@@ -2540,7 +2579,7 @@ dslvm::Registry make_registry() {
       instance->scale[i] = float(a[i + 4].f);
     }
     Mesh *result = instance.get();
-    scene->meshes.push_back(std::move(instance));
+    adopt_mesh(*scene, std::move(instance));
     return dslvm::Value::object("Mesh", result);
   });
   registry.method("Scene", "render_png", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {

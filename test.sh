@@ -103,6 +103,7 @@ compile_dsl examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb"
 compile_dsl examples/material-principled.lms "$build/material-principled.dslb"
 compile_dsl examples/camera-look-at.lms "$build/camera-look-at.dslb"
 compile_dsl examples/render-timeout.lms "$build/render-timeout.dslb"
+compile_dsl tests/geometry-budget.lms "$build/geometry-budget.dslb"
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
@@ -154,6 +155,24 @@ assert r.get("ok") is False and r.get("code")=="GLTF_INVALID", r
 assert "GLB JSON chunk is malformed" in r.get("message", ""), r
 print("glTF malformed-GLB structured error passed")
 PYERR
+# A bytecode that must stop with a structured error: expect_dsl_error <stem> <code> [VAR=value ...]
+expect_dsl_error() {
+  local stem=$1 code=$2
+  shift 2
+  if env "$@" "$exe" --dsl "$build/$stem.dslb" >"$build/$stem-result.json"; then
+    echo "$stem unexpectedly succeeded (expected $code)" >&2
+    return 1
+  fi
+  python3 - "$build/$stem-result.json" "$code" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1]))
+assert r.get("ok") is False and r.get("code") == sys.argv[2], r
+print(f"{sys.argv[1].rsplit('/', 1)[-1]}: refused with {sys.argv[2]}: {r.get('message', '')[:110]}")
+PY
+}
+# Scene-wide geometry budget stops accumulation at creation time, before any render.
+expect_dsl_error geometry-budget GEOMETRY_BUDGET
+test ! -e "$build/geometry-budget.png"
 "$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
 "$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
 "$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"

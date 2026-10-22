@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Scene-wide geometry budget: 200 dense spheres (about 66k vertices each) pass the
+// per-mesh and object-count caps but must be refused with GEOMETRY_BUDGET once the
+// scene holds 10 million vertices, before any render allocates them in Cycles.
+out = ARGV.len() > 0 ? ARGV[0] : "build/geometry-budget.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+for (i in range(0, 200)) {
+  scene.uv_sphere(1.0, 256, 256, true);
+}
+scene.render_png("build/geometry-budget.png", 1, 16, 16);
+end _dsl_
+savedsl(p, out);
+run = system ${dsl_cli(p)} --dsl ${out};
+if (run.code == 0) { println("expected the scene geometry budget to refuse this program"); exit(1); }

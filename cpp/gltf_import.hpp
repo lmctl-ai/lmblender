@@ -351,8 +351,7 @@ inline void append_primitive(Scene &scene, const Json &root, const std::vector<B
     if(has_uv) for(uint32_t index : {a,b,c}) mesh->uvs.push_back({float(read_component(uvs,index,0)),1.0f-float(read_component(uvs,index,1))});
   }
   if(scene.meshes.size()>=4096)fail("GLTF_LIMIT","glTF object limit exceeded (4096)");
-  Mesh *result=mesh.get();
-  scene.meshes.push_back(std::move(mesh));
+  Mesh *result=adopt_mesh(scene,std::move(mesh));
   if(!first_mesh)first_mesh=result;
 }
 
