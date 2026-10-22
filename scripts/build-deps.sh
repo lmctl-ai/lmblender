@@ -4,8 +4,8 @@
 
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-src_root=${BLENDER_DEPS_SOURCE_ROOT:-/home/ubuntu/blender-deps/build/build}
-deps_install=${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}
+src_root=${BLENDER_DEPS_SOURCE_ROOT:-${BLENDER_DEPS_ENV_BUILD:-$repo/build/blender-deps-environment}/build}
+deps_install=${BLENDER_DEPS_INSTALL:-$repo/build/blender-deps-harvest}
 prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix}
 build_root=${LMBLENDER_DEPS_BUILD_DIR:-$repo/build/deps}
 jobs=${BUILD_JOBS:-2}

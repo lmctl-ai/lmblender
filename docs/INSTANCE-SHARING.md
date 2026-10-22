@@ -6,7 +6,7 @@ The standalone Cycles build uses GCC 14 `-O2` and its CPU device uses BVH2. On t
 
 ## Fix carried by this repo
 
-`scripts/make-cycles-source-overlay.py` creates a disposable copy of `intern/cycles` under `build/cycles-static/blender-source-overlay` and applies `patches/cycles-bvh2-instance-sharing.patch` there. Other Blender `intern` directories remain symlinks. The patch builds the leaf with `make_int4(offset_x, offset_y, original_visibility, original_type)`. The script never edits `/home/ubuntu/blender-src`; `git -C /home/ubuntu/blender-src status --short` stayed empty before and after the build.
+`scripts/make-cycles-source-overlay.py` creates a disposable copy of `intern/cycles` under `build/cycles-static/blender-source-overlay` and applies `patches/cycles-bvh2-instance-sharing.patch` there. Other Blender `intern` directories remain symlinks. The patch builds the leaf with `make_int4(offset_x, offset_y, original_visibility, original_type)`. The script never edits the pinned Blender checkout (`BLENDER_SOURCE_TREE`); `git status --short` there stayed empty before and after the build.
 
 `render_direct` shares a Cycles `Mesh` by `(source geometry, material, smooth flag)`, caches the material shader, keeps vertices in local space, and places translation/scale on each Cycles `Object`. Image-textured meshes remain per-object because the current cube-projection UVs depend on instance scale.
 
@@ -16,12 +16,12 @@ The standalone Cycles build uses GCC 14 `-O2` and its CPU device uses BVH2. On t
 
 ## Other host builds checked
 
-The installed integrated Blender build at `/home/ubuntu/blender-build` has `WITH_CYCLES_EMBREE=ON`, so its CPU path does not use this BVH2 instance merge. `/home/ubuntu/cycles-nopy` is GCC 14 `-O2` with Embree off, but its XML reader's `xml_read_object` creates a fresh `Mesh` for each `<object>`; the standalone XML path does not share mesh geometry and therefore does not execute `pack_instances`. The patch is needed by this direct-node host when it shares a `ccl::Mesh`; it was not applied to either external build tree.
+A regular integrated Blender build has `WITH_CYCLES_EMBREE=ON`, so its CPU path does not use this BVH2 instance merge. A standalone Cycles build with GCC 14 `-O2` and Embree off, but its XML reader's `xml_read_object` creates a fresh `Mesh` for each `<object>`; the standalone XML path does not share mesh geometry and therefore does not execute `pack_instances`. The patch is needed by this direct-node host when it shares a `ccl::Mesh`; it was not applied to either external build tree.
 
 To rebuild the repaired Cycles BVH and host:
 
 ```sh
-python3 scripts/make-cycles-source-overlay.py /home/ubuntu/blender-src build/cycles-static/blender-source-overlay
+python3 scripts/make-cycles-source-overlay.py "${BLENDER_SOURCE_TREE:-build/blender-src-upstream-v5.2.2}" build/cycles-static/blender-source-overlay
 cmake --build build/cycles-static --target cycles_bvh --parallel 2
 cmake --build build --parallel 2
 ```

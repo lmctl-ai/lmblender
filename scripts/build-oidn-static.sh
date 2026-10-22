@@ -4,8 +4,8 @@
 
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-source=${OIDN_SOURCE:-/home/ubuntu/blender-deps/build/build/openimagedenoise/src/external_openimagedenoise}
-ispc=${ISPC_EXECUTABLE:-/home/ubuntu/blender-deps/build/Release/ispc/bin/ispc}
+source=${OIDN_SOURCE:-${BLENDER_DEPS_ENV_BUILD:-$repo/build/blender-deps-environment}/build/openimagedenoise/src/external_openimagedenoise}
+ispc=${ISPC_EXECUTABLE:-$(cat "$repo/build/ispc-executable.txt" 2>/dev/null || echo ispc)}
 static_prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix-gcc14}
 build=${OIDN_BUILD_DIR:-$repo/build/oidn-static-build}
 prefix=${OIDN_INSTALL_PREFIX:-$repo/build/oidn-static-install}

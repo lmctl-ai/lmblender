@@ -97,6 +97,7 @@ fi
   printf 'Source revision tested: `%s`\n\n' "$tested_revision"
   # shellcheck disable=SC2016
   printf '## Results\n\n- `BUILD_JOBS=2 ./test.sh`: PASS.\n- Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.\n- Strict pixel and file checks: PASS; 18 gallery images are at least 640×480.\n- Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).\n- Binary sizes: `lmblender` %s bytes; standalone Cycles %s bytes.\n- QA provider `agy/%s`: PASS on all 22 named images; exact responses follow.\n\n## QA responses\n\n' "$size_host" "$size_cycles" "$qa_model"
-  while IFS= read -r line; do printf -- '- %s\n' "$line"; done < "$qa_dir/results.txt"
+  # The QA model echoes absolute image paths; keep the committed record relative.
+  while IFS= read -r line; do printf -- '- %s\n' "${line//file:\/\/$build\//..\/build\/}"; done < "$qa_dir/results.txt"
 } > docs/STATUS.md
 cat docs/STATUS.md

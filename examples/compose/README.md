@@ -4,7 +4,7 @@
 
 The `studio-mug.lms`, `studio-bracket.lms`, and `studio-plate.lms` examples exercise `scene.studio_setup()`: after import (and any source-axis correction), it computes the transformed mesh bounds, fits the perspective camera, places a matte floor below the model, sets neutral world fill, and adds warm key, cool fill, and rear area lights. Run them with `./examples/compose/run.sh`; each output is 640×480 and checked for colored subject coverage, a nontrivial luminance range, and a minimum mean luminance by `tests/studio_quality.py`.
 
-Set `LMCAD_SOURCE`, `LMCAD_BIN`, or `LMBLENDER_BIN` to override this host's defaults. The default lmcad executable is the static `/home/ubuntu/lmcad-poc-build/lmcad-build/lmcad`; no new OCCT build is required if it is already available.
+Set `LMCAD_SOURCE` (default: a sibling `../lmcad` checkout), `LMCAD_BIN` (default: `$LMCAD_SOURCE/build/lmcad`), or `LMBLENDER_BIN` to point at your builds; no new OCCT build is required if a static lmcad executable is already available.
 
 STL transfers tessellated triangles only. STL has no material or object-name channel, so lmblender assigns a new material after import. Coordinates are interpreted in the source model's exported units; this demo assumes lmcad coordinates map directly to Cycles world units. `mug-render.lms`, `plate-render.lms`, and `bracket-render.lms` show the lmblender side of the pipeline. The turntable examples use eight sequential camera poses, rendered as individual stills rather than an encoded animation.
 

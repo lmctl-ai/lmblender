@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 # SPDX-License-Identifier: MIT
 set -euo pipefail
-cli_repo=${BLENDERCLI_REPO:-/home/ubuntu/blendercli}
 lm_repo=$(cd "$(dirname "$0")/../.." && pwd)
+cli_repo=${BLENDERCLI_REPO:-$lm_repo/../blendercli}
 mkdir -p "$cli_repo/examples/bridge/out" "$lm_repo/build"
 cd "$cli_repo"
 PATH="$cli_repo/build/bin:$PATH" lmscript "$cli_repo/examples/bridge/build-and-export.lms"

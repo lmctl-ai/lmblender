@@ -4,8 +4,8 @@
 
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
-source_tree=${BLENDER_SOURCE_TREE:-/home/ubuntu/blender-src}
-deps_install=${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}
+source_tree=${BLENDER_SOURCE_TREE:-$repo/build/blender-src-upstream-v5.2.2}
+deps_install=${BLENDER_DEPS_INSTALL:-$repo/build/blender-deps-harvest}
 static_prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix-gcc14}
 build=${LMBLENDER_CYCLES_BUILD_DIR:-$repo/build/cycles-static}
 case "$(uname -s)" in
@@ -38,7 +38,7 @@ test -f "$openjph_archive"
 # a build-only prefix. The upstream source tree is not changed.
 oidn_install=${OIDN_INSTALL_PREFIX:-$repo/build/oidn-static-install}
 oidn_find_root="$build/oidn-find-prefix"
-host_libdir=${BLENDER_LIBDIR:-/home/ubuntu/lib/linux_aarch64}
+host_libdir=${BLENDER_LIBDIR:-$deps_install}
 cycles_libdir="$build/libdir-with-static-oidn"
 if [[ -f "$oidn_install/lib/libOpenImageDenoise.a" && \
       -f "$oidn_install/lib/libOpenImageDenoise_core.a" && \

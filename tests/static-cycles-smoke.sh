@@ -5,14 +5,14 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 static_cycles=${LMBLENDER_STATIC_CYCLES:-$repo/build/cycles-static/bin/cycles}
-reference_cycles=${LMBLENDER_REFERENCE_CYCLES:-/home/ubuntu/cycles-nopy/bin/cycles}
-deps_install=${BLENDER_DEPS_INSTALL:-/home/ubuntu/blender-deps/install}
+reference_cycles=${LMBLENDER_REFERENCE_CYCLES:-}
+deps_install=${BLENDER_DEPS_INSTALL:-$repo/build/blender-deps-harvest}
 prefix=${LMBLENDER_STATIC_PREFIX:-$repo/build/static-prefix-gcc14}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 test -x "$static_cycles"
-test -x "$reference_cycles"
+[ -n "$reference_cycles" ] && [ -x "$reference_cycles" ] || { echo "set LMBLENDER_REFERENCE_CYCLES to a dynamically linked Cycles executable for the parity smoke test" >&2; exit 2; }
 ldd "$static_cycles" >"$tmp/ldd.txt" 2>&1 || true
 grep -q 'not a dynamic executable' "$tmp/ldd.txt"
 args=(--background --device CPU --samples 16 --threads 2 --width 128 --height 128)

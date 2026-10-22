@@ -4,8 +4,8 @@
 
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-cad_source=${LMCAD_SOURCE:-/home/ubuntu/repos/lmcad}
-cad_bin=${LMCAD_BIN:-/home/ubuntu/lmcad-poc-build/lmcad-build/lmcad}
+cad_source=${LMCAD_SOURCE:-$root/../lmcad}
+cad_bin=${LMCAD_BIN:-$cad_source/build/lmcad}
 host_bin=${LMBLENDER_BIN:-$root/build/lmblender}
 host_dir=$(dirname "$host_bin")
 export PATH="$host_dir:$PATH"
@@ -17,7 +17,8 @@ for cad in mug plate-with-holes; do
   ( cd "$out" && "$cad_bin" --dsl "$out/$cad.dslb" )
 done
 
-"${LMSCRIPT:-lmscript}" "$root/examples/compose/bracket-cad.lms" "$out/bracket-cad.dslb" >/dev/null
+sed "s|schema=\"../lmcad/schema/lmcad.dsl.json\"|schema=\"$cad_source/schema/lmcad.dsl.json\"|" "$root/examples/compose/bracket-cad.lms" >"$out/bracket-cad.lms"
+"${LMSCRIPT:-lmscript}" "$out/bracket-cad.lms" "$out/bracket-cad.dslb" >/dev/null
 ( cd "$out" && "$cad_bin" --dsl "$out/bracket-cad.dslb" )
 
 for item in mug plate; do
