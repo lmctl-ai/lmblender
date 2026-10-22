@@ -213,7 +213,18 @@ jobs:
           LMBLENDER_HOST_RELEASE: ${{ github.workspace }}/build/host-release
           TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
-          RELEASE_VERSION=${TAG_VERSION:-$(build/lmblender --version | awk 'NR==1 {print $2}')}
+          VERSION_FILE=$(cat VERSION)
+          if [[ -n "$TAG_VERSION" && "${TAG_VERSION#v}" != "$VERSION_FILE" ]]; then
+            echo "tag $TAG_VERSION does not match VERSION $VERSION_FILE" >&2
+            exit 1
+          fi
+          FIRST_LINE=$(build/lmblender --version | sed -n '1p')
+          BINARY_VERSION=$(sed -n 's/^lmblender \([0-9][^ ]*\) .*/\1/p' <<<"$FIRST_LINE")
+          if [[ "$BINARY_VERSION" != "$VERSION_FILE" ]]; then
+            echo "binary version $BINARY_VERSION does not match VERSION $VERSION_FILE" >&2
+            exit 1
+          fi
+          RELEASE_VERSION=${TAG_VERSION:-$VERSION_FILE}
           export RELEASE_VERSION
           scripts/release.sh
           cp build/lmblender.ldd dist/

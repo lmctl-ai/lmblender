@@ -2638,7 +2638,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender 0.3.2 (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
+    return dslvm::Value::string("lmblender " LMBLENDER_VERSION " (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
@@ -2646,7 +2646,7 @@ dslvm::Registry make_registry() {
 
 int main(int argc, char **argv) {
   if (argc == 2 && std::string(argv[1]) == "--version") {
-    std::cout << "lmblender 0.3.2 (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+    std::cout << "lmblender " LMBLENDER_VERSION " (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE
     std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
 #else

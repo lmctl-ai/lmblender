@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 cmake_minimum_required(VERSION 3.24)
-project(lmblender LANGUAGES CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" LMBLENDER_VERSION LIMIT_COUNT 1)
+if(NOT LMBLENDER_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$")
+  message(FATAL_ERROR "VERSION must contain one semantic version")
+endif()
+project(lmblender VERSION "${LMBLENDER_VERSION}" LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -49,6 +53,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_compile_options(lmblender PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(lmblender PRIVATE LMBLENDER_VERSION="${PROJECT_VERSION}")
 if(EXISTS "${CYCLES_BUILD_DIR}/lib/libcycles_session.a")
   set(CYCLES_SOURCE "${BLENDER_SOURCE_TREE}/intern/cycles")
   target_sources(lmblender PRIVATE "${CYCLES_SOURCE}/app/oiio_output_driver.cpp" "${CYCLES_SOURCE}/app/cycles_xml.cpp")

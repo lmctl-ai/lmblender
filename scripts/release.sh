@@ -5,7 +5,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
-version=${RELEASE_VERSION:-0.3.2}
+version=${RELEASE_VERSION:-$(cat "$root/VERSION")}
 version=${version#v}
 binary=${LMBLENDER_BINARY:-$root/build/lmblender}
 machine=${LMBLENDER_ARCH:-$(uname -m)}
@@ -17,7 +17,8 @@ esac
 if [[ ! -x "$binary" ]]; then echo "release binary missing: $binary" >&2; exit 2; fi
 ldd_output=$(ldd "$binary" 2>&1 || true)
 if ! grep -q 'not a dynamic executable' <<<"$ldd_output"; then echo 'release binary must be fully static (ldd check failed)' >&2; exit 2; fi
-if ! "$binary" --version | grep -q "lmblender $version"; then echo "binary version does not match release $version" >&2; exit 2; fi
+binary_version=$("$binary" --version | sed -n '1s/^lmblender \([0-9][^ ]*\) .*/\1/p')
+if [[ "$binary_version" != "$version" ]]; then echo "binary version $binary_version does not match release $version" >&2; exit 2; fi
 size=$(stat -c '%s' "$binary")
 mkdir -p "$root/dist"
 stage=$(mktemp -d)

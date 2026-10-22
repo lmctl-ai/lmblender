@@ -49,7 +49,14 @@ cmp schema/lmblender.dsl.json <("$exe" --schema --json)
 diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
 python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-signatures.txt"
 "$exe" --version >"$build/version.txt"
-grep -q '^lmblender 0\.3\.2 ' "$build/version.txt"
+python3 - "$build/version.txt" VERSION <<'PY'
+import pathlib, re, sys
+lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
+version = pathlib.Path(sys.argv[2]).read_text().strip()
+assert lines and lines[0].startswith("lmblender "), lines
+tokens = re.findall(r"(?<![A-Za-z0-9])v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", lines[0])
+assert tokens == [version], f"first version line must contain exactly release version {version}: {lines[0]!r}; found {tokens}"
+PY
 grep -q '^Cycles [0-9]\+\.[0-9]\+\.[0-9]\+' "$build/version.txt"
 grep -Eq '^OpenImageDenoise ([0-9]+\.[0-9]+\.[0-9]+|disabled)$' "$build/version.txt"
 compile_dsl examples/version.lms "$build/version.dslb"
