@@ -67,6 +67,9 @@ fi
 # whenever it sees one under LIBDIR. Use a build-only LIBDIR view that keeps
 # the other host packages but omits that shared OIDN directory.
 mkdir -p "$cycles_libdir"
+# platform_apple.cmake (and platform_win32) only accept a LIBDIR that looks
+# like a precompiled-libs checkout.
+mkdir -p "$cycles_libdir/.git"
 for entry in "$host_libdir"/*; do
   [[ -e "$entry" ]] || continue
   [[ $(basename "$entry") == openimagedenoise ]] && continue
