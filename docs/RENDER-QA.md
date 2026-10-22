@@ -10,7 +10,7 @@ Thumbnail: [obj-mtl-gallery.png](img/obj-mtl-gallery.png).
 
 ## glTF JSON and GLB mesh import
 
-`examples/gltf-import.lms` and `examples/glb-import.lms` load the same fixture: two nodes reference one textured vertical quad mesh, translated to opposite sides. Both produce a 640×480 Cycles render with the external PNG checker multiplied by the glTF base-color factor. The numeric gate checks at least 2,500 colored surface pixels, at least 800 pixels on each side, a left/right subject centroid gap above 100 px, and at least three quantized color bins. Current results for each format: 32,869 subject pixels, 171.6 px centroid gap, and 39 color bins. `tests/gltf-invalid.lms` additionally asserts malformed GLB JSON returns structured `GLTF_INVALID` with a readable message.
+`examples/gltf-import.lms` and `examples/glb-import.lms` show two nodes referencing one textured vertical quad mesh, translated to opposite sides. Matching gallery glTF and GLB fixtures have no emission so their red/yellow checkers remain legible under moderate lighting. The numeric gate checks at least 2,500 colored surface pixels, at least 800 pixels on each side, a left/right subject centroid gap above 100 px, and over 1,000 pixels each of saturated red and yellow. `examples/gltf-emission.lms` separately renders the `KHR_materials_emissive_strength` fixture and asserts more than 500 warm emissive pixels. `tests/gltf-invalid.lms` checks malformed GLB JSON returns structured `GLTF_INVALID` with a readable message.
 
 | Fixture | Size | Colored subject pixels | Node centroid gap | Color bins | Result |
 | --- | ---: | ---: | ---: | ---: | --- |

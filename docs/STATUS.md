@@ -1,3 +1,5 @@
+> **Current 2026-10-22 note:** Core `test.sh`, numeric image checks and four video sequences pass; Linux arm64/x64 CI is green at `aba77c0`. A stricter Claude review flagged 20 of 24 historical gallery checks on its first pass, so the Claude `full-check.sh` is red. See [the Claude QA record](CLAUDE_QA_2026-10-22.md). The report below is an older Gemini run.
+
 # Full-check status
 
 Generated: 2026-10-21 00:50 UTC
