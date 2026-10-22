@@ -112,6 +112,7 @@ The lmblender host and Cycles executable are statically linked (`ldd` reports â€
 `scripts/build-oidn-static.sh` builds OIDN 2.5 CPU archives with CUDA/HIP/SYCL disabled. `scripts/configure-cycles-static.sh` adapts OIDN 2.x archive names for Blender's legacy CMake finder, configures CPU OIDN and rebuilds Cycles. The host links the same static archives. Static glibc emits a warning about OIDN's module-loader `dlopen` path; the exercised CPU filter works without shared libraries. `tests/denoise_quality.py` uses an auditable residual, silhouette, and edge-gradient comparison.
 
 See [docs/LLM_GUIDE.md](docs/LLM_GUIDE.md) for the complete DSL signature list, parameter units, limits, recipes, and error recovery; [docs/ANIMATION.md](docs/ANIMATION.md) documents frame sequences and APNG limits.
+The deterministic import/bytecode mutation corpus and ASan/UBSan replay commands are in [docs/ROBUSTNESS.md](docs/ROBUSTNESS.md).
 
 ## Dependencies
 

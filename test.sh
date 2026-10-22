@@ -424,3 +424,4 @@ for binary in "$exe" "$build/cycles-static/bin/cycles"; do
   [ ! -x "$binary" ] && continue
   scripts/check-static.sh "$binary" >"$build/ldd-check.txt" 2>&1 || { cat "$build/ldd-check.txt" >&2; exit 1; }
 done
+LMBLENDER_FUZZ_BINARY="$exe" python3 tests/fuzz_hostile_inputs.py
