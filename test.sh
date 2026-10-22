@@ -3,6 +3,16 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
+exe_suffix=
+build_path=$build
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    # Native Python and lmscript need drive-letter paths; PATH needs MSYS paths.
+    build=$(cygpath -m "$build")
+    build_path=$(cygpath -u "$build")
+    exe_suffix=.exe
+    ;;
+esac
 # Pinned Blender checkout (scripts/fetch-cycles-source.sh) and harvested deps
 # (scripts/bootstrap-static-deps.sh); override both for another layout.
 blender_source=${BLENDER_SOURCE_TREE:-$build/blender-src-upstream-v5.2.2}
@@ -33,8 +43,8 @@ python3 scripts/source-manifest.py --blender "$blender_source" --check
 grep -q '^WITH_CYCLES_EMBREE:BOOL=ON$' "${CYCLES_BUILD_DIR:-$build/cycles-static}/CMakeCache.txt" || {
   echo "static Cycles was not configured with Embree CPU BVH" >&2; exit 1;
 }
-exe="$build/lmblender"
-export PATH="$build:$PATH"
+exe="$build/lmblender$exe_suffix"
+export PATH="$build_path:$PATH"
 compile_dsl() {
   local source="$1" bytecode="$2" stem temporary log
   shift 2
@@ -165,7 +175,7 @@ compile_dsl examples/material-nodes-control.lms "$build/material-nodes-control.d
 for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio turntable-neutral glass-showcase technical-clean; do
   compile_dsl "examples/presets/$preset.lms" "$build/preset-$preset.dslb"
 done
-PATH="$build:$PATH" LMSCRIPT_TOOL_CACHE="$build/test-tool-cache" "${LMSCRIPT:-lmscript}" examples/dsl/install-and-run.lms >"$build/install-example.log"
+PATH="$build_path:$PATH" LMSCRIPT_TOOL_CACHE="$build/test-tool-cache" "${LMSCRIPT:-lmscript}" examples/dsl/install-and-run.lms >"$build/install-example.log"
 test -s install-and-run.png
 python3 tests/png_metrics.py install-and-run.png
 rm -f install-and-run.png
@@ -233,7 +243,14 @@ test -s "$build/output-inside.png"
 rm -f /tmp/lmblender-output-escape.png
 expect_dsl_error output-escape OUTPUT_PATH LMBLENDER_OUTPUT_ROOT="$build"
 test ! -e /tmp/lmblender-output-escape.png
-ln -sfn "$build" "$build/linked-out"
+python3 - "$build" <<'PYLINK'
+import os, pathlib, sys
+build = pathlib.Path(sys.argv[1]).resolve()
+link = build / 'linked-out'
+if link.is_symlink():
+    link.unlink()
+os.symlink(build, link, target_is_directory=True)
+PYLINK
 expect_dsl_error output-symlink OUTPUT_PATH
 rm -f "$build/linked-out"
 # The fallback key light exists only for scenes without any light: a black world with a
@@ -422,7 +439,7 @@ for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result
 print('DSL v5 runner, mesh import, direct Cycles rendering, motion blur, display transforms, render passes, and embedded schema pass')
 PY
-for binary in "$exe" "$build/cycles-static/bin/cycles"; do
+for binary in "$exe" "$build/cycles-static/bin/cycles$exe_suffix"; do
   [ ! -x "$binary" ] && continue
   scripts/check-static.sh "$binary" >"$build/ldd-check.txt" 2>&1 || { cat "$build/ldd-check.txt" >&2; exit 1; }
 done

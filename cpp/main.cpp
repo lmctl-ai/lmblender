@@ -3044,6 +3044,7 @@ dslvm::Registry make_registry() {
 }
 
 int main(int argc, char **argv) {
+  lmblender::platform::binary_stdout();
   if (argc == 2 && std::string(argv[1]) == "--version") {
     std::cout << "lmblender " LMBLENDER_VERSION " (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE

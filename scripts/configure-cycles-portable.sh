@@ -64,6 +64,15 @@ if(NOT TARGET bf::dependencies::fmt)
 endif()
 EOF
 
+# The standalone build system hard-codes /MD in configuration flags. Remove
+# those flags so CMP0091 and CMAKE_MSVC_RUNTIME_LIBRARY control the CRT.
+"$py" - "$(native "$overlay/src/cmake/configure_build.cmake")" <<'PYCRT'
+from pathlib import Path
+import re, sys
+path = Path(sys.argv[1])
+path.write_text(re.sub(r" /MDd?\b", "", path.read_text()))
+PYCRT
+
 P=$(native "$prefix")
 extra=()
 case "$(uname -s)" in
@@ -79,7 +88,7 @@ esac
 if [[ -n "${LMBLENDER_CC:-}" ]]; then extra+=(-DCMAKE_C_COMPILER="$LMBLENDER_CC" -DCMAKE_CXX_COMPILER="$LMBLENDER_CXX"); fi
 cmake -S "$(native "$overlay")" -B "$(native "$build")" -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$P" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DWITH_LIBS_PRECOMPILED=OFF -DWITH_CYCLES_OSL=OFF -DWITH_CYCLES_EMBREE=OFF \
+  -DWITH_LIBS_PRECOMPILED=OFF -DWITH_CYCLES_OSL=OFF -DWITH_CYCLES_EMBREE=ON \
   -DWITH_CYCLES_PATH_GUIDING=OFF -DWITH_CYCLES_OPENVDB=OFF -DWITH_CYCLES_NANOVDB=OFF \
   -DWITH_CYCLES_OPENSUBDIV=OFF -DWITH_CYCLES_ALEMBIC=OFF -DWITH_CYCLES_USD=OFF \
   -DWITH_CYCLES_HYDRA_RENDER_DELEGATE=OFF -DWITH_CYCLES_STANDALONE_GUI=OFF \
@@ -88,7 +97,7 @@ cmake -S "$(native "$overlay")" -B "$(native "$build")" -G Ninja -DCMAKE_BUILD_T
   -DWITH_CYCLES_OPENIMAGEDENOISE=ON -DWITH_CYCLES_PUGIXML=ON \
   -DOPENIMAGEDENOISE_ROOT_DIR="$P" -DOPENIMAGEIO_ROOT_DIR="$P" -DOPENCOLORIO_ROOT_DIR="$P" \
   -DOPENEXR_ROOT_DIR="$P" -DIMATH_ROOT_DIR="$P" -DTBB_ROOT_DIR="$P" -DPUGIXML_ROOT_DIR="$P" \
-  -DJPEG_ROOT="$P" -DZLIB_ROOT="$P" -Dfmt_ROOT="$P" \
+  -DEMBREE_ROOT_DIR="$P" -DJPEG_ROOT="$P" -DZLIB_ROOT="$P" -Dfmt_ROOT="$P" \
   -DCMAKE_PROJECT_INCLUDE="$P/lib/cmake/lmblender-static-targets.cmake" \
   "${extra[@]}"
 cmake --build "$(native "$build")" --parallel "$jobs"

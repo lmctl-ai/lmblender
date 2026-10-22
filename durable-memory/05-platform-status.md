@@ -24,3 +24,13 @@ Known facts:
   The installed archive is `prefix/lib/zstd_static.lib`; provide that explicit
   Windows-only hint. The successful dependency build favors continuing MSVC
   over introducing a MinGW port. End-to-end runtime validation remains pending.
+- Static inspection of pinned standalone Cycles `src/cmake/configure_build.cmake`
+  found hard-coded `/MD` configuration flags. The overlay removes those flags
+  so CMP0091 and `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` select the CRT.
+- Portable path now builds static CPU Embree to meet `test.sh`'s existing Embree
+  requirement. OCIO's private archives are copied into the prefix, so the host
+  archive list and dependency cache do not depend on its temporary build tree.
+- Added Windows-only workflow dispatch, a separate dependency prefix cache,
+  and the shared regression step. Windows checkout preserves LF bytes; host
+  stdout uses binary mode for exact schema/protocol output. Tests use native
+  paths and Python-created real directory symlinks under Windows. CI pending.

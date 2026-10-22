@@ -4,6 +4,12 @@ name: platforms
 # and outside the Linux release job until they are green; see docs/PLATFORMS.md.
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to test
+        type: choice
+        default: all
+        options: [all, windows, macos]
   push:
     branches: [main]
   pull_request:
@@ -21,6 +27,7 @@ env:
 
 jobs:
   macos:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'windows'
     strategy:
       fail-fast: false
       matrix:
@@ -200,6 +207,7 @@ jobs:
           if-no-files-found: error
 
   windows:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'macos'
     runs-on: windows-2022
     continue-on-error: true
     concurrency:
@@ -215,6 +223,8 @@ jobs:
       LMBLENDER_PREFIX: ${{ github.workspace }}/build/portable-deps/prefix
       LMBLENDER_CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
     steps:
+      - name: preserve source and schema bytes on checkout
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
@@ -250,25 +260,25 @@ jobs:
             build/portable-deps/prefix
             build/cycles-static
           key: lmblender-portable-${{ env.PREFIX_CACHE_VERSION }}-windows-x64-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh', 'scripts/configure-cycles-portable.sh', 'patches/*.patch') }}
-      - name: restore portable static prefix (Cycles cache miss only)
-        id: deps-cache
+      - name: restore portable static dependencies
+        id: windows-deps-cache
         if: steps.prefix-cache.outputs.cache-hit != 'true'
         uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: build/portable-deps/prefix
-          key: lmblender-portable-deps-${{ env.PREFIX_CACHE_VERSION }}-windows-x64-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh') }}
+          key: lmblender-windows-deps-v1-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh') }}
       - name: build portable static dependencies (cold cache only)
         id: build-deps
-        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.deps-cache.outputs.cache-hit != 'true'
+        if: steps.prefix-cache.outputs.cache-hit != 'true' && steps.windows-deps-cache.outputs.cache-hit != 'true'
         env:
           BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
         run: scripts/build-deps-portable.sh
-      - name: save portable static prefix even if later steps fail
-        if: always() && steps.build-deps.outcome == 'success'
+      - name: save portable dependency prefix before Cycles
+        if: steps.build-deps.outcome == 'success'
         uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: build/portable-deps/prefix
-          key: lmblender-portable-deps-${{ env.PREFIX_CACHE_VERSION }}-windows-x64-msvc-${{ steps.toolchain.outputs.msvc }}-${{ hashFiles('scripts/fetch-cycles-source.sh', 'scripts/fetch-dep-sources.py', 'scripts/build-deps-portable.sh') }}
+          key: ${{ steps.windows-deps-cache.outputs.cache-primary-key }}
       - name: build static Cycles with the standalone build system (cold cache only)
         id: build-cycles
         if: steps.prefix-cache.outputs.cache-hit != 'true'
@@ -276,7 +286,7 @@ jobs:
           BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
         run: |
           scripts/configure-cycles-portable.sh
-          scripts/check-static.sh build/cycles-static/bin/cycles.exe || true
+          scripts/check-static.sh build/cycles-static/bin/cycles.exe
       - name: save portable static prefix and Cycles even if later checks fail
         if: always() && steps.build-cycles.outcome == 'success'
         uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
@@ -297,6 +307,12 @@ jobs:
           cmake --build build/host --parallel "$BUILD_JOBS"
           cp build/host/lmblender.exe build/lmblender.exe
           build/lmblender.exe --version
+      - name: run shared regression suite
+        env:
+          BUILD_JOBS: ${{ steps.toolchain.outputs.jobs }}
+          CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
+          LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/portable-deps/prefix
+        run: ./test.sh
       - name: assert only OS DLLs are imported
         run: scripts/check-static.sh build/lmblender.exe | tee build/lmblender.ldd
       - name: render smoke test

@@ -11,11 +11,21 @@
 #include <string>
 #if defined(_WIN32)
 #include <process.h>
+#include <fcntl.h>
+#include <io.h>
 #else
 #include <unistd.h>
 #endif
 
 namespace lmblender::platform {
+
+// Keep schema/protocol bytes identical across platforms (no CRT CRLF rewrite).
+inline void binary_stdout()
+{
+#if defined(_WIN32)
+  _setmode(_fileno(stdout), _O_BINARY);
+#endif
+}
 
 inline long process_id()
 {
