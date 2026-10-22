@@ -34,9 +34,9 @@ def compile_case(name, method, file):
     bytecode = work / f"{name}.dslb"
     source.write_text(
         f'p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";\n'
-        f'let item = scene.{method}("{file}"' + (",1.0" if method == "image_material" else "") + ');\n'
+        f'let item = scene.{method}("{file.as_posix()}"' + (",1.0" if method == "image_material" else "") + ');\n'
         'end _dsl_\n'
-        f'savedsl(p,"{bytecode}");\n'
+        f'savedsl(p,"{bytecode.as_posix()}");\n'
     )
     result = subprocess.run([lmscript, str(source)],
                             env=environment, text=True, capture_output=True, timeout=10)
