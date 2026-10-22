@@ -70,7 +70,9 @@ EOF
 from pathlib import Path
 import re, sys
 path = Path(sys.argv[1])
-path.write_text(re.sub(r" /MDd?\b", "", path.read_text()))
+text = re.sub(r" /MDd?\b", "", path.read_text())
+text += "\nif(MSVC)\n  add_compile_definitions(__TBB_NO_IMPLICIT_LINKAGE=1)\nendif()\n"
+path.write_text(text)
 PYCRT
 
 P=$(native "$prefix")

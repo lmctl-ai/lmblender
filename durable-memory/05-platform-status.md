@@ -34,3 +34,7 @@ Known facts:
   and the shared regression step. Windows checkout preserves LF bytes; host
   stdout uses binary mode for exact schema/protocol output. Tests use native
   paths and Python-created real directory symlinks under Windows. CI pending.
+- Host warning flags now use `/W4` on MSVC. Both standalone Cycles and the
+  host suppress TBB headers' implicit `tbb12.lib` linkage: our explicitly linked
+  archive is `tbb.lib`, and the old FindTBB path does not propagate the modern
+  imported target's static-link compile definitions.
