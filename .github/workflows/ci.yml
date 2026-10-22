@@ -2,6 +2,11 @@ name: ci
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Assemble and verify all release assets without publishing
+        type: boolean
+        default: true
   push:
     branches: [main]
     tags: ["v*"]
@@ -268,9 +273,13 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  platforms:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
+    uses: ./.github/workflows/platforms.yml
+
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, source]
+    if: always() && needs.build.result == 'success' && needs.source.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.dry_run))
+    needs: [build, source, platforms]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -278,26 +287,33 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      # Every platform job of this run uploads lmblender-<platform>; merging them
-      # here is what made the per-job SHA256SUMS files overwrite each other.
+      - name: test release assembly guards
+        run: |
+          bash tests/release_assembly_test.sh
+          bash tests/release_checksums_test.sh
+      # Reusable-workflow uploads belong to this same run. Failed platform jobs
+      # never reach upload; filenames are unique across all successful jobs.
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: lmblender-*
           path: dist
           merge-multiple: true
-      - name: refuse to publish binaries without their corresponding source
+      - name: validate source, platform packages, and one merged SHA256SUMS
+        env:
+          TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
+          RELEASE_VERSION=${TAG_VERSION:-$(cat VERSION)} scripts/assemble-release.sh dist
           ls -la dist
-          source_asset=$(ls dist/lmblender-source-v*.tar.gz 2>/dev/null | head -1)
-          [[ -n "$source_asset" ]] || { echo "corresponding-source asset is missing; not publishing" >&2; exit 1; }
-          [[ "$source_asset" == "dist/lmblender-source-${GITHUB_REF_NAME}.tar.gz" ]] || { echo "source asset $source_asset does not match tag $GITHUB_REF_NAME" >&2; exit 1; }
-          (cd dist && sha256sum -c "$(basename "$source_asset").sha256")
-          ls dist/lmblender-linux-*.tar.gz >/dev/null
-      - name: write one SHA256SUMS over every merged asset
-        run: |
-          scripts/release-checksums.sh dist
           cat dist/SHA256SUMS
+      - name: upload assembled dry-run release
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: assembled-release-dist
+          path: dist/
+          if-no-files-found: error
       - name: publish binaries, archives, checksums, notices, and corresponding source
+        if: startsWith(github.ref, 'refs/tags/v') && !inputs.dry_run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

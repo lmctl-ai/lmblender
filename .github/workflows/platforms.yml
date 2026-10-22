@@ -1,8 +1,13 @@
 name: platforms
 
-# Experimental macOS (and later Windows) builds. They stay continue-on-error
-# and outside the Linux release job until they are green; see docs/PLATFORMS.md.
+# Optional release platforms. Only fully tested jobs upload release assets;
+# a platform failure must not prevent publishing the successful Linux builds.
 on:
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: all
   workflow_dispatch:
     inputs:
       platform:
@@ -27,7 +32,7 @@ env:
 
 jobs:
   macos:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'windows'
+    if: inputs.platform != 'windows'
     strategy:
       fail-fast: false
       matrix:
@@ -198,8 +203,7 @@ jobs:
           RELEASE_VERSION=$(cat VERSION)
           export RELEASE_VERSION
           scripts/release.sh
-          cp build/lmblender.ldd dist/
-          (cd dist && sha256sum lmblender-${{ matrix.arch }}* > SHA256SUMS)
+          cp build/lmblender.ldd "dist/lmblender-${{ matrix.arch }}.otool"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lmblender-${{ matrix.arch }}
@@ -207,7 +211,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'macos'
+    if: inputs.platform != 'macos'
     runs-on: windows-2022
     continue-on-error: true
     concurrency:
@@ -331,8 +335,7 @@ jobs:
           RELEASE_VERSION=$(cat VERSION)
           export RELEASE_VERSION
           scripts/release.sh
-          cp build/lmblender.ldd dist/
-          (cd dist && sha256sum lmblender-windows-x64* > SHA256SUMS)
+          cp build/lmblender.ldd dist/lmblender-windows-x64.dumpbin
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lmblender-windows-x64

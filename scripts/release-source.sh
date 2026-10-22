@@ -59,6 +59,17 @@ git -C "$source_tree" archive --format=tar.gz --prefix="blender-${commit:0:12}/"
 python3 scripts/make-cycles-source-overlay.py "$source_tree" "$stage/overlay" >/dev/null
 tar -C "$stage/overlay/intern" -czf "$pkg/upstream/cycles-overlay-patched-${commit:0:12}.tar.gz" cycles
 
+# Windows uses the standalone Cycles build system and its third_party sources.
+# Include the exact pinned tree; the repository archive carries the overlay
+# script and MSVC patch needed to reproduce the Windows source tree.
+cycles_commit=$(sed -n 's/^cycles_commit=\([0-9a-f]*\).*/\1/p' scripts/configure-cycles-portable.sh)
+cycles_repo=$(sed -n 's/^cycles_repo=//p' scripts/configure-cycles-portable.sh)
+git init -q "$stage/standalone"
+git -C "$stage/standalone" fetch -q --depth 1 "$cycles_repo" "$cycles_commit"
+[[ "$(git -C "$stage/standalone" rev-parse FETCH_HEAD)" == "$cycles_commit" ]]
+git -C "$stage/standalone" archive --format=tar.gz --prefix="cycles-standalone/" \
+  -o "$pkg/upstream/cycles-standalone-${cycles_commit:0:12}.tar.gz" "$cycles_commit"
+
 # 4. Third-party source archives: reuse a local build_environment download cache when present.
 if [[ -d "$packages_dir" ]]; then
   find "$packages_dir" -maxdepth 1 -type f \( -name '*.tar.*' -o -name '*.zip' -o -name '*.tgz' \) -print0 |
@@ -104,5 +115,5 @@ archive="$root/dist/$name.tar.gz"
 tar_opts=()
 if tar --version 2>/dev/null | grep -q GNU; then tar_opts=(--sort=name --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH:-0}"); fi
 tar -C "$stage" "${tar_opts[@]}" -czf "$archive" "$name"
-sha256 "$archive" >"$archive.sha256"
+(cd "$root/dist" && sha256 "$(basename "$archive")" >"$(basename "$archive").sha256")
 echo "Created $archive ($(wc -c <"$archive" | tr -d ' ') bytes); $(ls "$pkg/upstream" | wc -l | tr -d ' ') upstream archives"

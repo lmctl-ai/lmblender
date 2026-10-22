@@ -162,3 +162,8 @@ Host build (test.sh) on macOS:
   job's `needs`; promoting them is the Lead's call. Cycles archives target macOS 11.2 while the host targets
   13.3 (ld64 warnings only); platform_apple's extra frameworks (Carbon, ColorSync, CoreGraphics) come from
   OCIO/OIIO and are harmless system links.
+### Tag release wiring — PlatAstra
+
+- `platforms.yml` is callable by CI for v* tags and explicit dry runs. The single release job waits for platform completion but requires only both Linux builds and source to succeed; platform uploads remain success-only after tests/dependency validation/staging. Unique per-platform dependency report names prevent merge collisions; only assembly generates SHA256SUMS.
+- Added branch workflow_dispatch `dry_run` (default true), which executes builds, source packaging, assembly validation and an `assembled-release-dist` upload, while skipping publication. No tag is needed.
+- Assembly fixtures pass for Linux-only (optional failures) and all platforms. Guards reject missing source, partial optional platforms, absent Windows relinking info, and checksum mismatches. Source packaging now includes the pinned standalone Cycles tree needed to rebuild Windows. Per-platform relinking docs accompany bare binaries; complete license texts remain in each archive. `test.sh` already checks exactly one semantic version token matching VERSION on the first `--version` line, including the Windows executable.

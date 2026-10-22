@@ -191,7 +191,27 @@ def blender_entry(blender_tree):
         "hash": None,
         "git_commit": commit,
         "license": "SPDX:Apache-2.0 (Cycles) with lmblender MIT patches",
-        "role": "linked: exact intern/cycles tree the static Cycles archives were built from",
+        "role": "linked: Linux/macOS intern/cycles overlay; Windows additionally applies the shipped cycles-msvc-guarded-allocator.patch and standalone build-system overlay",
+        "shipped": None,
+    }
+
+
+def standalone_entry():
+    script = "scripts/configure-cycles-portable.sh"
+    commit = script_pin(script, r"^cycles_commit=([0-9a-f]{40})", "standalone Cycles commit")
+    repo = script_pin(script, r"^cycles_repo=(\S+)", "standalone Cycles repository")
+    return {
+        "name": "Standalone Cycles build system and third_party sources (Windows)",
+        "component": "CYCLES_STANDALONE",
+        "version": commit,
+        "upstream_uri": f"{repo.removesuffix('.git')}/tree/{commit}",
+        "blender_mirror_uri": None,
+        "file": f"cycles-standalone-{commit[:12]}.tar.gz",
+        "git_commit": commit,
+        "hash_type": None,
+        "hash": None,
+        "license": "SPDX:Apache-2.0; third_party notices included in archive",
+        "role": "Windows build system and third_party support; configure-cycles-portable.sh overlays Blender Cycles and applies the shipped MSVC patch",
         "shipped": None,
     }
 
@@ -231,10 +251,10 @@ def vendored_entries():
 
 
 TOOLCHAIN = {
-    "compiler": "GCC 14 (Ubuntu 24.04 gcc-14/g++-14 packages); Apple clang on the experimental macOS builds",
+    "compiler": "GCC 14 (Ubuntu 24.04 gcc-14/g++-14 packages); Apple clang on macOS; MSVC 2022 with /MT on Windows",
     "c_library": "glibc from Ubuntu 24.04 libc6-dev, linked statically with -static -static-libstdc++ -static-libgcc; glibc, libstdc++ and libgcc are System Libraries in the GPL-3.0 sense and are not re-shipped here. docs/RELINKING.md explains how to relink.",
     "dsl_compiler": "@lmctl-ai/lmctl (npm), only used by test.sh to compile the example programs; not linked",
-    "exact_versions": "The CI build log prints `g++-14 --version`, `cmake --version`, and the ldd/otool output of the released binary.",
+    "exact_versions": "The CI build log prints `g++-14 --version`, `cmake --version`, `cl` on Windows, and the ldd/otool/dumpbin output of the released binary.",
 }
 
 
@@ -283,7 +303,7 @@ def attach_shipped(entries, upstream_dir, do_fetch):
         if not path.is_file() and do_fetch and entry.get("hash"):
             fetch(entry, path)
         if not path.is_file():
-            if entry["component"] in ("BLENDER", "CYCLES_OVERLAY"):
+            if entry["component"] in ("BLENDER", "CYCLES_OVERLAY", "CYCLES_STANDALONE"):
                 fail(f"{entry['file']} must be present in {upstream_dir} (scripts/release-source.sh creates it)")
             entry["shipped"] = None
             continue
@@ -337,7 +357,7 @@ def main():
     args = parser.parse_args()
 
     blender, overlay = blender_entry(args.blender)
-    entries = [blender, overlay] + components(args.blender) + vendored_entries()
+    entries = [blender, overlay, standalone_entry()] + components(args.blender) + vendored_entries()
     if args.upstream_dir:
         attach_shipped(entries, args.upstream_dir, args.fetch)
     manifest = {

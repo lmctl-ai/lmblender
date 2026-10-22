@@ -45,14 +45,16 @@ printf 'binary_bytes=%s\n' "$size" >>"$pkg/VERSION"
 printf '\nRun: bin/lmblender%s --version\nSchema: schema/lmblender.dsl.json\n' "$exe" >>"$pkg/VERSION"
 archive="$root/dist/${artifact}-v${version}.tar.gz"
 tar -C "$stage" -czf "$archive" "$artifact"
-sha256 "$archive" >"$archive.sha256"
+(cd "$root/dist" && sha256 "$(basename "$archive")" >"$(basename "$archive").sha256")
 install -m 0644 THIRD_PARTY_NOTICES.md "$root/dist/lmblender-notices-${artifact}-v${version}.md"
 install -m 0644 SOURCE_OFFER.md "$root/dist/lmblender-source-offer-${artifact}-v${version}.md"
 notices="$root/dist/lmblender-notices-${artifact}-v${version}.md"
 source_offer="$root/dist/lmblender-source-offer-${artifact}-v${version}.md"
+relinking="$root/dist/lmblender-relinking-${artifact}-v${version}.md"
+install -m 0644 docs/RELINKING.md "$relinking"
 bare="$root/dist/${artifact}${exe}"
 install -m 0755 "$binary" "$bare"
-sha256 "$bare" >"$bare.sha256"
+(cd "$root/dist" && sha256 "$(basename "$bare")" >"$(basename "$bare").sha256")
 host_root=${LMBLENDER_HOST_RELEASE:-$root/build/host-release}
 mkdir -p "$host_root/versions/v${version}"
 cp -a "$pkg/." "$host_root/versions/v${version}/"
@@ -68,7 +70,7 @@ if [[ ${1:-} == --publish ]]; then
   if [[ ! -f "$source_asset" || ! -f "$source_asset.sha256" ]]; then
     echo "corresponding-source asset missing: $source_asset (run scripts/release-source.sh first)" >&2; exit 2
   fi
-  assets=("$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" "$source_asset" "$source_asset.sha256")
+  assets=("$archive" "$archive.sha256" "$bare" "$bare.sha256" "$notices" "$source_offer" "$relinking" "$source_asset" "$source_asset.sha256")
   if gh release view "v${version}" --repo lmctl-ai/lmblender >/dev/null 2>&1; then
     gh release upload "v${version}" "${assets[@]}" --repo lmctl-ai/lmblender --clobber
     gh release edit "v${version}" --repo lmctl-ai/lmblender --draft=false --notes-file docs/RELEASE_NOTES.md

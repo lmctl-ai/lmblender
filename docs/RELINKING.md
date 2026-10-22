@@ -18,3 +18,34 @@ ldd ./lmblender
 ```
 
 The expected Linux `ldd` result is `not a dynamic executable`. The executable still uses glibc interfaces such as `getpwuid`; static glibc binaries run on compatible Linux kernels and CPU architectures and should be rebuilt with the target toolchain for other environments.
+
+## Windows x64
+
+Windows releases use Visual Studio 2022's x64 MSVC toolchain and the static CRT
+(`/MT`, CMake `MSVC_RUNTIME_LIBRARY=MultiThreaded`), with standalone Cycles and
+CPU-only static dependencies. No Python or GUI runtime is required. From an x64
+MSVC developer environment with Git Bash, CMake, Ninja, Python (build-time only),
+and ISPC available, follow the Windows job in `.github/workflows/platforms.yml`:
+`scripts/fetch-cycles-source.sh`, `scripts/build-deps-portable.sh`, then
+`scripts/configure-cycles-portable.sh`. Configure the host with
+`CYCLES_BUILD_DIR=build/cycles-static` and
+`LMBLENDER_STATIC_PREFIX=build/portable-deps/prefix` (absolute native Windows
+paths when passing these to CMake). The workflow records the exact configure
+command and toolchain version.
+
+The source asset includes the pinned standalone Cycles build system as
+`upstream/cycles-standalone-<commit>.tar.gz`, its third-party source notices,
+the Blender subset, and all dependency source archives. The repository's
+`configure-cycles-portable.sh` reconstructs the overlay and applies the shipped
+`cycles-msvc-guarded-allocator.patch`. Rebuild the dependency prefix, Cycles,
+and host together when changing compiler or CRT options; mixing `/MT` and `/MD`
+archives is unsupported. MSVC and the Windows SDK are toolchain prerequisites,
+not redistributed in the source package.
+
+Run `lmblender-windows-x64.exe --version` and `scripts/check-static.sh` under
+Git Bash with `dumpbin` on PATH. The first version line must contain exactly
+one semantic version token matching the release; renderer/library versions
+appear on separate lines. The dependency check rejects VC redistributable and
+third-party DLL imports. Every platform archive includes the license texts and
+these relinking instructions; bare binaries also have adjacent notices,
+source-offer, and relinking documents on the release page.
