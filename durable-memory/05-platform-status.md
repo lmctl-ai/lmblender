@@ -140,3 +140,25 @@ Host build (test.sh) on macOS:
   `-framework Foundation` into two list items and target_link_libraries turns `Foundation` into `-lFoundation`.
   As plain link options CMake then de-duplicates the repeated `-framework` token; each pair is passed as a
   `SHELL:-framework X` link option group.
+
+### macOS arm64 + x64 green handoff (PlatFable, 2026-10-22)
+
+- Branch `platfable/macos`, tested tip `004ec4d` (= origin/main `e022bee` + three host-side commits: Apple-only
+  Cycles archive list, SSE4.2-only Embree on Intel, `SHELL:-framework X` link options). Verification run
+  https://github.com/lmctl-ai/lmblender/actions/runs/39844042875: every job success (macos-arm64 job
+  120052468817, macos-x64 job 120052468832, windows too). Same result one commit earlier on run 39841404317.
+- Both jobs ran the full `test.sh` suite (schema/protocol checks, every example and QA render, denoise,
+  animation, presets): arm64 10m02s, x64 14m20s. `build/lmblender --version` prints
+  `lmblender 0.3.3 (DSL bytecode v5)` / `Cycles 4.5.0` / `OpenImageDenoise 2.5.0` on both.
+- `otool -L build/lmblender` on both: only /System/Library/Frameworks (Foundation, IOKit, Carbon, ColorSync,
+  CoreFoundation, CoreGraphics, plus Accelerate on arm64 for OIDN's BNNS path), `/usr/lib/libSystem.B.dylib`
+  and `/usr/lib/libc++.1.dylib`. No Homebrew, @rpath or third-party dylib.
+- Release staging produced the bare executables `lmblender-macos-arm64` (84,341,912 bytes) and
+  `lmblender-macos-x64` (89,689,200 bytes), the `.tar.gz` bundles, sidecar `.sha256` files and `.ldd`
+  (otool) listings; uploaded as artifacts `lmblender-macos-arm64` / `lmblender-macos-x64`.
+- Warm-cache job wall time: arm64 11m03s, x64 16m10s. Cold (dependency cache miss): arm64 about 50 min,
+  x64 about 110 min, dominated by Blender's build_environment bootstrap.
+- Follow-ups (not blockers): the Windows and macOS jobs are still `continue-on-error` and outside the release
+  job's `needs`; promoting them is the Lead's call. Cycles archives target macOS 11.2 while the host targets
+  13.3 (ld64 warnings only); platform_apple's extra frameworks (Carbon, ColorSync, CoreGraphics) come from
+  OCIO/OIIO and are harmless system links.
