@@ -16,7 +16,7 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 | Camera and motion | Partial | Perspective/orthographic, look-at/fitting, Cycles aperture/focus DOF, and nine-sample shutter blur from keyed mesh translations and camera transforms (0.1–2 frame shutter) |
 | Animation | Partial | Keyed mesh translation, camera position/target, and material base color with linear/ease interpolation; deterministic PNG sequences, atomic APNG (rational 1/fps delay), and temporal-sample motion blur; mesh rotation/scale and other material parameters remain unsupported |
 | Mesh input | Partial | OBJ with bounded MTL materials, per-face `usemtl`, UVs/normals, diffuse/specular/roughness/alpha/emission and confined PNG/JPEG/EXR color/bump/opacity maps; STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms and PBR factors/textures. Binary PLY and embedded glTF images remain unsupported |
-| Diagram strands | Partial | Swept tube, capsule, arrow, and label mesh helpers; grass/fur illustrations are deterministic tube assemblies rather than native Cycles hair primitives |
+| Diagram strands | Partial | Explicit tapered `strand` polylines and deterministic `hair_patch`/`hair_sphere` emitters produce swept meshes with materials; native Cycles hair primitives and photoreal fur grooming remain unsupported |
 | Gallery QA | Partial | 19 named 640×480 gallery renders have numeric checks; the new OBJ/MTL image has been directly inspected, with agy visual review pending its quota reset. Four 640×360 video samples are checked separately; lmcad compositions are checked by their runner |
 | Alpha output | Partial | Transparent world film emits RGBA PNG; shadow-catcher composition remains |
 

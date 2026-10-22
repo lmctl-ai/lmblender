@@ -6,25 +6,17 @@ scene.world_color(0.12, 0.15, 0.19, 0.38);
 let green = scene.material(0.045,0.38,0.075,0.0,0.52,0.0,0.0,0.0,0.0,0.0);
 let gold = scene.material(0.82,0.4,0.045,0.12,0.28,0.0,0.0,0.0,0.0,0.0);
 let fur = scene.uv_sphere(1.0,32,20,true); fur.translate(2.1,0.0,1.05); fur.set_material(gold);
-for (i in range(0,18)) {
-  let a = float(i) * 2.399963;
-  let z = -0.82 + float(i) * 0.096;
-  let r = sqrt(max(0.0,1.0-z*z));
-  let x = 2.1 + r*cos(a); let y = r*sin(a);
-  let strand = scene.tube_between(x,y,1.05+z,x*1.12,y*1.12,1.05+z*1.12,0.035);
-  strand.set_material(gold);
-}
-for (i in range(0,12)) {
-  let x = -5.0 + float(i)*0.48;
-  let lean = float(i%3-1)*0.16;
-  let blade = scene.tube_between(x,0.0,0.0,x+lean,0.0,1.5+float(i%4)*0.12,0.055);
-  blade.set_material(green);
-}
+let hair = scene.hair_sphere(2.1,0.0,1.05,1.0,680,1.15,0.018);
+hair.set_material(gold);
+let grass = scene.hair_patch(-3.0,0.0,0.0,3.2,72,1.6,0.028);
+grass.set_material(green);
+let curl = scene.strand("-5.15,-0.7,0.0; -5.0,-0.7,0.95; -4.55,-0.7,1.9; -3.85,-0.7,2.35",0.13,0.0,12);
+curl.set_material(green);
 scene.spot_light(-3.0,-5.0,7.0,-1.8,0.0,0.5,1.0,0.9,0.72,1000.0,56.0,0.3);
 scene.area_light(3.0,-4.0,6.0,1.0,0.0,1.0,0.72,0.82,1.0,700.0,4.0);
 scene.camera_look_at(0.0,-11.0,5.0,-0.6,0.0,0.8,42.0);
 scene.render_settings(20,731,true);
-scene.render_png("build/strands-showcase.png",64,640,480);
+scene.render_png("build/strands-showcase.png",64,960,720);
 end _dsl_
 savedsl(p,out);
 run = system ${dsl_cli(p)} --dsl ${out};

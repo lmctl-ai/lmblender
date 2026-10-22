@@ -60,6 +60,8 @@ method Scene.expect_int(int, int) -> void
 method Scene.fit_camera(float) -> void
 method Scene.glow_orb(float, float, float, float, float, float, float, float) -> Mesh
 method Scene.ground_plane(float, float, float, float, float) -> void
+method Scene.hair_patch(float, float, float, float, int, float, float) -> Mesh
+method Scene.hair_sphere(float, float, float, float, int, float, float) -> Mesh
 method Scene.image_material(string, float) -> Material
 method Scene.import_gltf(string) -> Mesh
 method Scene.import_obj(string) -> Mesh
@@ -91,6 +93,7 @@ method Scene.set_threads(int) -> void
 method Scene.set_view_transform(string) -> void
 method Scene.sky_texture(float, float, float) -> void
 method Scene.spot_light(float, float, float, float, float, float, float, float, float, float, float, float) -> void
+method Scene.strand(string, float, float, int) -> Mesh
 method Scene.studio_setup() -> void
 method Scene.sun_light(float, float, float, float, float, float, float, float) -> void
 method Scene.torus(float, float, int, int, bool) -> Mesh
@@ -112,6 +115,8 @@ method Scene.world_color(float, float, float, float) -> void
 | `capsule(radius,length,segments,cap_rings)` | Rounded capsule along Z; total length is at least twice the radius. |
 | `glow_orb(x,y,z,radius,r,g,b,strength)` | Smooth emissive sphere; use a second larger low-strength orb for a simple halo effect. |
 | `tube_between(x1,y1,z1,x2,y2,z2,radius)`, `arrow_between(...)` | Cylindrical path or tapered arrow between two 3D points. |
+| `strand("x,y,z; ...",root_radius,tip_radius,sides)` | A swept polyline of 2..512 points with taper; radii are scene units, sides 3..32. The returned mesh accepts `set_material`. |
+| `hair_patch(x,y,z,size,count,height,width)`, `hair_sphere(x,y,z,radius,count,length,width)` | Deterministic curved swept strands (1..2048 per emitter), combined into one material-ready mesh. These are polygonal strands, not simulated/native Cycles hair. |
 | `ring_arc(x,y,z,major,minor,start_deg,end_deg,segments)` | Partial torus gauge, angles in degrees, ordered span up to 360. |
 | `checkmark(x,y,z,size,stroke)` | Green check silhouette mesh; assign its material explicitly. |
 | `label(text,x,y,z,cell_size)` | Extruded 5×7 ASCII uppercase letters and spaces, suitable for flat title plates. |

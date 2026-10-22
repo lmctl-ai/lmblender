@@ -1898,6 +1898,79 @@ void append_triangle(Mesh &mesh, uint32_t a, uint32_t b, uint32_t c)
   mesh.triangles.push_back({a, b, c});
 }
 
+/* Compact, bounded coordinate list for DSL programs: "x,y,z; x,y,z". */
+std::vector<std::array<double, 3>> parse_points(const std::string &input, int dimensions,
+                                                 size_t minimum, size_t maximum)
+{
+  if (input.empty() || input.size() > 65536) throw dslvm::Error("path text must be 1..65536 bytes");
+  std::vector<std::array<double, 3>> points;
+  std::istringstream rows(input);
+  std::string row;
+  while (std::getline(rows, row, ';')) {
+    if (points.size() == maximum) throw dslvm::Error("path point budget exceeded");
+    std::istringstream fields(row);
+    std::string field;
+    std::array<double, 3> point{};
+    for (int i = 0; i < dimensions; ++i) {
+      if (!std::getline(fields, field, ',')) throw dslvm::Error("path point has missing coordinate");
+      size_t used = 0;
+      try { point[i] = std::stod(field, &used); }
+      catch (...) { throw dslvm::Error("path coordinate is not a number"); }
+      if (field.find_first_not_of(" \t\r\n", used) != std::string::npos ||
+          !std::isfinite(point[i]) || std::abs(point[i]) > 1'000'000)
+        throw dslvm::Error("path coordinate must be finite and within scene bounds");
+    }
+    if (std::getline(fields, field, ',')) throw dslvm::Error("path point has extra coordinate");
+    points.push_back(point);
+  }
+  if (points.size() < minimum) throw dslvm::Error("path has too few points");
+  return points;
+}
+
+std::array<double, 3> unit3(std::array<double, 3> v)
+{
+  const double n = std::hypot(v[0], v[1], v[2]);
+  if (n < 1e-8) throw dslvm::Error("path contains coincident points");
+  for (double &x : v) x /= n;
+  return v;
+}
+std::array<double, 3> cross3(const std::array<double, 3> &a, const std::array<double, 3> &b)
+{
+  return {a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]};
+}
+
+/* Parallel enough for short paths: each section uses the local bisector tangent.
+ * Closed profiles make an honest loft; a circular profile with tapered radii is a strand. */
+void append_sweep(Mesh &mesh, const std::vector<std::array<double, 3>> &path,
+                  const std::vector<std::array<double, 3>> &profile,
+                  double base_radius, double tip_radius, bool cap)
+{
+  const uint32_t base = uint32_t(mesh.vertices.size()), sides = uint32_t(profile.size());
+  for (size_t i = 0; i < path.size(); ++i) {
+    const auto &before = path[i ? i-1 : i], &after = path[i+1 < path.size() ? i+1 : i];
+    const auto tangent = unit3({after[0]-before[0], after[1]-before[1], after[2]-before[2]});
+    const auto ref = std::abs(tangent[2]) < 0.9 ? std::array<double,3>{0,0,1} : std::array<double,3>{0,1,0};
+    const auto u = unit3(cross3(tangent, ref));
+    const auto v = cross3(tangent, u);
+    const double radius = base_radius + (tip_radius-base_radius)*double(i)/double(path.size()-1);
+    for (const auto &q : profile)
+      mesh.vertices.push_back({path[i][0]+radius*(u[0]*q[0]+v[0]*q[1]),
+                               path[i][1]+radius*(u[1]*q[0]+v[1]*q[1]),
+                               path[i][2]+radius*(u[2]*q[0]+v[2]*q[1])});
+  }
+  for (uint32_t i=0; i+1<path.size(); ++i) for (uint32_t j=0; j<sides; ++j) {
+    const uint32_t n=(j+1)%sides, a=base+i*sides+j, b=base+i*sides+n,
+                   c=base+(i+1)*sides+n, d=base+(i+1)*sides+j;
+    append_triangle(mesh,a,b,c); append_triangle(mesh,a,c,d);
+  }
+  if (cap) for (uint32_t j=1; j+1<sides; ++j) {
+    append_triangle(mesh,base,base+j+1,base+j);
+    append_triangle(mesh,base+uint32_t(path.size()-1)*sides,
+                    base+uint32_t(path.size()-1)*sides+j,
+                    base+uint32_t(path.size()-1)*sides+j+1);
+  }
+}
+
 void append_box(Mesh &mesh, const std::array<double, 3> &center, const std::array<double, 3> &size)
 {
   const uint32_t base = uint32_t(mesh.vertices.size());
@@ -2025,6 +2098,73 @@ dslvm::Registry make_registry() {
   };
   registry.method("Scene","tube_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,false);});
   registry.method("Scene","arrow_between",{"float","float","float","float","float","float","float"},"Mesh",[path_mesh](void*p,dslvm::Args&a){return path_mesh(p,a,true);});
+  registry.method("Scene", "strand", {"string", "float", "float", "int"}, "Mesh", [](void *p, dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if (scene->meshes.size()>=4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    const auto path=parse_points(a[0].s,3,2,512);
+    const double root=a[1].f, tip=a[2].f;
+    const int sides=int(a[3].i);
+    if (!std::isfinite(root)||!std::isfinite(tip)||root<=0||root>1000||tip<0||tip>root||sides<3||sides>32)
+      throw dslvm::Error("strand requires root radius (0,1000], tip radius [0,root], and sides 3..32");
+    std::vector<std::array<double,3>> profile;
+    for (int j=0;j<sides;++j) { const double angle=2*M_PI*j/sides; profile.push_back({std::cos(angle),std::sin(angle),0}); }
+    auto mesh=std::make_unique<Mesh>(); mesh->smooth=true;
+    append_sweep(*mesh,path,profile,root,tip,true);
+    Mesh *result=adopt_mesh(*scene,std::move(mesh));
+    return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene", "hair_sphere", {"float","float","float","float","int","float","float"}, "Mesh", [](void *p,dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if (scene->meshes.size()>=4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    for (size_t i=0;i<7;++i) if (i!=4 && !std::isfinite(a[i].f)) throw dslvm::Error("hair sphere parameters must be finite");
+    const double x=a[0].f,y=a[1].f,z=a[2].f,r=a[3].f,length=a[5].f,width=a[6].f;
+    const int count=int(a[4].i);
+    if (std::abs(x)>1e6||std::abs(y)>1e6||std::abs(z)>1e6||r<=0||r>1000||count<1||count>2048||length<=0||length>100||width<=0||width>r)
+      throw dslvm::Error("hair_sphere requires bounded center, radius (0,1000], strands 1..2048, length (0,100], width (0,radius]");
+    std::vector<std::array<double,3>> profile;
+    for (int j=0;j<8;++j) { const double angle=2*M_PI*j/8;profile.push_back({std::cos(angle),std::sin(angle),0}); }
+    auto mesh=std::make_unique<Mesh>(); mesh->smooth=true;
+    for (int i=0;i<count;++i) {
+      const double h=1.0-2.0*(i+0.5)/count, t=i*2.399963229728653,
+                   radial=std::sqrt(std::max(0.0,1.0-h*h));
+      const std::array<double,3> dir{radial*std::cos(t),radial*std::sin(t),h};
+      const auto side=unit3(cross3(dir, std::abs(dir[2])<0.95 ? std::array<double,3>{0,0,1} : std::array<double,3>{0,1,0}));
+      std::vector<std::array<double,3>> path;
+      for (double t : {0.0,0.35,0.72,1.0}) {
+        const double d=r+length*t, bend=length*0.72*t*t;
+        path.push_back({x+d*dir[0]+bend*side[0],y+d*dir[1]+bend*side[1],
+                        z+d*dir[2]+bend*side[2]-length*0.28*t*t});
+      }
+      append_sweep(*mesh,path,profile,width,width*0.08,true);
+    }
+    Mesh *result=adopt_mesh(*scene,std::move(mesh));
+    return dslvm::Value::object("Mesh",result);
+  });
+  registry.method("Scene", "hair_patch", {"float","float","float","float","int","float","float"}, "Mesh", [](void *p,dslvm::Args &a) {
+    auto *scene=static_cast<Scene *>(p);
+    if (scene->meshes.size()>=4096) throw dslvm::Error("mesh object limit exceeded (4096)");
+    for (size_t i=0;i<7;++i) if (i!=4 && !std::isfinite(a[i].f)) throw dslvm::Error("hair patch parameters must be finite");
+    const double x=a[0].f,y=a[1].f,z=a[2].f,size=a[3].f,height=a[5].f,width=a[6].f;
+    const int count=int(a[4].i);
+    if (std::abs(x)>1e6||std::abs(y)>1e6||std::abs(z)>1e6||size<=0||size>1000||count<1||count>2048||height<=0||height>100||width<=0||width>height*0.2)
+      throw dslvm::Error("hair_patch requires bounded center, size (0,1000], strands 1..2048, height (0,100], width (0,height/5]");
+    std::vector<std::array<double,3>> profile;
+    for (int j=0;j<6;++j) { const double angle=2*M_PI*j/6;profile.push_back({std::cos(angle),std::sin(angle),0}); }
+    auto mesh=std::make_unique<Mesh>();mesh->smooth=true;
+    for (int i=0;i<count;++i) {
+      const double u=std::fmod((i+0.5)*0.7548776662466927,1.0),
+                   v=std::fmod((i+0.5)*0.5698402909980532,1.0),
+                   px=x+(u-0.5)*size,py=y+(v-0.5)*size,
+                   h=height*(0.72+0.28*std::fmod((i+1)*0.618033988749895,1.0)),
+                   lean=0.22*h;
+      const std::vector<std::array<double,3>> path{{px,py,z},{px+0.02*h,py,z+0.4*h},
+                                                   {px+0.11*h,py+0.04*h,z+0.76*h},
+                                                   {px+lean,py+0.08*h,z+h}};
+      append_sweep(*mesh,path,profile,width,width*0.07,true);
+    }
+    Mesh *result=adopt_mesh(*scene,std::move(mesh));
+    return dslvm::Value::object("Mesh",result);
+  });
   registry.method("Scene","ring_arc",{"float","float","float","float","float","float","float","int"},"Mesh",[](void*p,dslvm::Args&a){
     auto *scene=static_cast<Scene*>(p);if(scene->meshes.size()>=4096)throw dslvm::Error("mesh object limit exceeded (4096)");for(size_t i=0;i<7;++i)if(!std::isfinite(a[i].f))throw dslvm::Error("ring arc values must be finite");
     const double R=a[3].f,r=a[4].f,start=a[5].f*M_PI/180.0,end=a[6].f*M_PI/180.0;const int seg=int(a[7].i),sides=12;

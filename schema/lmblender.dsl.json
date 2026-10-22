@@ -477,6 +477,24 @@
             "returns": "Mesh"
           }
         ],
+        "strand": [
+          {
+            "params": ["string", "float", "float", "int"],
+            "returns": "Mesh"
+          }
+        ],
+        "hair_sphere": [
+          {
+            "params": ["float", "float", "float", "float", "int", "float", "float"],
+            "returns": "Mesh"
+          }
+        ],
+        "hair_patch": [
+          {
+            "params": ["float", "float", "float", "float", "int", "float", "float"],
+            "returns": "Mesh"
+          }
+        ],
         "arrow_between": [
           {
             "params": [

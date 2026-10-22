@@ -45,13 +45,15 @@ PY
 
 qa_dir="$build/full-check-qa"
 qa_model=${LMBLENDER_QA_MODEL:-gemini-3.8-flash-high}
+qa_provider=${LMBLENDER_QA_PROVIDER:-agy}
+if [[ $qa_model == claude-* && -z ${LMBLENDER_QA_PROVIDER:-} ]]; then qa_provider=claude; fi
 mkdir -p "$qa_dir"
 : > "$qa_dir/results.txt"
 qa_image() {
   local name=$1 image=$2 checks=$3
   local path="$build/$image"
   local response
-  response=$(lmctl prompt --provider agy --model "$qa_model" \
+  response=$(lmctl prompt --provider "$qa_provider" --model "$qa_model" \
     "Inspect the local image $path directly. Checklist for $name: $checks Reply PASS only if every numbered item is visibly true; otherwise reply FAIL followed by failed item numbers and a short reason. Give a quality score from 1 to 5.")
   printf '%s\n' "$response" | tee "$qa_dir/$name.txt" | tail -n 2
   printf '%s\n' "$response" | grep -q '^PASS ' || {
