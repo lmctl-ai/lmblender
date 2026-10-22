@@ -80,10 +80,18 @@ build_one pugixml "$src/pugixml" -DPUGIXML_BUILD_TESTS=OFF
 build_one robinmap "$src/robinmap"
 build_one tbb "$src/tbb" -DTBB_TEST=OFF -DTBB_EXAMPLES=OFF -DTBBMALLOC_BUILD=OFF \
   -DTBBMALLOC_PROXY_BUILD=OFF -DTBB4PY_BUILD=OFF -DTBB_ENABLE_IPO=OFF -DTBB_STRICT=OFF
-# Match the CPU BVH used by the shared regression suite; no ISPC examples or GPU runtime.
+# Match the CPU BVH used by the shared suite. One x64 ISA keeps hosted MSVC
+# cold builds practical; Cycles already requires the SSE4.2 baseline.
+embree_isa=(-DEMBREE_MAX_ISA=AVX2)
+case "$(uname -s)-$(uname -m)" in
+  MINGW*|MSYS*|CYGWIN*|Darwin-x86_64)
+    embree_isa=(-DEMBREE_MAX_ISA=NONE -DEMBREE_ISA_SSE2=OFF -DEMBREE_ISA_SSE42=ON
+      -DEMBREE_ISA_AVX=OFF -DEMBREE_ISA_AVX2=OFF -DEMBREE_ISA_AVX512=OFF) ;;
+  *-arm64|*-aarch64) embree_isa=(-DEMBREE_MAX_ISA=NEON) ;;
+esac
 build_one embree "$src/embree" -DEMBREE_STATIC_LIB=ON -DEMBREE_TUTORIALS=OFF \
   -DEMBREE_ISPC_SUPPORT=OFF -DEMBREE_SYCL_SUPPORT=OFF -DEMBREE_TASKING_SYSTEM=TBB \
-  -DEMBREE_MAX_ISA=AVX2 -DEMBREE_STATIC_RUNTIME=ON
+  "${embree_isa[@]}" -DEMBREE_STATIC_RUNTIME=ON
 build_one imath "$src/imath" -DBUILD_TESTING=OFF -DPYTHON=OFF -DPYBIND11=OFF
 build_one openexr "$src/openexr" "${zlib_args[@]}" -DBUILD_TESTING=OFF -DOPENEXR_BUILD_TOOLS=OFF \
   -DOPENEXR_BUILD_EXAMPLES=OFF -DOPENEXR_BUILD_UTILS=OFF -DOPENEXR_BUILD_PYTHON=OFF \

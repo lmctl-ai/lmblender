@@ -66,12 +66,23 @@ EOF
 
 # The standalone build system hard-codes /MD in configuration flags. Remove
 # those flags so CMP0091 and CMAKE_MSVC_RUNTIME_LIBRARY control the CRT.
-"$py" - "$(native "$overlay/src/cmake/configure_build.cmake")" <<'PYCRT'
+"$py" - "$(native "$overlay/src/cmake/configure_build.cmake")" "$(native "$overlay/src/cmake/external_libs.cmake")" <<'PYCRT'
 from pathlib import Path
 import re, sys
 path = Path(sys.argv[1])
 text = re.sub(r" /MDd?\b", "", path.read_text())
 text += "\nif(MSVC)\n  add_compile_definitions(__TBB_NO_IMPLICIT_LINKAGE=1)\nendif()\n"
+path.write_text(text)
+# The legacy finder assumes all x64 ISA archives exist. Embree's own exported
+# target records exactly the built static components and their TBB dependency.
+path = Path(sys.argv[2])
+text = path.read_text()
+needle = "find_package(Embree 3.8.0 REQUIRED)"
+assert text.count(needle) == 1
+text = text.replace(needle, """find_package(TBB CONFIG REQUIRED)
+    find_package(embree 4 CONFIG REQUIRED)
+    set(EMBREE_MAJOR_VERSION ${EMBREE_VERSION_MAJOR})
+    set(EMBREE_LIBRARIES embree)""")
 path.write_text(text)
 PYCRT
 

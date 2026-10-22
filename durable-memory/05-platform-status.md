@@ -67,3 +67,9 @@ Known facts:
   the default include directory (the prior override nested include paths twice).
 - Stopped obsolete runs 39816999171 and 39818470239 after adopting the direct
   OCIO dependency builds; their old helpers cannot satisfy the static CRT gate.
+- Canceled job log https://github.com/lmctl-ai/lmblender/actions/runs/39816999171/job/119957985877
+  shows Embree compilation from 16:58:50 to 17:52:44 UTC, reaching 269/271
+  steps without a compiler error. This was CPU compilation, not a download
+  stall. Windows now builds one SSE4.2 Embree ISA (same feature coverage; no
+  AVX/AVX2 dispatch variants) to reduce cold cost. Cycles uses the exported
+  `embree` target instead of its legacy finder that assumes all ISA archives.
