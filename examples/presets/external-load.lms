@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-external.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.5);
 scene.load_preset("examples/presets/technical-clean.external.json");
 cube.set_material(scene.material_from_palette("body"));

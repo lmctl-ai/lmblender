@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-principled.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.world_color(0.08, 0.42, 0.12, 0.5);
 scene.point_light(-4.0, -3.0, 7.0, 1.0, 0.82, 0.62, 550.0);

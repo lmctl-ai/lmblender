@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/gltf-invalid.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let broken = scene.import_gltf("tests/fixtures/gltf/malformed-json.glb");
 end _dsl_
 savedsl(p, out);

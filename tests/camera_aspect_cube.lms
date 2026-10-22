@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-aspect-cube.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.0);
 cube.set_material(scene.material(0.025, 0.8, 0.04, 0.0, 0.65, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.area_light(-3.0, -4.0, 4.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.8, 700.0, 4.0);

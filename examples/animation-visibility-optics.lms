@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/animation-visibility-optics.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let hidden = scene.uv_sphere(0.75, 24, 12, true);
 let matte = scene.material(0.08, 0.32, 0.92, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
 hidden.set_material(matte); hidden.translate(-2.0, 0.0, 0.0);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/compose-mug.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_stl("build/compose-input/build/mug.stl");
 mesh.set_smooth(true);
 # lmcad's revolve_y geometry uses +Y as its upright axis; map that axis to renderer +Z.

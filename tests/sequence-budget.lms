@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/sequence-budget.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let sphere = scene.uv_sphere(1.0, 16, 8, true);
 scene.set_threads(2);
 scene.render_sequence("build/should-not-render-{frame}.png", 0, 239, 8, 960, 540);

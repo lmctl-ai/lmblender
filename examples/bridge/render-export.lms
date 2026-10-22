@@ -1,6 +1,6 @@
 // Expects the binary GLB produced by blendercli/examples/bridge/build-and-export.lms.
 bytecode = ARGV.len() > 0 ? ARGV[0] : "build/bridge-render.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let first = scene.import_gltf("tests/fixtures/bridge/bridge.glb");
 scene.expect_int(first.triangle_count(), 12);
 scene.world_color(0.24, 0.27, 0.31, 0.42);

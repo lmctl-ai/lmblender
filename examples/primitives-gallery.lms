@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/primitives-gallery.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(8.0, 3.0);
 let cube = scene.cube(1.7); cube.translate(-5.0,0.0,0.9); cube.set_material(scene.material(0.9,0.12,0.06,0.0,0.3,0.0,0.0,0.0,0.0,0.0));
 let sphere = scene.uv_sphere(0.9,32,20,true); sphere.translate(-2.5,0.0,0.9); sphere.set_material(scene.material(0.05,0.28,0.92,0.0,0.24,0.0,0.0,0.0,0.0,0.0));

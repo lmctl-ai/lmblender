@@ -48,6 +48,19 @@ cmp schema/lmblender.dsl.json <("$exe" --schema --json)
 "${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
 diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
 python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-signatures.txt"
+python3 - <<'PY'
+from pathlib import Path
+import re
+files = [Path("README.md"), *Path("docs").rglob("*.md"), *Path("examples").rglob("*.lms"), *Path("tests").rglob("*.lms")]
+declarations = []
+for path in files:
+    text = path.read_text(errors="replace")
+    declarations.extend((path, value) for value in re.findall(r'install="github:lmctl-ai/lmblender@([^" ]+)"', text))
+assert declarations, "expected lmblender install declarations in docs and examples"
+stale = [(str(path), value) for path, value in declarations if value != "latest"]
+assert not stale, f"install examples must use @latest: {stale}"
+print(f"lmscript install references use @latest ({len(declarations)} declarations)")
+PY
 "$exe" --version >"$build/version.txt"
 python3 - "$build/version.txt" VERSION <<'PY'
 import pathlib, re, sys

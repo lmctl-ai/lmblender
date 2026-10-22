@@ -1,6 +1,6 @@
 // Isolated red point and blue area sources make each inverse-square measurement independent.
 out = ARGV.len() > 0 ? ARGV[0] : "build/light-falloff.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(14.0,3.0);
 let red = scene.material(0.78,0.045,0.025,0.0,0.62,0.0,0.0,0.0,0.0,0.0);
 let blue = scene.material(0.025,0.15,0.82,0.0,0.62,0.0,0.0,0.0,0.0,0.0);

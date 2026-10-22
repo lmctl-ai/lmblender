@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/orthographic-camera.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let clay = scene.material(0.55, 0.24, 0.08, 0.0, 0.62, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(clay);

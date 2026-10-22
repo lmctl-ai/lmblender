@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/video-throughput.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let orb = scene.uv_sphere(1.0, 32, 16, true);
 let gold = scene.material(0.8, 0.36, 0.07, 0.15, 0.24, 0.0, 0.0, 0.0, 0.0, 0.0);
 orb.set_material(gold);

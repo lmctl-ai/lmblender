@@ -1,6 +1,6 @@
 // Zero-setup lmblender use from lmscript. With no local binary, lmscript installs
 // the pinned Linux host release; with lmblender on PATH, it uses that binary.
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.4);
 cube.set_material(scene.material(0.12, 0.38, 0.82, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.world_color(0.12, 0.15, 0.2, 0.4);

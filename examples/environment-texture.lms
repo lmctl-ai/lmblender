@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/environment-texture.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.uv_sphere(1.2,64,40,true);
 let chrome = scene.material(0.75,0.78,0.82,1.0,0.035,0.0,0.0,0.0,0.0,0.0);
 mesh.set_material(chrome);

@@ -26,9 +26,9 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 
 ## Using from another project
 
-The `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2"` declaration is the recommended install path; see [the consumer guide](docs/USING_FROM_POC.md). For local work, put the build output on `PATH`. `scripts/release.sh` also refreshes a relocatable `bin/`, `schema/`, `docs/`, and `examples/` layout; override its destination with `LMBLENDER_HOST_RELEASE`. It writes exact-name host binaries and checksums beside versioned tarballs under `dist/`.
+The `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"` declaration is the recommended install path; lmscript resolves the newest non-draft release and refreshes a cached binary when its `--version` changes. Use an exact tag such as `@v0.3.2` for reproducibility or a fixed offline cache. A matching binary already on `PATH` takes precedence. See [the consumer guide](docs/USING_FROM_POC.md). For local work, put the build output on `PATH`. `scripts/release.sh` also refreshes a relocatable `bin/`, `schema/`, `docs/`, and `examples/` layout; override its destination with `LMBLENDER_HOST_RELEASE`. It writes exact-name host binaries and checksums beside versioned tarballs under `dist/`.
 
-For a pinned lmscript installation pattern, see [Using lmblender from another project](docs/USING_FROM_POC.md).
+For latest-release and pinned installation patterns, see [Using lmblender from another project](docs/USING_FROM_POC.md).
 
 ## BlenderCLI interchange
 
@@ -44,10 +44,10 @@ bounded swept-tube meshes and its numeric pixel checks.
 
 ## Install and quick start
 
-Install Node.js and `@lmctl-ai/lmctl` with `npm install -g @lmctl-ai/lmctl@latest`, then run `lmscript hello.lms`. The host is downloaded from the pinned public release if it is not on `PATH`:
+Install Node.js and `@lmctl-ai/lmctl` with `npm install -g @lmctl-ai/lmctl@latest`, then run `lmscript hello.lms`. The host is downloaded from the latest public release if it is not on `PATH`:
 
 ```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 32, 20, true);
 scene.studio_setup();
 scene.render_png("hello.png", 8, 640, 480);

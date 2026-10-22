@@ -1,12 +1,13 @@
 # Use lmblender from another project
 
 Install Node.js and lmscript with `npm install -g @lmctl-ai/lmctl@latest`.
-`lmblender` can then be installed by lmscript when it is not already on `PATH`. Pin
-the public release in the `_dsl_` declaration, then run the exact host selected
-by lmscript with `dsl_cli(p)`:
+`lmblender` can then be installed by lmscript when it is not already on `PATH`.
+Use `@latest` to follow the newest non-draft release; use an exact tag such as
+`@v0.3.2` for reproducibility or a fixed offline cache. A matching binary on
+`PATH` takes precedence. Run the exact host selected by lmscript with `dsl_cli(p)`:
 
 ```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mug = scene.import_stl("assets/mug.stl");
 mug.set_material(scene.material(0.68, 0.31, 0.12, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.studio_setup();

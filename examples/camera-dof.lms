@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-dof.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let near = scene.uv_sphere(0.8,48,32,true);
 near.translate(-2.6,-4.0,0.8);
 let red = scene.material(0.9,0.06,0.03,0.0,0.45,0.0,0.0,0.0,0.0,0.0);

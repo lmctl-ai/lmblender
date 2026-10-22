@@ -1,5 +1,5 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-explicit-overrides.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.8);
 cube.set_material(scene.material(0.82, 0.035, 0.025, 0.0, 0.72, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.use_preset("product-studio");

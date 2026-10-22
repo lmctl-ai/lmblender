@@ -1,6 +1,6 @@
 // Curve-strand vocabulary built from bounded swept tubes, with no hair system dependency.
 out = ARGV.len() > 0 ? ARGV[0] : "build/strands-showcase.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(12.0, 3.0);
 scene.world_color(0.12, 0.15, 0.19, 0.38);
 let green = scene.material(0.045,0.38,0.075,0.0,0.52,0.0,0.0,0.0,0.0,0.0);

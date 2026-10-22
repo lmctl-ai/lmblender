@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/turntable-mug.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@v0.3.2";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mug = scene.import_stl("build/compose-input/build/mug.stl");
 mug.rotate_x(90.0);
 mug.translate(0.0, 0.0, 7.0);
