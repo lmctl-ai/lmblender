@@ -75,11 +75,6 @@ build_one png "$src/png" "${zlib_args[@]}" -DPNG_SHARED=OFF -DPNG_STATIC=ON -DPN
 # libjpeg-turbo resolves a relative CMAKE_INSTALL_LIBDIR against the working directory.
 build_one jpeg "$src/jpeg" -DCMAKE_INSTALL_LIBDIR="$P/lib" -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_SIMD=OFF -DWITH_TURBOJPEG=OFF -DWITH_CRT_DLL=OFF
 build_one zstd "$src/zstd/build/cmake" -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF -DZSTD_USE_STATIC_RUNTIME=ON
-# MSVC zstd installs zstd_static.lib; Cycles' FindZstd looks for zstd.lib.
-if (( windows )) && [[ -f "$prefix/lib/zstd_static.lib" ]]; then
-  cp "$prefix/lib/zstd_static.lib" "$prefix/lib/zstd.lib"
-  rm -f "$prefix/lib/zstd.dll" "$prefix/bin/zstd.dll"
-fi
 build_one fmt "$src/fmt" -DFMT_TEST=OFF -DFMT_DOC=OFF
 build_one pugixml "$src/pugixml" -DPUGIXML_BUILD_TESTS=OFF
 build_one robinmap "$src/robinmap"

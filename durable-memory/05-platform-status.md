@@ -45,3 +45,9 @@ Known facts:
   overlay and the host's forced configuration header (the host includes the
   pristine pinned source headers). The log also confirms `/MT` overrode the
   earlier hard-coded `/MD`; removing `/MD` eliminates that conflicting flag.
+- Rebased over main's macOS LIBDIR and Windows cache/Zstd changes. This branch
+  retains the explicit `ZSTD_LIBRARY` hint instead of installing a duplicate
+  `zstd.lib` archive; the dependency script therefore remains identical to the
+  in-flight Embree-enabled cache build. There is one dependency-cache path.
+- First branch cold timing breakdown: OCIO about 3m02s, OIIO about 3m51s,
+  OIDN about 1m11s. Archive fetch/extraction took about 38s.
