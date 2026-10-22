@@ -116,6 +116,8 @@ compile_dsl examples/render-mesh-xml-oracle.lms "$build/render-mesh-xml.dslb"
 compile_dsl examples/material-principled.lms "$build/material-principled.dslb"
 compile_dsl examples/camera-look-at.lms "$build/camera-look-at.dslb"
 compile_dsl examples/render-timeout.lms "$build/render-timeout.dslb"
+python3 tests/create_gltf_uv_fixture.py "$build/gltf-uv"
+compile_dsl tests/gltf-uv.lms "$build/gltf-uv.dslb"
 compile_dsl tests/geometry-budget.lms "$build/geometry-budget.dslb"
 compile_dsl tests/image-limit.lms "$build/image-limit.dslb"
 compile_dsl tests/image-limit-maps.lms "$build/image-limit-maps.dslb"
@@ -197,6 +199,9 @@ assert r.get("ok") is False and r.get("code") == sys.argv[2], r
 print(f"{sys.argv[1].rsplit('/', 1)[-1]}: refused with {sys.argv[2]}: {r.get('message', '')[:110]}")
 PY
 }
+# Authored glTF TEXCOORD_0 drives the base-color texture (no projection override).
+"$exe" --dsl "$build/gltf-uv.dslb" >"$build/gltf-uv-result.json"
+python3 tests/gltf_uv_quality.py "$build/gltf-uv.png"
 # Scene-wide geometry budget stops accumulation at creation time, before any render.
 expect_dsl_error obj-mtl-invalid OBJ_MTL_INVALID
 expect_dsl_error obj-huge-coordinate OBJ_INVALID
