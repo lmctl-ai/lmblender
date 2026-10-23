@@ -2953,6 +2953,24 @@ dslvm::Registry make_registry() {
     for (auto &v : mesh->vertices) rotate(v);
     return dslvm::Value::none();
   });
+  registry.method("Mesh", "rotate_y", {"float"}, "void", [](void *p, dslvm::Args &a) {
+    if (!std::isfinite(a[0].f) || std::abs(a[0].f) > 360000.0) throw dslvm::Error("mesh Y rotation must be finite and bounded");
+    auto *mesh = static_cast<Mesh *>(p);
+    const double angle = a[0].f * M_PI / 180.0;
+    const double c = std::cos(angle), s = std::sin(angle);
+    auto rotate = [c,s](std::array<double,3> &v) { const double x=v[0], z=v[2]; v[0]=c*x+s*z; v[2]=-s*x+c*z; };
+    for (auto &v : mesh->vertices) rotate(v);
+    return dslvm::Value::none();
+  });
+  registry.method("Mesh", "rotate_z", {"float"}, "void", [](void *p, dslvm::Args &a) {
+    if (!std::isfinite(a[0].f) || std::abs(a[0].f) > 360000.0) throw dslvm::Error("mesh Z rotation must be finite and bounded");
+    auto *mesh = static_cast<Mesh *>(p);
+    const double angle = a[0].f * M_PI / 180.0;
+    const double c = std::cos(angle), s = std::sin(angle);
+    auto rotate = [c,s](std::array<double,3> &v) { const double x=v[0], y=v[1]; v[0]=c*x-s*y; v[1]=s*x+c*y; };
+    for (auto &v : mesh->vertices) rotate(v);
+    return dslvm::Value::none();
+  });
   registry.method("Scene", "instance_mesh", {"Mesh", "float", "float", "float", "float", "float", "float"}, "Mesh", [](void *p, dslvm::Args &a) {
     auto *scene = static_cast<Scene *>(p);
     auto *source = static_cast<Mesh *>(a[0].obj);

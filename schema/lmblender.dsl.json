@@ -775,6 +775,22 @@
             "returns": "void"
           }
         ],
+        "rotate_y": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
+        "rotate_z": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
         "vertex_count": [
           {
             "params": [],

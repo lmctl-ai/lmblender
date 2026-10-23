@@ -1,3 +1,9 @@
+## lmblender 0.3.5 — Linux, macOS and Windows (arm64/x64)
+
+Adds bounded baked Y-axis and Z-axis mesh rotations alongside the existing X-axis
+rotation. This makes rigid-body and scientific assembly scenes orientable without
+pre-transforming source geometry; a render regression covers all three axes.
+
 ## lmblender 0.3.4 — Linux, macOS and Windows (arm64/x64)
 
 First release with `lmblender-macos-arm64`, `lmblender-macos-x64` and
