@@ -29,6 +29,7 @@ rm -f "$root/install-and-run.png"
 python3 tests/create_material_maps.py "$build/material-map-assets"
 python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
 python3 tests/fixture_text_eol.py "$build/obj-mtl-assets"
+python3 tests/create_rotated_obj_fixture.py "$build/rotation-fixture"
 diff -r tests/fixtures/material-maps "$build/material-map-assets"
 diff -r tests/fixtures/obj-mtl "$build/obj-mtl-assets"
 python3 scripts/tutorial-sync.py --check
@@ -153,6 +154,9 @@ compile_dsl tests/preset-no-autoframe-position.lms "$build/preset-no-autoframe-p
 compile_dsl examples/render-exr.lms "$build/render-exr.dslb"
 compile_dsl examples/mesh-instances.lms "$build/mesh-instances.dslb"
 compile_dsl tests/rigid-body-rotations.lms "$build/rigid-body-rotations.dslb"
+compile_dsl tests/rotation-normals-rotated.lms "$build/rotation-normals-rotated.dslb"
+compile_dsl tests/rotation-normals-reference.lms "$build/rotation-normals-reference.dslb"
+compile_dsl tests/rotation-instance-reject.lms "$build/rotation-instance-reject.dslb"
 compile_dsl examples/embree-heavy.lms "$build/embree-heavy.dslb"
 compile_dsl examples/render-settings.lms "$build/render-settings.dslb"
 compile_dsl examples/procedural-materials.lms "$build/procedural-materials.dslb"
@@ -301,6 +305,14 @@ cp "$build/mesh-instances.png" "$build/mesh-instances-first.png"
 cmp "$build/mesh-instances-first.png" "$build/mesh-instances.png"
 "$exe" --dsl "$build/rigid-body-rotations.dslb" >"$build/rigid-body-rotations-result.json"
 test -s "$build/rigid-body-rotations.png"
+"$exe" --dsl "$build/rotation-normals-rotated.dslb" >"$build/rotation-normals-rotated-result.json"
+"$exe" --dsl "$build/rotation-normals-reference.dslb" >"$build/rotation-normals-reference-result.json"
+python3 tests/rotation_normals_quality.py "$build/rotation-normals-rotated.png" "$build/rotation-normals-reference.png"
+if "$exe" --dsl "$build/rotation-instance-reject.dslb" >"$build/rotation-instance-reject-result.json" 2>&1; then
+  echo "instance rotation unexpectedly succeeded" >&2
+  exit 1
+fi
+grep -q "cannot rotate an instance" "$build/rotation-instance-reject-result.json"
 "$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-result.json"
 # Same scene through Cycles BVH2 in this build: the reference stays in the current display encoding.
 cp "$build/embree-heavy.png" "$build/embree-heavy-embree.png"
