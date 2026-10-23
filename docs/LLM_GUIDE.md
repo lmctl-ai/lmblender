@@ -128,7 +128,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `mesh.translate(x,y,z)`, `scale(x,y,z)`, `rotate_x(degrees)` | Relative translation/scale and baked X-axis rotation. |
 | `material(r,g,b,metallic,roughness,transmission,emission_r,g,b,emission_strength)` | Principled BSDF factors; color [0,1], emission strength [0,10000]. |
 | `checker_material(c1 RGB,c2 RGB,scale,roughness)`, `noise_material(...)`, `ramp_material(...)` | Two RGB colors, procedural scale, roughness. Ramp uses Generated coordinates and Noise → RGB Ramp. |
-| `image_material(path,roughness)` | PNG/JPEG/EXR texture read with the mesh UVs. |
+| `image_material(path,roughness)` | PNG/JPEG/EXR texture read with the mesh UVs. PNG and JPEG color images (also glTF base color, OBJ `map_Kd`, and `environment_texture` PNGs) are decoded from sRGB; EXR and HDR are read as scene-linear. |
 | `Material.bump(strength,distance,scale)` | Procedural noise to bump normal; strength [0,1], distance 0..2 scene units. |
 | `Material.texture_maps(normal,roughness,metallic,ao)` | Optional PNG/JPEG/EXR tangent normal, roughness, metallic, and AO maps; empty path leaves a channel unset. Data maps use Cycles' `data` colorspace. AO multiplies base color; it is not a separate ambient-occlusion shader. Each map <=64 MiB, all maps <=256 MiB. |
 | `Material.mix_with(other,factor)`, `mix_with_texture(other,path)` | Mixes the receiver shader with a plain Principled second layer by constant [0,1] or texture factor. Complex second layers are rejected. |

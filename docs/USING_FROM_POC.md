@@ -23,8 +23,8 @@ if (r.code != 0) { println(trim(r.stderr)); exit(1); }
 
 The install API selects the release binary for the host OS and architecture,
 verifies its SHA-256 against the GitHub release digest, and caches it for later
-runs. lmblender currently publishes Linux arm64 and x64 binaries. macOS and
-Windows binaries are not provided.
+runs. lmblender publishes Linux arm64 and x64, macOS arm64 and x64, and
+Windows x64 binaries (since v0.3.4).
 
 For local development, put the built `lmblender` executable first on `PATH`;
 the same script then uses that binary and does not download a release. The DSL

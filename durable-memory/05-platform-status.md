@@ -1,10 +1,9 @@
 # Platform status (macOS / Windows)
 
-Shipped: linux-arm64, linux-x64 (fully static, `ldd` says "not a dynamic executable").
-Not shipped: macos-arm64, macos-x64, windows-x64.exe. The `platforms` workflow builds them as experimental jobs
-(continue-on-error), so a green workflow run does NOT mean those jobs passed: read the per-job conclusions
-(`gh run view RUN --json jobs`). The tag-triggered release job `needs` only the Linux build + source jobs, so
-Linux can release without the other platforms.
+Shipped since v0.3.4: linux-arm64, linux-x64 (fully static), macos-arm64, macos-x64, windows-x64.exe.
+The `platforms` workflow jobs are still continue-on-error, so a green workflow run does NOT mean those jobs
+passed: read the per-job conclusions (`gh run view RUN --json jobs`). The release job requires only the Linux
+builds + source; it publishes the other platforms when their jobs succeeded.
 
 Known facts:
 - Blender's precompiled lib repos (lib-windows_x64) return HTTP 403 to non-browser clients: Windows must not use
