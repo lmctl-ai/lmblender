@@ -13,8 +13,8 @@ Render 3D scenes with Blender's Cycles path tracer from a short script: one stat
     <td width="50%"><img alt="Grass blades, a fur ball, and a cyan arch with a black toon outline" src="docs/readme/gallery-strands.png" width="100%"></td>
   </tr>
   <tr>
-    <td>Spot light through scattering fog, glass, stone (<a href="docs/readme/gallery.lms">source</a>)</td>
-    <td>Grass and fur strands, a lofted arch with toon outline (<a href="docs/readme/gallery.lms">source</a>)</td>
+    <td>Fog, spot light, glass (<a href="docs/readme/gallery.lms">source</a>)</td>
+    <td>Strands, loft, toon outline (<a href="docs/readme/gallery.lms">source</a>)</td>
   </tr>
 </table>
 
@@ -22,17 +22,14 @@ The hero image is [docs/readme/hero.lms](docs/readme/hero.lms); `docs/readme/ren
 
 ## Quick start
 
+Save [01-first-render.lms](docs/tutorial/code/01-first-render.lms) from the tutorial, then run:
+
 ```sh
-npm install -g @lmctl-ai/lmctl@latest
-curl -O https://raw.githubusercontent.com/lmctl-ai/lmblender/main/docs/tutorial/code/01-first-render.lms
+npm i -g @lmctl-ai/lmctl
 lmscript 01-first-render.lms
 ```
 
-The script downloads the lmblender release for your platform on first use and writes `first-render.png`.
-
-```text
-scene.lms --lmscript--> bytecode (.dslb) --lmblender--> Cycles CPU scene --> PNG, EXR, APNG
-```
+The script downloads the lmblender release for your platform on first use and writes `first-render.png`. lmscript compiles the scene block to bytecode; the lmblender executable builds the Cycles scene from it and writes PNG, EXR, or APNG.
 
 - [Tutorial](docs/tutorial/index.md): ten short steps from one sphere to imported meshes, animation, and error handling.
 - [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes.
