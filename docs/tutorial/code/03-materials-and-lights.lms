@@ -1,0 +1,22 @@
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(1.0, 48, 24, true);
+ball.translate(0.0, 0.0, 1.0);
+ball.set_material(scene.material(0.08, 0.25, 0.85, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0));
+let box = scene.cube(1.6);
+box.translate(-2.8, 0.0, 0.8);
+box.set_material(scene.material(0.9, 0.15, 0.06, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+let ring = scene.torus(0.8, 0.25, 48, 16, true);
+ring.translate(2.8, 0.0, 0.25);
+ring.set_material(scene.material(0.95, 0.7, 0.2, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.ground_plane(0.0, 20.0, 0.7, 0.7, 0.72);
+scene.world_color(0.6, 0.7, 0.9, 0.3);
+scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 1.0, 1.0, 0.92, 0.82, 600.0, 3.0);
+scene.camera_look_at(0.0, -9.0, 3.5, 0.0, 0.0, 0.8, 40.0);
+scene.render_png("materials-and-lights.png", 32, 640, 480);
+end _dsl_
+file = "materials-and-lights.dslb";
+savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file};
+delete_file(file);
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+println("wrote materials-and-lights.png");

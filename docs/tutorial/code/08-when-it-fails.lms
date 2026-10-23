@@ -1,0 +1,10 @@
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(0.0, 48, 24, true);
+scene.render_png("never-written.png", 16, 320, 240);
+end _dsl_
+file = "when-it-fails.dslb";
+savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file};
+delete_file(file);
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+println("wrote never-written.png");

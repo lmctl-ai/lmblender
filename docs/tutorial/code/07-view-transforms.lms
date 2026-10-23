@@ -1,0 +1,18 @@
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let lamp = scene.uv_sphere(1.0, 48, 24, true);
+lamp.translate(0.0, 0.0, 1.0);
+lamp.set_material(scene.material(1.0, 0.55, 0.2, 0.0, 0.5, 0.0, 1.0, 0.55, 0.2, 6.0));
+scene.ground_plane(0.0, 20.0, 0.5, 0.5, 0.52);
+scene.world_color(0.6, 0.7, 0.9, 0.1);
+scene.camera_look_at(0.0, -6.0, 2.5, 0.0, 0.0, 0.8, 40.0);
+scene.set_view_transform("Standard");
+scene.render_png("view-standard.png", 32, 320, 240);
+scene.set_view_transform("AgX");
+scene.render_png("view-agx.png", 32, 320, 240);
+end _dsl_
+file = "view-transforms.dslb";
+savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file};
+delete_file(file);
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+println("wrote view-standard.png, view-agx.png");

@@ -27,6 +27,7 @@ rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
 rm -f "$root/install-and-run.png"
 python3 tests/create_material_maps.py "$build/material-map-assets"
 python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
+python3 scripts/tutorial-sync.py --check
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
   -DBLENDER_SOURCE_TREE="$blender_source" \
   -DBLENDER_DEPS_INSTALL="$deps_install" \
