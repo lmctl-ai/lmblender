@@ -100,10 +100,10 @@ From the repository root, with lmscript and a Blender 5.x executable on your PAT
 
 ```sh
 mkdir -p build
-lmscript examples/primitives-gallery.lms
-blender -b --factory-startup --python docs/tutorial/blender/py/primitives-gallery.py
+lmscript examples/camera-look-at.lms
+blender -b --factory-startup --python docs/tutorial/blender/py/camera-look-at.py
 ```
 
-lmblender writes `build/primitives-gallery.png` and Blender writes `blender/primitives-gallery.png`. Each example page lists its own commands and any fixture it needs.
+lmblender writes `build/camera-look-at.png` and Blender writes `blender/camera-look-at.png`. This example runs cleanly with the v0.3.4 release binary on all platforms. To reproduce the hero image above (`primitives-gallery`), run `lmscript examples/primitives-gallery.lms` and `blender -b --factory-startup --python docs/tutorial/blender/py/primitives-gallery.py` (note that on Linux arm64 CPUs without SVE, `primitives-gallery` requires a local build due to the denoiser issue described above). Each example page lists its own commands and any fixture it needs.
 
 Next: write your own scene, starting from page 3 or 4, and look up every call in [LLM_GUIDE.md](../LLM_GUIDE.md). Back to the [tutorial index](index.md).
