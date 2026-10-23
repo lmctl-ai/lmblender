@@ -2986,6 +2986,8 @@ dslvm::Registry make_registry() {
     auto instance = std::make_unique<Mesh>();
     instance->geometry_source = source->geometry_source ? source->geometry_source : source;
     instance->material = instance->geometry_source->material;
+    // Shading follows the shared geometry; Mesh.set_smooth on the instance still overrides it.
+    instance->smooth = instance->geometry_source->smooth;
     for (size_t i = 0; i < 6; ++i) if (!std::isfinite(a[i + 1].f)) throw dslvm::Error("instance transform must be finite");
     for (size_t i = 0; i < 3; ++i) {
       if (std::abs(a[i + 1].f) > 1'000'000.0) throw dslvm::Error("instance position exceeds scene bounds");

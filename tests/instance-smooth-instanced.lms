@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// An instance of a smooth source must shade smooth like the source itself; the
+// source sits out of view exactly where the reference keeps its far copy.
+out = ARGV.len() > 0 ? ARGV[0] : "build/instance-smooth-instanced.dslb";
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let far = scene.uv_sphere(1.0, 12, 6, true);
+far.translate(0.0, 60.0, 0.0);
+let clay = scene.material(0.6, 0.6, 0.6, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0);
+far.set_material(clay);
+let ball = scene.instance_mesh(far, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
+scene.world_color(0.0, 0.0, 0.0, 0.0);
+scene.area_light(-3.0, -4.0, 4.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 200.0, 2.0);
+scene.camera_look_at(0.0, -5.0, 0.0, 0.0, 0.0, 0.0, 30.0);
+scene.render_settings(4, 5, false);
+scene.render_png("build/instance-smooth-instanced.png", 16, 160, 160);
+end _dsl_
+savedsl(p, out);
