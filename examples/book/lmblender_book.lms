@@ -1,0 +1,109 @@
+// Builds an lmblender tutorial book with an agent team, one stage at a time.
+// Usage: lmscript lmblender_book.lms [--stage N] [--team FILE] [--seed-only]
+//   stage 1 seed the team (Lead only)    stage 2 prep resources and read them
+//   stage 3 install headless Blender and compile comparison examples
+//   stage 4 write the tutorial, comparisons, and the tutorial checklist
+//   stage 5 add the QA member and check the result
+//   stage 6 fix bugs, add lmblender images to the README
+//   stage 7 write feedback and enhancement notes
+// Without --stage all stages run in order. Re-run one stage with --team FILE.
+// autorun-role: Lead provider=claude model=claude-opus-5-5
+// autorun-role: QA provider=agy model=gemini-3.8-flash-high
+tool = "lmblender";
+stage = 0;
+team = "";
+seed_only = false;
+for (i = 0; i < len(ARGV); i = i + 1) {
+  a = str(ARGV[i]);
+  if (a == "--seed-only") { seed_only = true; }
+  if (a == "--stage") { stage = num(ARGV[i + 1]); }
+  if (a == "--team") { team = str(ARGV[i + 1]); }
+}
+
+lead_line = "_MEMBER_ alias=Lead provider=@role(Lead.provider) model=@role(Lead.model)\n";
+qa_line = "_MEMBER_ alias=QA provider=@role(QA.provider) model=@role(QA.model)\n";
+
+resources = "Read these first and follow them:\n"
+  + "LMScript DSL: https://lmctl.com/tools/lmscript/skill.html\n"
+  + "lmblender repo: https://github.com/lmctl-ai/lmblender (README.md, examples/, docs/LLM_GUIDE.md, docs/USING_FROM_POC.md, durable-memory/)\n"
+  + "Example book we already have: https://lmctl.com/tools/lmdraw/examples/title-card.html and https://lmctl.com/tools/lmdraw/get_started.html\n"
+  + "Book recipe: https://lmctl.com/skills/publish-tool-book-skill.html\n"
+  + "Install lmblender in scripts with: _dsl_ cli=\"lmblender\" install=\"github:lmctl-ai/lmblender@latest\"\n"
+  + "Work in a clone of lmblender with git user Mike Ma <281311770+mike-lmctl@users.noreply.github.com>. "
+  + "Do not publish any personal email address. Commit and push every change.\n";
+
+checklist = "Checklist of a good tutorial: (1) one goal per page and stated up front; "
+  + "(2) every code block runs as written, copy-paste, with the expected output shown; "
+  + "(3) each step adds one idea and builds on the last; (4) a rendered image for every result; "
+  + "(5) states prerequisites and install in one command; (6) explains failures and how to fix them; "
+  + "(7) ends with a next step and links to reference; (8) plain text with no decorative markup; "
+  + "(9) tested on a clean machine by someone who did not write it; (10) comparison with the reference tool is honest about gaps.\n";
+
+if (team == "") {
+  team = path_join(Directory, "lmblender_book.lmctl");
+  for (n = 2; file_exists(team); n = n + 1) {
+    team = path_join(Directory, "lmblender_book" + str(n) + ".lmctl");
+  }
+}
+
+fn ask(who, text) {
+  r = lm_prompt(team, who, text + "\n\n" + resources, {});
+  require(r.status == "ok", who + " failed: " + str(r.error));
+  println(who + ":\n" + str(r.reply));
+  return r;
+}
+
+fn want(n) { return stage == 0 || stage == n; }
+
+if (want(1)) {
+  if (!file_exists(team)) { write_file_exclusive(team, "# lmblender book\n\n" + lead_line); }
+  r = lm_seed(team);
+  require(r.status == "ok", "Could not seed " + team);
+  println("Team file: " + team);
+  println("Resume: " + cmd_render(["lmctl", "terminal", team, "Lead"], "posix"));
+}
+if (seed_only) { println("Seed-only mode: no agent prompt was sent."); lm_exit(0); }
+
+if (want(2)) {
+  ask("Lead", "Stage 2, prepare. Read every resource above, including all of lmblender examples/ and durable-memory/. "
+    + "Report in under 40 lines: what lmblender does, its DSL surface, which examples exist, and which Blender or Python "
+    + "equivalents are possible for each. Do not change files yet.");
+}
+if (want(3)) {
+  ask("Lead", "Stage 3, install and compile. Install headless Blender on this machine without sudo if possible "
+    + "(download the official Linux tarball into a new empty directory, or use pip bpy if that works). Then, for each lmblender "
+    + "example that Blender and Python can also build, write the Python script, render a PNG with Blender, and render the "
+    + "same scene with lmblender. Keep outputs in a work directory outside the repo. Report which examples have a "
+    + "matched pair, the render times, and the gaps.");
+}
+if (want(4)) {
+  ask("Lead", "Stage 4, tutorial. Write the lmblender tutorial in the lmblender clone under docs/tutorial/ as plain Markdown "
+    + "pages plus images, with an index. Include the Blender comparison pages built from stage 3. "
+    + "Write the checklist below to docs/tutorial/CHECKLIST.md and score the tutorial against it.\n\n" + checklist);
+}
+if (want(5)) {
+  if (!contains(read_file(team), "alias=QA")) {
+    write_file(team, read_file(team) + qa_line);
+    r = lm_seed(team);
+    require(r.status == "ok", "Could not seed QA");
+  }
+  ask("QA", "You are QA. Review the lmblender tutorial in docs/tutorial/ of the lmblender clone. Run every code block "
+    + "from a clean directory, view each image, and score the tutorial against this checklist. Report concrete findings "
+    + "with file and line.\n\n" + checklist);
+}
+if (want(6)) {
+  ask("Lead", "Stage 6, fix and enhance. Fix every bug and tutorial defect QA found and any bug you hit in lmblender. "
+    + "Then add two to four images made with lmblender (a hero render, a gallery) to the top of the lmblender README.md, "
+    + "with light and dark variants where it helps, generated by scripts kept in the repo. Check the rendering in a browser "
+    + "with Playwright at desktop and phone width. Commit and push.");
+}
+if (want(7)) {
+  ask("Lead", "Stage 7, feedback. Write durable-memory/tool-book-feedback in the lmblender clone as plain text (no inline code, "
+    + "no decorative markup): what worked, what failed, what the recipe at the book skill URL should change, and enhancement "
+    + "requests for lmblender, lmscript and lmctl autorun. Commit and push.");
+}
+
+if (!NonInteractive && stage == 0) {
+  r = lm_terminal(team, "Lead");
+  if (r.exit_code != 0) { lm_exit(r.exit_code); }
+}
