@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-maps.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let textured = scene.uv_sphere(0.88, 48, 24, true);
 textured.translate(-1.15, 0.0, 0.90);
@@ -21,17 +23,19 @@ scene.area_light_shape(3.0, -2.5, 4.0, 0.0, 0.0, 0.8, 0.66, 0.78, 1.0, 230.0, 2.
 scene.spot_light(0.0, 3.0, 5.0, 0.0, 0.0, 0.5, 1.0, 0.76, 0.54, 520.0, 48.0, 0.72);
 scene.camera_look_at(0.0, -8.8, 3.5, 0.0, 0.0, 0.9, 43.0);
 scene.render_settings(12, 404, true);
-scene.render_png("build/material-maps.png", 48, 640, 480);
+scene.render_png("images/material-maps.png", 48, 640, 480);
 mapped.texture_maps("", "", "", "");
-scene.render_png("build/material-maps-control.png", 48, 640, 480);
+scene.render_png("images/material-maps-control.png", 48, 640, 480);
 gold.mix_with(blue, 0.5);
-scene.render_png("build/material-mix-factor.png", 48, 640, 480);
+scene.render_png("images/material-mix-factor.png", 48, 640, 480);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/material-maps.png");
+println("wrote images/material-maps-control.png");
+println("wrote images/material-mix-factor.png");

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/glass-transmission.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.uv_sphere(1.1,48,32,true); mesh.translate(0.0,0.0,1.1);
 let glass = scene.material(0.94,0.97,1.0,0.0,0.04,0.95,0.0,0.0,0.0,0.0);
@@ -13,13 +15,13 @@ scene.checker_ground(7.0,6.0);
 scene.fit_camera(45.0);
 scene.light_clamp(10.0,2.0);
 scene.render_settings(12,991,true);
-scene.render_png("build/glass-transmission.png",128,640,480);
+scene.render_png("images/glass-transmission.png",128,640,480);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/glass-transmission.png");

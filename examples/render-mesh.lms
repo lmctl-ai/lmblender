@@ -3,17 +3,19 @@
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/imported-mesh.png";
 bytecode = ARGV.len() > 1 ? ARGV[1] : "build/render-mesh.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.expect_int(mesh.vertex_count(), 4);
 scene.expect_int(mesh.triangle_count(), 4);
-scene.render_png("build/imported-mesh.png", 32, 256, 192);
+scene.render_png("images/imported-mesh.png", 32, 256, 192);
 end _dsl_
 savedsl(p, bytecode);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, bytecode);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/imported-mesh.png");

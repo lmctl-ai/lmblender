@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/backface-culling.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let visible = scene.plane(1.65);
 visible.rotate_x(-90.0);
@@ -16,13 +18,13 @@ red.backface_culling(true);
 hidden.set_material(red);
 scene.world_color(0.25, 0.27, 0.3, 0.35);
 scene.camera_look_at(0.0, -6.0, 0.0, 0.0, 0.0, 0.0, 40.0);
-scene.render_png("build/backface-culling.png", 16, 640, 480);
+scene.render_png("images/backface-culling.png", 16, 640, 480);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/backface-culling.png");

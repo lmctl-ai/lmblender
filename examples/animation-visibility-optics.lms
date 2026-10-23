@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/animation-visibility-optics.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let hidden = scene.uv_sphere(0.75, 24, 12, true);
 let matte = scene.material(0.08, 0.32, 0.92, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -23,13 +25,13 @@ scene.camera_optics_keyframe(1, 70.0, 8.0, "linear");
 scene.camera_optics_keyframe(2, 42.0, 8.0, "linear");
 scene.world_color(0.12, 0.15, 0.2, 0.5);
 scene.render_settings(8, 0, true); scene.set_threads(2);
-scene.render_sequence("build/animation-visibility-{frame}.png", 0, 2, 8, 480, 270);
+scene.render_sequence("images/animation-visibility-{frame}.png", 0, 2, 8, 480, 270);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/animation-visibility-<frame>.png");

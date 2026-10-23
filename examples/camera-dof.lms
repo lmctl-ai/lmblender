@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-dof.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let near = scene.uv_sphere(0.8,48,32,true);
 near.translate(-2.6,-4.0,0.8);
@@ -22,13 +24,13 @@ scene.area_light(4.0,-2.0,4.0,0.0,0.0,0.0,0.55,0.7,1.0,250.0,3.0);
 scene.camera_look_at(0.0,-16.0,5.0,0.0,0.0,0.8,42.0);
 scene.camera_dof(3.0,16.5);
 scene.render_settings(12,314159,true);
-scene.render_png("build/camera-dof.png",96,640,480);
+scene.render_png("images/camera-dof.png",96,640,480);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/camera-dof.png");

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/orthographic-camera.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let clay = scene.material(0.55, 0.24, 0.08, 0.0, 0.62, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -10,15 +12,16 @@ scene.ground_plane(-0.12, 60.0, 0.28, 0.3, 0.34);
 scene.sun_light(0.25, -0.5, -1.0, 1.0, 0.9, 0.78, 2.4, 0.2);
 scene.area_light(-4.0, -5.0, 7.0, 0.0, 0.0, 1.5, 1.0, 0.8, 0.65, 1800.0, 4.0);
 scene.camera_look_at(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 55.0);
-scene.render_png("build/perspective-reference.png", 64, 512, 384);
+scene.render_png("images/perspective-reference.png", 64, 512, 384);
 scene.camera_orthographic(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 7.0);
-scene.render_png("build/orthographic-camera.png", 64, 512, 384);
+scene.render_png("images/orthographic-camera.png", 64, 512, 384);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/perspective-reference.png");
+println("wrote images/orthographic-camera.png");

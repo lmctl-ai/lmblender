@@ -19,6 +19,9 @@ for level in level1-teams level2-agents level3-flow level4-pipeline; do
   PATH="$build:$PATH" \
   lmscript "examples/video/$level.lms" "$build/video/$level.dslb" >/dev/null
 done
+# The examples write images/video/ for users; collect the frames for QA here.
+mv images/video/level*.png "$build/video/"
+rmdir images/video 2>/dev/null || true
 python3 tests/video_quality.py "$build/video"
 if command -v ffmpeg >/dev/null 2>&1; then
   for pair in "level1-teams level1" "level2-agents level2" "level3-flow level3" "level4-pipeline level4"; do

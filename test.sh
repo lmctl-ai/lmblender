@@ -24,7 +24,7 @@ find "$build" -maxdepth 1 -type f \
      -o -name '*-result.json' -o -name 'version.txt' -o -name 'presets-list.txt' \
      -o -name 'install-example.log' \) -delete
 rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
-rm -f "$root/install-and-run.png"
+rm -f "$root/images/install-and-run.png"
 # Committed fixtures must match their generators byte for byte.
 python3 tests/create_material_maps.py "$build/material-map-assets"
 python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
@@ -61,8 +61,9 @@ compile_dsl() {
   # embedded DSL block. Stop at savedsl() here so this pass only builds the
   # bytecode; the host execution and image assertions run once below. This
   # avoids the 60 s system() timeout hiding a slow render as exit code null.
+  # Examples write images/<name>.png for users; here those outputs go to $build.
   awk '/^[[:space:]]*savedsl\(/ { print; found=1; exit } { print }
-       END { if (!found) exit 1 }' "$source" >"$temporary"
+       END { if (!found) exit 1 }' "$source" | sed "s#\"images/#\"$build/#g" >"$temporary"
   if ! "${LMSCRIPT:-lmscript}" "$temporary" "$@" "$bytecode" >"$log" 2>&1; then
     cat "$log" >&2
     echo "failed compiling DSL block from $source" >&2
@@ -124,7 +125,7 @@ compile_dsl examples/primitives-gallery.lms "$build/primitives-gallery.dslb"
 compile_dsl examples/strands-showcase.lms "$build/strands-showcase.dslb"
 compile_dsl examples/loft-outline.lms "$build/loft-outline.dslb"
 sed -e '/let ink = scene.toon_outline/d' -e '/scene.expect_int(ink/d' \
-  -e 's@build/loft-outline.png@build/loft-outline-control.png@' \
+  -e 's@images/loft-outline.png@images/loft-outline-control.png@' \
   examples/loft-outline.lms > "$build/loft-outline-control.lms"
 compile_dsl "$build/loft-outline-control.lms" "$build/loft-outline-control.dslb"
 compile_dsl tests/strand_geometry.lms "$build/strand-geometry.dslb"
@@ -186,9 +187,9 @@ for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio tur
   compile_dsl "examples/presets/$preset.lms" "$build/preset-$preset.dslb"
 done
 PATH="$build_path:$PATH" LMSCRIPT_TOOL_CACHE="$build/test-tool-cache" "${LMSCRIPT:-lmscript}" examples/dsl/install-and-run.lms >"$build/install-example.log"
-test -s install-and-run.png
-python3 tests/png_metrics.py install-and-run.png
-rm -f install-and-run.png
+test -s images/install-and-run.png
+python3 tests/png_metrics.py images/install-and-run.png
+rm -f images/install-and-run.png
 compile_dsl examples/presets/external-load.lms "$build/preset-external.dslb"
 compile_dsl examples/presets/switch.lms "$build/preset-switch.dslb"
 "$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
@@ -446,6 +447,58 @@ python3 tests/material_maps_quality.py "$build"
 python3 tests/backface_culling_quality.py "$build/backface-culling.png"
 python3 tests/preset_quality.py "$build"
 python3 tests/denoise_speed_quality.py "$build/denoise-speed-fast.png" "$build/denoise-speed-reference.png"
+# An instance of a smooth source shades smooth (it used to fall back to flat shading).
+compile_dsl tests/instance-smooth-direct.lms "$build/instance-smooth-direct.dslb"
+compile_dsl tests/instance-smooth-instanced.lms "$build/instance-smooth-instanced.dslb"
+"$exe" --dsl "$build/instance-smooth-direct.dslb" >"$build/instance-smooth-direct-result.json"
+"$exe" --dsl "$build/instance-smooth-instanced.dslb" >"$build/instance-smooth-instanced-result.json"
+python3 tests/instance_smooth_quality.py "$build/instance-smooth-direct.png" "$build/instance-smooth-instanced.png"
+# README story examples: each renders through this build and passes a sanity/effect gate.
+for story in caustic-ball-lens:900:560 sunset-long-shadows:900:560 backlit-skin:900:500 \
+    god-rays-window:800:500 cornell-box:640:640 caffeine-molecule:900:600 dna-double-helix:900:500 \
+    salt-crystal:800:570 saturn-rings:900:560 bouncing-ball-strobe:900:520 kepler-orbit:720:450; do
+  IFS=: read -r name width height <<<"$story"
+  compile_dsl "examples/$name.lms" "$build/$name.dslb"
+  "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
+  python3 tests/story_quality.py "$name" "$build/$name.png" "$width" "$height"
+done
+test -s build/kepler-orbit/frame-35.png
+python3 tests/story_quality.py kepler-frame build/kepler-orbit/frame-35.png 560 350
+# The gear story is an lmcad + lmblender pipeline; it needs the lmcad host as well.
+if command -v lmcad >/dev/null 2>&1; then
+  rm -rf "$build/gear-story" && mkdir -p "$build/gear-story"
+  (cd "$build/gear-story" && "${LMSCRIPT:-lmscript}" "$root/examples/gear-pair-render.lms" >gear.log 2>&1) || {
+    cat "$build/gear-story/gear.log" >&2; exit 1; }
+  python3 tests/story_quality.py gear-pair-render "$build/gear-story/images/gear-pair-render.png" 900 560
+else
+  echo "SKIP: examples/gear-pair-render.lms needs the lmcad host on PATH (lmcad + lmblender pipeline)"
+fi
+# README gallery: every autorun caption names an existing example, every image exists
+# with PNG/GIF magic bytes and stays within the size budget.
+python3 - <<'PYGAL'
+import pathlib, re
+readme = pathlib.Path("README.md").read_text()
+prefix = "https://raw.githubusercontent.com/lmctl-ai/lmblender/main/"
+urls = re.findall(r"lmctl autorun (https://\S+?\.lms)", readme)
+assert len(urls) >= 12, f"expected >= 12 autorun captions, found {len(urls)}"
+for url in urls:
+    assert url.startswith(prefix + "examples/") and url.endswith(".lms"), url
+    assert pathlib.Path(url[len(prefix):]).is_file(), f"missing example for {url}"
+images = re.findall(r'src="(docs/images/[^"]+)"', readme)
+assert len(images) >= 12, f"expected >= 12 gallery images, found {len(images)}"
+for image in images:
+    data = pathlib.Path(image).read_bytes()
+    if image.endswith(".png"):
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", f"{image} is not a PNG"
+        assert len(data) <= 300 * 1024, f"{image} is {len(data)} bytes (> 300 KB)"
+    elif image.endswith(".gif"):
+        assert data[:6] in (b"GIF89a", b"GIF87a"), f"{image} is not a GIF"
+        assert len(data) <= 3 * 1024 * 1024, f"{image} is {len(data)} bytes (> 3 MB)"
+    else:
+        raise AssertionError(f"unexpected gallery image type {image}")
+assert "see source" not in readme.lower() and ">source<" not in readme, "README still links to source instead of autorun"
+print(f"README gallery: {len(urls)} autorun captions and {len(images)} images verified")
+PYGAL
 # Only an explicitly chosen Blender (5.2 with OIDN) can produce the goldens; a random
 # `blender` on PATH is not used.
 blender=${BLENDERCLI_BLENDER:-}

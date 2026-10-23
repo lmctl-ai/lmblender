@@ -1,46 +1,88 @@
 # lmblender
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.png">
-  <img alt="Stone, glass, gold, jade, and fur objects rendered by lmblender" src="docs/readme/hero-light.png" width="100%">
-</picture>
+**Blender's Cycles path tracer as one static executable, driven by short lmscript scenes: no Blender install, no Python, no GPU.**
 
-Render 3D scenes with Blender's Cycles path tracer from a short script: one static executable, no Blender install, no Python.
+[![CI](https://github.com/lmctl-ai/lmblender/actions/workflows/ci.yml/badge.svg)](https://github.com/lmctl-ai/lmblender/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/lmctl-ai/lmblender?label=release)](https://github.com/lmctl-ai/lmblender/releases)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-<table>
-  <tr>
-    <td width="50%"><img alt="A glass sphere under a stone gate, lit by a spot light through blue fog" src="docs/readme/gallery-fog.png" width="100%"></td>
-    <td width="50%"><img alt="Grass blades, a fur ball, and a cyan arch with a black toon outline" src="docs/readme/gallery-strands.png" width="100%"></td>
-  </tr>
-  <tr>
-    <td>Fog, spot light, glass (<a href="docs/readme/gallery.lms">source</a>)</td>
-    <td>Strands, loft, toon outline (<a href="docs/readme/gallery.lms">source</a>)</td>
-  </tr>
-</table>
+Every picture below is made by one example program. Each one runs from a raw URL with `lmctl autorun`, installs lmblender for your platform on first use, and writes `images/<name>.png` in the current directory in well under a minute on a four-core CPU.
 
-The hero image is [docs/readme/hero.lms](docs/readme/hero.lms); `docs/readme/render.sh` re-renders all four images.
+### Light and optics
 
-## Quick start
+| Ball-lens caustic | Sunset and long shadows | Sunbeams in a dusty room |
+| --- | --- | --- |
+| <img src="docs/images/caustic-ball-lens.png" width="290" alt="Two glass spheres over a floor: the low one focuses the lamp to a tight bright spot, the high one spreads it into a dim disc"> | <img src="docs/images/sunset-long-shadows.png" width="290" alt="Five posts at sunset casting shadows 9.5 times their height toward the camera"> | <img src="docs/images/god-rays-window.png" width="290" alt="Light shafts from a six-pane window crossing a hazy room onto the floor"> |
+| A glass ball focuses at f = nR / (2(n-1)) = 1.5 R: at focus vs past it<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caustic-ball-lens.lms` | Sun at 6°: 8.9 air masses redden it; shadows are h/tan 6° = 9.5 h<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/sunset-long-shadows.lms` | Haze scatters 6%/m of each beam; parallel shafts, sharp floor patches<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/god-rays-window.lms` |
 
-Save [01-first-render.lms](docs/tutorial/code/01-first-render.lms) from the tutorial, then run:
+### Global illumination and materials
+
+| Cornell box | Why a backlit hand glows red | CAD to product shot |
+| --- | --- | --- |
+| <img src="docs/images/cornell-box.png" width="290" alt="The Cornell box: red and green walls, two white blocks, ceiling lamp"> | <img src="docs/images/backlit-skin.png" width="290" alt="Four skin slabs of 2, 4, 8 and 16 mm in front of a lamp, turning from peach to deep red"> | <img src="docs/images/gear-pair-render.png" width="290" alt="A steel 18-tooth pinion meshing with a brass 36-tooth gear on a slate desk"> |
+| The classic GI test: white blocks pick up red and green bounce light<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms` | Measured skin mean free paths (red 3.7 mm, blue 0.7 mm) vs thickness<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/backlit-skin.lms` | lmcad builds involute gears (2:1, a = 54 mm), lmblender renders them<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/gear-pair-render.lms` |
+
+### Molecules and crystals
+
+| Caffeine molecule | B-DNA double helix | Rock salt at true ionic size |
+| --- | --- | --- |
+| <img src="docs/images/caffeine-molecule.png" width="290" alt="Ball-and-stick caffeine molecule in CPK colours"> | <img src="docs/images/dna-double-helix.png" width="290" alt="28 base pairs (2.7 turns) of B-DNA with coloured base pairs and major and minor grooves"> | <img src="docs/images/salt-crystal.png" width="290" alt="A block of green chloride and violet sodium ions in the rock-salt lattice"> |
+| C8H10N4O2: purine core, two C=O, three N-methyls, CPK colours<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caffeine-molecule.lms` | 10.5 bp per turn, 0.34 nm rise; 144° backbone offset makes the grooves<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/dna-double-helix.lms` | Na+ 1.02 Å + Cl- 1.81 Å = a/2: ions touch along every cube edge<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/salt-crystal.lms` |
+
+### Space and motion
+
+| Saturn and its rings to scale | Kepler's second law | Strobe photo of a bouncing ball |
+| --- | --- | --- |
+| <img src="docs/images/saturn-rings.png" width="290" alt="Saturn with its C, B and A rings, the Cassini Division and the planet shadow on the rings"> | <img src="docs/images/kepler-orbit.gif" width="290" alt="A planet on an eccentric orbit speeding up near the Sun, with equal-time beads and spokes"> | <img src="docs/images/bouncing-ball-strobe.png" width="290" alt="A white ball photographed every 1/25 s while bouncing; red bars mark predicted peak heights"> |
+| Ring radii from 1.24 to 2.27 planet radii, Cassini Division at 1.95<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/saturn-rings.lms` | Kepler equation solved per frame; equal areas in equal times (GIF)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/kepler-orbit.lms` | Restitution 0.8: each peak is 0.64 of the last; spacing shows speed<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bouncing-ball-strobe.lms` |
+
+## Quick start (one minute)
 
 ```sh
-npm i -g @lmctl-ai/lmctl
-lmscript 01-first-render.lms
+npm install -g @lmctl-ai/lmctl
+lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms
 ```
 
-The script downloads the lmblender release for your platform on first use and writes `first-render.png`. lmscript compiles the scene block to bytecode; the lmblender executable builds the Cycles scene from it and writes PNG, EXR, or APNG.
+That downloads the example, compiles its scene to DSL bytecode, fetches the lmblender release for your OS (Linux x64/arm64, macOS x64/arm64, Windows x64) and writes `images/cornell-box.png`. To write your own scene, save this as `hello.lms` and run `lmscript hello.lms`:
+
+```lmscript
+out = "build/hello.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(1.0, 48, 32, true);
+ball.set_material(scene.material(0.1, 0.3, 0.8, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.studio_setup();
+scene.render_png("images/hello.png", 32, 640, 480);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+assert(r.code == 0);
+println("wrote images/hello.png");
+```
 
 - [Tutorial](docs/tutorial/index.md): ten short steps from one sphere to imported meshes, animation, and error handling.
-- [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes.
+- [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes (`lmblender --dsl-schema` prints the same list).
 - [Compared with Blender](docs/tutorial/11-compare-with-blender.md): 44 examples rendered by lmblender and by Blender 5.2, side by side.
-- [Releases](https://github.com/lmctl-ai/lmblender/releases): Linux, macOS, and Windows executables.
+- `examples/render-all.sh` re-renders every gallery image into `docs/images/`.
 
-**License:** the combined static executable is distributed under GPL-3.0-or-later because it links GPL Blender intern code. Project-authored files are separately marked MIT where noted; see [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md). Every release ships its complete corresponding source as `lmblender-source-vX.Y.Z.tar.gz` ([SOURCE_OFFER.md](SOURCE_OFFER.md)).
+## More examples
 
-On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280×720 studio frame at 64 samples with OIDN in 49.88 seconds (about 1.20 frames/minute). This does not meet a few-seconds target; actual speed depends on scene complexity and hardware.
+The other programs in [examples/](examples/) are feature demonstrations and regression scenes (materials, lights, cameras, imports, passes, presets, animation). They also self-execute and write into `images/`, but the import, texture and preset ones read fixtures from `tests/fixtures/`, so run them from a clone (`lmscript examples/<name>.lms`) rather than from a URL. `examples/video/run.sh` renders four short diagram clips; `examples/compose/run.sh` and `examples/bridge/run.sh` are lmcad and BlenderCLI pipelines.
 
-`lmblender` is a standalone CPU Cycles renderer controlled by `lmscript` DSL bytecode. It is a separate executable from [lmcad](https://github.com/lmctlhq/lmcad); composition happens through files and lmscript programs. The host embeds the pinned DSL v5 VM and schema. Blender's standalone Cycles source is built separately, without Blender, Python, GUI, or GPU backends.
+## Limits
+
+- CPU only. A 900×560 frame at 32–64 samples with OIDN denoising takes roughly 5–30 s on four cores; the 1280×720, 64-sample studio frame in `examples/video/throughput.lms` took 49.9 s on a four-core aarch64 host ([THROUGHPUT.md](docs/THROUGHPUT.md)).
+- Point, area, spot and sun lamps light surfaces directly but are not hit by reflected or refracted rays, so they do not show up in mirrors or glass and cannot make caustics. Use an emissive mesh (a thin `cube` or `cylinder` with an emission material) when a lamp must be seen in a reflection or focused by glass, as the caustic, gear and Cornell examples do.
+- `scene.material` has no IOR parameter (glass uses Cycles' default 1.5), `label` text is uppercase letters and spaces only, and hair is swept mesh geometry, not Cycles curves.
+- Imports: OBJ/MTL, STL, ASCII PLY and glTF 2.0 triangles; binary PLY, embedded glTF images, skinning and morph targets are rejected with structured errors.
+- Animation keys cover mesh translation and visibility, camera, material colour/emission and point-light strength; mesh rotation is not animated.
+
+## License
+
+The combined static executable is distributed under **GPL-3.0-or-later** because it links GPL Blender intern code (sky model, guarded allocator, libc compatibility). Cycles, OpenImageDenoise and Embree are Apache-2.0; OpenImageIO, OpenColorIO, OpenEXR and the other bundled libraries keep their own permissive licenses ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), texts in [licenses/](licenses/)). Project-authored files are separately marked MIT where noted, including every example program. Every release ships its complete corresponding source as `lmblender-source-vX.Y.Z.tar.gz` ([SOURCE_OFFER.md](SOURCE_OFFER.md)); see also [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md).
+
+`lmblender` is a standalone CPU Cycles renderer controlled by lmscript DSL bytecode. It is a separate executable from [lmcad](https://github.com/lmctl-ai/lmcad); composition happens through files and lmscript programs (see the gear example). The host embeds the pinned DSL v5 VM and schema. Blender's standalone Cycles source is built separately, without Blender, Python, GUI, or GPU backends.
 
 ## Current milestone status
 
@@ -54,7 +96,7 @@ On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280
 | Mesh input | Partial | OBJ with bounded MTL materials, per-face `usemtl`, UVs/normals, diffuse/specular/roughness/alpha/emission and confined PNG/JPEG/EXR color/bump/opacity maps; STL, ASCII PLY, and glTF 2.0 JSON/GLB triangle meshes with node transforms and PBR factors/textures. Meshes support bounded baked X/Y/Z rotations for rigid-body presentation. Binary PLY and embedded glTF images remain unsupported |
 | Diagram strands | Partial | Explicit tapered `strand` polylines and deterministic `hair_patch`/`hair_sphere` emitters produce swept meshes with materials; native Cycles hair primitives and photoreal fur grooming remain unsupported |
 | Toon and loft | Partial | `toon_outline` strokes boundary/sharp mesh edges; `loft` sweeps a bounded convex profile along a polyline. Smooth-surface silhouette detection and arbitrary concave profiles are not supported |
-| Gallery QA | Partial | 19 named 640×480 gallery renders have numeric checks; the new OBJ/MTL image has been directly inspected, with agy visual review pending its quota reset. Four 640×360 video samples are checked separately; lmcad compositions are checked by their runner |
+| Gallery QA | Partial | The 12 README story renders run in `test.sh` with size, exposure and contrast gates (plus effect checks for the skin and Cornell scenes); 19 named 640×480 feature renders have numeric checks; four 640×360 video samples are checked separately; lmcad compositions are checked by their runner |
 | Alpha output | Partial | Transparent world film emits RGBA PNG; shadow-catcher composition remains |
 
 ## Video examples
@@ -80,27 +122,7 @@ flattened by the example rather than transferred. Native Cycles curve hair is
 also not imported; the [strand showcase](examples/strands-showcase.lms) uses
 bounded swept-tube meshes and its numeric pixel checks.
 
-## Install and quick start
-
-Install Node.js and `@lmctl-ai/lmctl` with `npm install -g @lmctl-ai/lmctl@latest`, then run `lmscript hello.lms`. The host is downloaded from the latest public release if it is not on `PATH`:
-
-```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
-let ball = scene.uv_sphere(1.0, 32, 20, true);
-scene.studio_setup();
-scene.render_png("hello.png", 8, 640, 480);
-end _dsl_
-file = "hello.dslb";
-savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file};
-delete_file(file);
-if (r.code != 0) { println(trim(r.stderr)); exit(1); }
-```
-
-The exact host release is selected by lmscript's `install=` pin and SHA-256
-digest. Releases since v0.3.4 ship Linux arm64 and x64, macOS arm64 and x64, and
-Windows x64 executables. Download a binary or tarball from the [releases page](https://github.com/lmctl-ai/lmblender/releases) if you prefer a manual install.
-The runnable installer smoke example is [examples/dsl/install-and-run.lms](examples/dsl/install-and-run.lms).
+## Scene API notes
 
 - The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, `scene.import_stl(path)`, `scene.import_ply(path)`, and `scene.import_gltf(path)`. PLY currently accepts bounded ASCII 1.0 meshes with x/y/z vertices and polygon face indices. glTF 2.0 `.gltf` and `.glb` import traverses the selected scene hierarchy, bakes node transforms into render meshes, preserves TEXCOORD_0, reads metallic/roughness and baseColorFactor, and supports external PNG/JPEG base-color images confined to the glTF directory. Imported meshes expose vertex/triangle counts and bounds. Sparse accessors, non-triangle modes, required extensions, skinning, morph targets, and embedded/data-URI images are rejected with structured glTF errors. Inputs are bounded to 256 MiB glTF containers, 512 MiB aggregate buffers, 64 MiB per texture, 10 million decoded vertices, 20 million triangles, 4096 generated meshes/materials, and 200,000 hierarchy visits. `scene.render_png(path, samples, width, height)` builds Cycles `Scene`, `Mesh`, `Object`, `ShaderGraph`, camera, and light nodes directly through the Cycles C++ API and renders them with an in-process CPU session. The renderer uses a fitted Z-up perspective camera by default, and assigns Cycles emission shaders to direct-light nodes so they participate in the light manager.
 - OBJ import recognizes `mtllib`/`usemtl`, positive and negative face indices, corner UVs/normals, and MTL `Kd`, `Ks`, `Ns`, `d`/`Tr`, `Ke`, `map_Kd`, `map_Bump` (including `-bm`), and `map_d`. MTL paths are confined to the OBJ directory and require regular bounded files; other texture directives return `OBJ_MTL_UNSUPPORTED`. `Mesh.material_count()` reports the used material slots. The importer caps OBJ at 256 MiB, each MTL at 4 MiB, 16 MiB total MTL data, each texture at 64 MiB, and all referenced textures at 256 MiB. LMCAD's current OBJ exporter writes geometry/groups only (`o`, `v`, `f`), so its exports retain the scene-assigned material path.

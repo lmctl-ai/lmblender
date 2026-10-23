@@ -3,6 +3,8 @@
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/volume-fog.dslb";
 // The spot sits behind the subject so its in-scatter veils the far floor, not the near one; the host adds no light of its own once a scene has any light.
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let shell = scene.uv_sphere(15.0,64,40,true);
 let fog = scene.material(0.9, 0.95, 1.0, 0.0, 0.02, 1.0, 0.0, 0.0, 0.0, 0.0);
@@ -17,13 +19,13 @@ scene.checker_ground(7.0,5.0);
 scene.camera_look_at(5.5,-9.0,5.1,0.0,0.0,1.4,40.0);
 scene.render_settings(12,481,true);
 scene.light_clamp(5.0,1.0);
-scene.render_png("build/volume-fog.png",96,640,480);
+scene.render_png("images/volume-fog.png",96,640,480);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/volume-fog.png");

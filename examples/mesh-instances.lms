@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/mesh-instances.dslb";
+mkdir("images");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let base = scene.import_obj("tests/fixtures/tetra.obj");
 base.scale(0.65, 0.65, 0.65);
 base.translate(-1.8, 0.0, 0.0);
 let copy = scene.instance_mesh(base, 1.8, 0.0, 0.0, 0.65, 0.65, 0.65);
-scene.render_png("build/mesh-instances.png", 32, 256, 192);
+scene.render_png("images/mesh-instances.png", 32, 256, 192);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/mesh-instances.png");

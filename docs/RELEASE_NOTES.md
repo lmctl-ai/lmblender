@@ -1,3 +1,9 @@
+## Unreleased
+
+`instance_mesh` copies of a smooth-shaded source (for example `uv_sphere(..., true)`) now render
+smooth like the source instead of flat-shaded; `tests/instance_smooth_quality.py` covers it. Examples
+write `images/<name>.png` and run themselves, and twelve new story examples form the README gallery.
+
 ## lmblender 0.3.6 — Linux, macOS and Windows (arm64/x64)
 
 Make generated OBJ/MTL regression fixtures byte-stable on Windows by writing

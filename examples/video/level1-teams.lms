@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/level1.dslb";
+mkdir("images");
+mkdir("images/video");
+mkdir("build");
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.world_color(0.015, 0.024, 0.055, 0.8);
 scene.ground_plane(-2.0, 30.0, 0.035, 0.055, 0.10);
@@ -21,13 +24,13 @@ scene.camera_look_at(0.0,-16.0,6.0,0.0,0.0,0.1,44.0);
 scene.camera_keyframe(0,0.0,-16.0,6.0,0.0,0.0,0.1,"ease");
 scene.camera_keyframe(8,-2.0,-10.0,4.4,-2.0,0.0,0.4,"ease");
 scene.camera_keyframe(23,0.0,-16.0,6.0,0.0,0.0,0.1,"ease");
-scene.render_preset("draft"); scene.render_settings(4,0,true); scene.render_sequence("build/video/level1-{frame}.png",0,23,0,640,360);
+scene.render_preset("draft"); scene.render_settings(4,0,true); scene.render_sequence("images/video/level1-{frame}.png",0,23,0,640,360);
 end _dsl_
 savedsl(p, out);
-// system() stops a program after 60 s by default; renders can take longer.
+// The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
 push(argv, "--dsl");
 push(argv, out);
 run = system(argv, 3600000);
 if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
-println(trim(run.stdout));
+println("wrote images/video/level1-<frame>.png");
