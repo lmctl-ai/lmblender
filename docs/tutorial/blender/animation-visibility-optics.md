@@ -8,9 +8,9 @@ Left: lmblender. Right: Blender.
 
 `animation-visibility-0.png`: mean absolute difference 7.1 of 255, silhouette overlap 0.85.
 
-![animation-visibility-0.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-0.jpg)
+![animation-visibility-1.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-1.jpg)
 
-`animation-visibility-0.png`: mean absolute difference 7.1 of 255, silhouette overlap 0.85.
+`animation-visibility-1.png`: mean absolute difference 6.9 of 255, silhouette overlap 0.95.
 
 ![animation-visibility-2.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-2.jpg)
 
@@ -40,7 +40,7 @@ lmscript examples/animation-visibility-optics.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/animation-visibility-optics.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`.
+lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
 
 ## Blender port
 

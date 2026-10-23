@@ -6,7 +6,7 @@ Every top-level example in [examples/](../../examples/) was rendered twice: once
 
 ![primitives-gallery: lmblender left, Blender right](blender/images/primitives-gallery--primitives-gallery.jpg)
 
-Left: lmblender. Right: Blender. Mean difference 2.8 of 255.
+Left: lmblender. Right: Blender. Mean difference 2.8 of 255; this is one of the closest pairs. The median pair differs by 5.45 of 255, and the table below lists every example, including the worst (19.4).
 
 ## How the comparison was made
 
@@ -19,18 +19,19 @@ Left: lmblender. Right: Blender. Mean difference 2.8 of 255.
 ## Summary
 
 - 44 examples ported; all 44 ran on both sides.
-- 39 produce PNG images; 50 image pairs were compared. The median mean difference is 5.5 of 255 (best 0.6, worst 19.4).
-- Total time: lmblender 587 s, Blender 448 s. For small scenes the two are within a few tenths of a second. lmblender was faster on `embree-heavy` (3.7 s against 10.5 s) and much slower on `motion-blur` (109 s against 17 s).
+- 39 examples produce PNG images. Up to three images per example were compared (first, middle, and last frame for sequences), 49 pairs in all. The median mean difference is 5.45 of 255 (best 0.6, worst 19.4). The table shows the first pair of each example; the example pages show all of them.
+- Timing with the v0.3.4 release (23 examples that do not denoise): lmblender 88.4 s in total, Blender 87.6 s. Small scenes take about one second on both sides; lmblender was faster on `embree-heavy` (3.7 s against 10.5 s).
+- Timing with a local 0.3.3 build (21 examples that denoise, which crash with the release on this CPU): lmblender 498.4 s, Blender 360.9 s. lmblender was much slower on `motion-blur` (108.6 s against 16.9 s) and `volume-fog` (67.6 s against 46.4 s). These numbers describe that build, not the release.
 
 | Example | lmblender s | Blender s | Mean difference /255 | Silhouette overlap |
 |---|---|---|---|---|
-| [animation-tween](blender/animation-tween.md) | 11.5 | 10.4 | 5.5 | 0.93 |
+| [animation-tween](blender/animation-tween.md) | 11.5 | 10.4 | 5.4 | 0.93 |
 | [animation-visibility-optics](blender/animation-visibility-optics.md) | 2.6 (local build) | 3.5 | 7.1 | 0.85 |
 | [backface-culling](blender/backface-culling.md) | 1.6 | 1.8 | 2.0 | 1.00 |
 | [camera-dof](blender/camera-dof.md) | 24.6 (local build) | 20.9 | 5.2 | 0.96 |
 | [camera-look-at](blender/camera-look-at.md) | 1.9 | 1.9 | 4.6 | 1.00 |
 | [denoise-quality](blender/denoise-quality.md) | 2.8 (local build) | 3.5 | 7.5 | 0.94 |
-| [display-transforms](blender/display-transforms.md) | 1.6 | 1.9 | 0.7 | 0.00 |
+| [display-transforms](blender/display-transforms.md) | 1.6 | 1.9 | 0.7 | not meaningful (flat panel) |
 | [embree-heavy](blender/embree-heavy.md) | 3.7 | 10.5 | 5.0 | 0.96 |
 | [environment-texture](blender/environment-texture.md) | 20.1 (local build) | 26.9 | 19.3 | 1.00 |
 | [glass-opaque-control](blender/glass-opaque-control.md) | 19.9 (local build) | 17.0 | 1.6 | 0.98 |
@@ -44,15 +45,15 @@ Left: lmblender. Right: Blender. Mean difference 2.8 of 255.
 | [light-falloff](blender/light-falloff.md) | 10.7 (local build) | 9.6 | 4.5 | 0.70 |
 | [loft-outline](blender/loft-outline.md) | 20.9 (local build) | 26.5 | 3.8 | 1.00 |
 | [material-maps](blender/material-maps.md) | 35.4 (local build) | 25.1 | 4.7 | 0.98 |
-| [material-nodes-control](blender/material-nodes-control.md) | 10.0 (local build) | 9.2 | 9.9 | 0.98 |
-| [material-nodes](blender/material-nodes.md) | 11.4 (local build) | 10.9 | 9.6 | 0.98 |
+| [material-nodes-control](blender/material-nodes-control.md) | 10.0 (local build) | 9.2 | 9.9 | 0.99 |
+| [material-nodes](blender/material-nodes.md) | 11.4 (local build) | 10.9 | 9.6 | 0.99 |
 | [material-principled](blender/material-principled.md) | 0.9 | 1.2 | 10.4 | 1.00 |
 | [mesh-instances](blender/mesh-instances.md) | 0.9 | 1.2 | 4.9 | 0.98 |
-| [motion-blur](blender/motion-blur.md) | 108.6 (local build) | 16.9 | 6.0 | 0.96 |
+| [motion-blur](blender/motion-blur.md) | 108.6 (local build) | 16.9 | 6.1 | 0.96 |
 | [obj-mtl-gallery](blender/obj-mtl-gallery.md) | 6.6 | 5.5 | 5.8 | 0.99 |
 | [orthographic-camera](blender/orthographic-camera.md) | 13.6 | 12.4 | 1.8 | 1.00 |
 | [primitives-gallery](blender/primitives-gallery.md) | 13.9 (local build) | 12.1 | 2.8 | 0.96 |
-| [procedural-materials](blender/procedural-materials.md) | 10.8 | 9.3 | 10.9 | 1.00 |
+| [procedural-materials](blender/procedural-materials.md) | 10.8 | 9.3 | 11.0 | 1.00 |
 | [render-exr](blender/render-exr.md) | 0.9 | 1.0 | no image | no image |
 | [render-mesh-xml-oracle](blender/render-mesh-xml-oracle.md) | 1.0 | 1.2 | 4.9 | 0.99 |
 | [render-mesh](blender/render-mesh.md) | 0.9 | 1.2 | 4.9 | 0.99 |
@@ -77,7 +78,7 @@ These are lmblender issues the comparison exposed. They are reported here as fou
 
 1. Denoiser crash on some arm64 CPUs. The v0.3.3 and v0.3.4 linux-arm64 releases stop with `Illegal instruction` in OpenImageDenoise (an SVE instruction in `autoexposureDownsample`) when denoising is on and the CPU has no SVE, such as AWS Graviton2. 21 of the 44 examples denoise. A locally built executable on the same machine works.
 2. Dark tones render too dark. lmblender's Standard view transform uses a 33-point lookup table spaced on a log scale whose first step is 0.093 linear, and interpolating linearly across that step undershoots the sRGB curve. A background of linear 0.04 becomes 38 of 255 in lmblender and 56 in Blender (the correct sRGB value). This is the main source of difference on dark backgrounds.
-3. PNG and JPEG color textures are not decoded from sRGB. lmblender runs Cycles with color management disabled, so 8-bit image textures (glTF base color, environment PNGs) are used as linear values and render lighter and less saturated. Telling Blender to read the environment PNG as non-color data reduced that example's difference from 19.3 to 6.9.
+3. PNG and JPEG color textures are not decoded from sRGB. lmblender runs Cycles with color management disabled, so 8-bit image textures (glTF base color, environment PNGs) are used as linear values and render lighter and less saturated. In a separate experiment that is not part of the published ports, telling Blender to read the environment PNG as non-color data reduced that example's difference from 19.3 to 6.9.
 4. The fallback camera is squeezed. When a scene sets no camera, lmblender's default view is about 1.5 times narrower horizontally at 4:3. The ports reproduce the squeeze on purpose so the images line up; with an explicit camera, `studio_setup`, or `fit_camera` both renderers agree. The tutorial pages always set a camera for this reason.
 5. Failures print nothing useful from the examples. The host writes its error JSON to standard output, but the `examples/` scripts print only standard error, so a failure shows as `lmblender exit 3:` with no message. `material-maps` and `obj-mtl-gallery` also need fixtures that only `test.sh` generates.
 

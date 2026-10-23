@@ -31,7 +31,7 @@ lmscript examples/subsurface.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/subsurface.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`.
+lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
 
 ## Blender port
 

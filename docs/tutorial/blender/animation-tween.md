@@ -8,9 +8,9 @@ Left: lmblender. Right: Blender.
 
 `tween-0.png`: mean absolute difference 5.4 of 255, silhouette overlap 0.93.
 
-![tween-0.png: lmblender left, Blender right](images/animation-tween--tween-0.jpg)
+![tween-4.png: lmblender left, Blender right](images/animation-tween--tween-4.jpg)
 
-`tween-0.png`: mean absolute difference 5.4 of 255, silhouette overlap 0.93.
+`tween-4.png`: mean absolute difference 5.4 of 255, silhouette overlap 0.94.
 
 ![tween-8.png: lmblender left, Blender right](images/animation-tween--tween-8.jpg)
 
@@ -40,7 +40,7 @@ lmscript examples/animation-tween.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/animation-tween.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`.
+lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
 
 ## Blender port
 

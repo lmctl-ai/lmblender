@@ -12,10 +12,6 @@ Left: lmblender. Right: Blender.
 
 `motion-control.png`: mean absolute difference 10.0 of 255, silhouette overlap 0.93.
 
-![motion-blur-2.png: lmblender left, Blender right](images/motion-blur--motion-blur-2.jpg)
-
-`motion-blur-2.png`: mean absolute difference 6.1 of 255, silhouette overlap 0.96.
-
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
@@ -40,7 +36,7 @@ lmscript examples/motion-blur.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/motion-blur.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`.
+lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
 
 ## Blender port
 
