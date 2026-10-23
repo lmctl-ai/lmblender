@@ -24,7 +24,7 @@ file = "animation.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote animation-0.png, animation-1.png, animation-2.png");
 ```
 

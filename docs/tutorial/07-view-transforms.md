@@ -26,7 +26,7 @@ file = "view-transforms.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote view-standard.png, view-agx.png");
 ```
 
@@ -43,9 +43,9 @@ wrote view-standard.png, view-agx.png
 Standard, then AgX:
 
 ![Standard: the glowing sphere clips to flat white](images/view-standard.png)
-![AgX: the glowing sphere keeps a warm tint](images/view-agx.png)
+![AgX: the glowing sphere keeps a pale warm tint](images/view-agx.png)
 
-- The emission strength of 6 is far brighter than white. `Standard` clips it to flat white; `AgX` compresses highlights and keeps the orange tint and the glow gradient on the floor.
+- The emission strength of 6 is far brighter than white. `Standard` clips the sphere to flat white and shows a saturated orange glow on the floor. `AgX` compresses highlights, so the sphere stays just below white with a pale peach tint and the floor glow is softer and less saturated.
 - `set_view_transform` accepts `Standard` (the default), `Filmic`, and `AgX`. It affects PNG output only; EXR files (`render_exr`) keep the raw linear values.
 - The two `render_png` calls show that a script can render several images. Every render uses the settings in effect when it is called.
 

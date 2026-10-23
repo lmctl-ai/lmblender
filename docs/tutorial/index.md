@@ -7,11 +7,13 @@ lmblender is a standalone CPU Cycles renderer. You describe a scene in a short l
 ## Prerequisites
 
 - Node.js 24.15 or newer.
-- lmscript, installed with one command:
+- lmscript, installed with one command (the npm package is named `@lmctl-ai/lmctl`; it provides the `lmscript` command):
 
 ```sh
 npm install -g @lmctl-ai/lmctl@latest
 ```
+
+Check it with `lmscript --version`, which prints a line such as `lmscript 0.2.388`.
 
 - A Linux (x64 or arm64), macOS (x64 or arm64), or Windows x64 machine. The lmblender executable itself is downloaded on first use by the `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"` line at the top of every script; you do not install it by hand.
 
@@ -40,4 +42,4 @@ The scoring of this tutorial against a written checklist is in [CHECKLIST.md](CH
 - LMScript language: https://lmctl.com/tools/lmscript/skill.html
 - Releases: https://github.com/lmctl-ai/lmblender/releases
 
-Every script on these pages was run from an empty directory with lmscript 0.2 and the v0.3.4 release on Linux arm64; the images are the files those runs wrote.
+Every script on these pages was run from an empty directory with lmscript 0.2.388 and the lmblender v0.3.4 release on Linux arm64, by the author and again by a separate tester with an empty tool cache; the images are the files those runs wrote. macOS, Windows, and x64 have not been tested with these pages.

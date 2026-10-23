@@ -2,6 +2,14 @@
 
 Goal: confirm lmscript can download lmblender and render one image.
 
+First check that lmscript is installed (see the [index](index.md) for the install command):
+
+```sh
+lmscript --version
+```
+
+It should print a version line such as `lmscript 0.2.388`.
+
 Save this as `01-first-render.lms` in an empty directory, or download it:
 
 ```sh
@@ -19,7 +27,7 @@ file = "first-render.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote first-render.png");
 ```
 

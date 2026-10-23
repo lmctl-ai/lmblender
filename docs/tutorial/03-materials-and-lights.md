@@ -30,7 +30,7 @@ file = "materials-and-lights.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote materials-and-lights.png");
 ```
 
@@ -61,6 +61,6 @@ The gold torus is `metallic 1.0` with roughness 0.25.
 - `world_color(r, g, b, strength)` sets the sky color, which also lights the scene softly.
 - `area_light(x, y, z, tx, ty, tz, r, g, b, power, size)` adds a square light at the first point facing the second. Power is in watts, as in Blender.
 
-The bright speckles on the torus are reflected light that 32 samples have not averaged out yet. Raising the sample count removes them at the cost of render time. `scene.render_settings(bounces, seed, true)` turns on the OIDN denoiser, but read the known issue on [page 8](08-when-it-fails.md) before you use it on Linux arm64.
+The bright speckles on the floor around the torus and on the sphere are light bounced off the gold metal that 32 samples have not averaged out yet. Raising the sample count removes them at the cost of render time. `scene.render_settings(bounces, seed, true)` turns on the OIDN denoiser, but read the known issue on [page 8](08-when-it-fails.md) before you use it on Linux arm64.
 
 Next: [4. Textures](04-textures.md).

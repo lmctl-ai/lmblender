@@ -29,7 +29,7 @@ file = "textures.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote textures.png");
 ```
 
@@ -45,10 +45,10 @@ wrote textures.png
 
 ![Checkered sphere and stone-like sphere on a checker floor](images/textures.png)
 
-- `checker_material(r1, g1, b1, r2, g2, b2, scale, roughness)` alternates two colors. `scale` sets how many squares fit across the object.
+- `checker_material(r1, g1, b1, r2, g2, b2, scale, roughness)` alternates two colors. `scale` is the number of squares per scene unit, measured in the object's own coordinates: at 4.0, the radius-1 sphere is about 8 squares across.
 - `noise_material(...)` uses the same arguments and blends the two colors with Cycles noise.
 - `material.bump(strength, distance, scale)` adds a noise height pattern to the surface normal. Call it on the material before assigning it.
-- `checker_ground(half_size, tile_scale)` is a ready-made dark and light checker floor.
+- `checker_ground(half_size, tile_scale)` is a ready-made dark and light checker floor; `tile_scale` is also squares per scene unit.
 
 Textures are placed in each mesh's own coordinates, so the pattern moves with the object.
 

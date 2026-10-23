@@ -12,14 +12,15 @@ curl -O https://raw.githubusercontent.com/lmctl-ai/lmblender/main/docs/tutorial/
 ```lmscript
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(0.0, 48, 24, true);
-scene.render_png("never-written.png", 16, 320, 240);
+scene.studio_setup();
+scene.render_png("when-it-fails.png", 16, 640, 480);
 end _dsl_
 file = "when-it-fails.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
-println("wrote never-written.png");
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
+println("wrote when-it-fails.png");
 ```
 
 ```sh
@@ -38,9 +39,15 @@ The host reports every failure as one JSON line on standard output:
 - `message` names the call and its accepted range.
 - `line` and `column` point into the script. Line 2 here is the `uv_sphere` call.
 
-Fix: change `0.0` to a positive radius such as `1.0` and run the script again.
+Fix: change `0.0` to a positive radius such as `1.0` and run the script again. It then prints:
 
-This is also why every script on these pages prints `r.stdout` as well as `r.stderr` on failure: the JSON error is on standard output. Examples that print only `r.stderr` show a bare `lmblender exit 3` instead.
+```text
+wrote when-it-fails.png
+```
+
+![The fixed script renders the sphere from page 1](images/when-it-fails.png)
+
+This is also why every script on these pages prints `r.stdout` on failure: the JSON error is on standard output, and standard error is usually empty. The scripts in the repository's `examples/` directory print only standard error, so on the same failure they show `lmblender exit 3:` with nothing after it.
 
 ## Common failures
 

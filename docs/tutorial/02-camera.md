@@ -24,7 +24,7 @@ file = "camera.dslb";
 savedsl(p, file);
 r = system ${dsl_cli(p)} --dsl ${file};
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); exit(1); }
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
 println("wrote camera.png");
 ```
 
@@ -43,6 +43,8 @@ wrote camera.png
 - `translate(dx, dy, dz)` moves a mesh; +X is right and +Y points away from the default view.
 - `camera_look_at(px, py, pz, tx, ty, tz, fov)` puts the camera at the first point, aims it at the second, and uses a vertical field of view in degrees. Here the camera is 9 units in front of the objects and 3 units up.
 - A camera call made after `studio_setup` replaces its automatic framing; the floor and lights stay.
+
+Two things in this image are expected. The shapes are centered on Z = 0 and `studio_setup` places its floor a little below the lowest point, so they float with their shadows underneath; page 3 raises them onto a ground plane. And without materials the shapes are flat and unlit, so the torus reads as a plain ellipse with no visible hole; page 3 fixes that too.
 
 Always set a camera (or call `studio_setup` or `fit_camera`). Without one, lmblender uses a fallback view that is noticeably squeezed horizontally in non-square images; see [page 9](09-compare-with-blender.md).
 
