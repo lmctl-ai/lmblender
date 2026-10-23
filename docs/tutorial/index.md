@@ -21,15 +21,19 @@ Every page has one script. Save it into an empty directory (or download it with 
 
 ## Pages
 
+Pages 2 to 10 each start from the previous page's script and add one thing, so the scene grows as you go.
+
 1. [First render](01-first-render.md): install check and one sphere.
-2. [Camera](02-camera.md): place the camera yourself.
-3. [Materials and lights](03-materials-and-lights.md): color, metal, ground, light.
-4. [Textures](04-textures.md): procedural checker and noise with bump.
-5. [Import a mesh](05-import-a-mesh.md): render an OBJ file you wrote.
-6. [Animation](06-animation.md): keyframes and an image sequence.
-7. [View transforms](07-view-transforms.md): Standard versus AgX for bright light.
-8. [When it fails](08-when-it-fails.md): read the error and fix it.
-9. [Compared with Blender](09-compare-with-blender.md): the same scenes rendered by Blender 5.2 from Python, with timings and known gaps.
+2. [Place objects](02-place-objects.md): add a cube and a torus and move them.
+3. [Camera](03-camera.md): choose the viewpoint.
+4. [Materials](04-materials.md): color, metal, roughness.
+5. [Lights](05-lights.md): ground, sky, and an area light instead of the studio rig.
+6. [Textures](06-textures.md): procedural checker and noise with bump.
+7. [Import a mesh](07-import-a-mesh.md): add an OBJ file you wrote.
+8. [Animation](08-animation.md): keyframes and an image sequence.
+9. [View transforms](09-view-transforms.md): Standard versus AgX for bright light.
+10. [When it fails](10-when-it-fails.md): read the error and fix the script.
+11. [Compared with Blender](11-compare-with-blender.md): the same scenes rendered by Blender 5.2 from Python, with timings and known gaps.
 
 The scoring of this tutorial against a written checklist is in [CHECKLIST.md](CHECKLIST.md).
 
@@ -42,4 +46,4 @@ The scoring of this tutorial against a written checklist is in [CHECKLIST.md](CH
 - LMScript language: https://lmctl.com/tools/lmscript/skill.html
 - Releases: https://github.com/lmctl-ai/lmblender/releases
 
-Every script on these pages was run from an empty directory with lmscript 0.2.388 and the lmblender v0.3.4 release on Linux arm64, by the author and again by a separate tester with an empty tool cache; the images are the files those runs wrote. macOS, Windows, and x64 have not been tested with these pages.
+Every script on these pages was run from an empty directory with lmscript 0.2.388 and the lmblender v0.3.4 release on Linux arm64; the images are the files those runs wrote. The `tutorial` GitHub Actions workflow runs the same scripts on fresh Linux x64, Linux arm64, macOS, and Windows runners (see [CHECKLIST.md](CHECKLIST.md) for the latest results).

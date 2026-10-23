@@ -6,25 +6,24 @@ Left: lmblender. Right: Blender.
 
 ![environment-texture.png: lmblender left, Blender right](images/environment-texture--environment-texture.jpg)
 
-`environment-texture.png`: mean absolute difference 19.3 of 255, silhouette overlap 1.00.
+`environment-texture.png`: mean absolute difference 2.1 of 255, silhouette overlap 1.00.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 20.1 | local 0.3.3 build (the v0.3.4 linux-arm64 release crashes with SIGILL when denoising on this CPU) |
-| Blender 5.2.2 | 26.9 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 35.3 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 52.8 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
-- The environment PNG is read without sRGB decoding by lmblender, so the sky and reflections render lighter and less saturated. Telling Blender to read the PNG as non-color data reduced the difference from 19 to 7 out of 255.
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
+- With v0.3.4 the environment PNG was read without sRGB decoding and the sky rendered lighter (difference 19.3 of 255); the fixed build decodes it like Blender.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -32,7 +31,20 @@ lmscript examples/environment-texture.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/environment-texture.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/environment-texture.png: 50.91s
+blender total 51.31s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -60,4 +72,4 @@ scene.render_png("blender/environment-texture.png", 128, 640, 480)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

@@ -6,24 +6,24 @@ Left: lmblender. Right: Blender.
 
 ![camera-look-at.png: lmblender left, Blender right](images/camera-look-at--camera-look-at.jpg)
 
-`camera-look-at.png`: mean absolute difference 4.6 of 255, silhouette overlap 1.00.
+`camera-look-at.png`: mean absolute difference 0.3 of 255, silhouette overlap 1.00.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 1.9 | v0.3.4 release |
-| Blender 5.2.2 | 1.9 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 0.5 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 1.2 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
+- No known differences beyond sampling noise.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -31,7 +31,20 @@ lmscript examples/camera-look-at.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/camera-look-at.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/camera-look-at.png: 0.29s
+blender total 0.36s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -53,4 +66,4 @@ scene.render_png("blender/camera-look-at.png", 32, 256, 192)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

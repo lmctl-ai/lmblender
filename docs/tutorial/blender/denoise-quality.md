@@ -6,33 +6,32 @@ Left: lmblender. Right: Blender.
 
 ![denoise-noisy.png: lmblender left, Blender right](images/denoise-quality--denoise-noisy.jpg)
 
-`denoise-noisy.png`: mean absolute difference 7.5 of 255, silhouette overlap 0.94.
+`denoise-noisy.png`: mean absolute difference 3.0 of 255, silhouette overlap 0.97.
 
 ![denoise-filtered.png: lmblender left, Blender right](images/denoise-quality--denoise-filtered.jpg)
 
-`denoise-filtered.png`: mean absolute difference 5.8 of 255, silhouette overlap 0.95.
+`denoise-filtered.png`: mean absolute difference 0.6 of 255, silhouette overlap 0.98.
 
 ![denoise-reference.png: lmblender left, Blender right](images/denoise-quality--denoise-reference.jpg)
 
-`denoise-reference.png`: mean absolute difference 6.0 of 255, silhouette overlap 0.94.
+`denoise-reference.png`: mean absolute difference 0.9 of 255, silhouette overlap 0.97.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 2.8 | local 0.3.3 build (the v0.3.4 linux-arm64 release crashes with SIGILL when denoising on this CPU) |
-| Blender 5.2.2 | 3.5 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 2.0 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 2.5 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
-- Blender runs the same OIDN denoiser. On the lmblender side the denoised renders needed the local build because of the SIGILL in the v0.3.4 linux-arm64 release.
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
+- Blender runs the same OIDN denoiser. The v0.3.3 and v0.3.4 linux-arm64 releases crash in this denoiser on CPUs without SVE; the fixed build does not.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -40,7 +39,22 @@ lmscript examples/denoise-quality.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/denoise-quality.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/denoise-noisy.png: 0.21s
+blender render blender/denoise-filtered.png: 0.19s
+blender render blender/denoise-reference.png: 1.15s
+blender total 1.63s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -72,4 +86,4 @@ scene.render_png("blender/denoise-reference.png", 64, 192, 144)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

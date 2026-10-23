@@ -6,26 +6,25 @@ Left: lmblender. Right: Blender.
 
 ![obj-mtl-gallery.png: lmblender left, Blender right](images/obj-mtl-gallery--obj-mtl-gallery.jpg)
 
-`obj-mtl-gallery.png`: mean absolute difference 5.8 of 255, silhouette overlap 0.99.
+`obj-mtl-gallery.png`: mean absolute difference 3.2 of 255, silhouette overlap 0.99.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 6.6 | v0.3.4 release |
-| Blender 5.2.2 | 5.5 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 11.9 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 10.8 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
-- Needs the generated OBJ/MTL fixture: run `python3 tests/create_obj_mtl_fixture.py build/obj-mtl-assets` first. Blender's OBJ importer converts the MTL itself, so the materials are close but not identical.
+- The OBJ/MTL fixture is committed under tests/fixtures/obj-mtl. Blender's OBJ importer converts the MTL itself, so the materials are close but not identical.
 - Blender `expect_int` checks: expect_int ok: actual=16 expected=16; expect_int ok: actual=2 expected=2; expect_int ok: actual=24 expected=24.
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -33,7 +32,23 @@ lmscript examples/obj-mtl-gallery.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/obj-mtl-gallery.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+expect_int ok: actual=16 expected=16
+expect_int ok: actual=24 expected=24
+expect_int ok: actual=2 expected=2
+blender render blender/obj-mtl-gallery.png: 9.22s
+blender total 9.38s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -49,7 +64,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lmb_bpy
 
 scene = lmb_bpy.Scene()
-pair = scene.import_obj("build/obj-mtl-assets/study.obj")
+pair = scene.import_obj("tests/fixtures/obj-mtl/study.obj")
 scene.expect_int(pair.vertex_count(), 16)
 scene.expect_int(pair.triangle_count(), 24)
 scene.expect_int(pair.material_count(), 2)
@@ -62,4 +77,4 @@ scene.render_png("blender/obj-mtl-gallery.png", 32, 640, 480)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

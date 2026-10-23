@@ -6,29 +6,28 @@ Left: lmblender. Right: Blender.
 
 ![motion-blur-2.png: lmblender left, Blender right](images/motion-blur--motion-blur-2.jpg)
 
-`motion-blur-2.png`: mean absolute difference 6.1 of 255, silhouette overlap 0.96.
+`motion-blur-2.png`: mean absolute difference 0.9 of 255, silhouette overlap 0.99.
 
 ![motion-control.png: lmblender left, Blender right](images/motion-blur--motion-control.jpg)
 
-`motion-control.png`: mean absolute difference 10.0 of 255, silhouette overlap 0.93.
+`motion-control.png`: mean absolute difference 3.0 of 255, silhouette overlap 0.96.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 108.6 | local 0.3.3 build (the v0.3.4 linux-arm64 release crashes with SIGILL when denoising on this CPU) |
-| Blender 5.2.2 | 16.9 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 74.2 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 16.4 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
 - The port bakes object and camera keys at frame -0.5, 0, and +0.5 as Blender subframe keys, matching the host's three motion steps. lmblender took much longer on this scene.
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -36,7 +35,21 @@ lmscript examples/motion-blur.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/motion-blur.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/motion-blur-2.png: 8.95s
+blender render blender/motion-control.png: 6.44s
+blender total 15.49s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -70,4 +83,4 @@ scene.render_png("blender/motion-control.png", 48, 640, 480)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

@@ -1,0 +1,11 @@
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let ball = scene.uv_sphere(1.0, 48, 24, true);
+scene.studio_setup();
+scene.render_png("first-render.png", 16, 640, 480);
+end _dsl_
+file = "first-render.dslb";
+savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file};
+delete_file(file);
+if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
+println("wrote first-render.png");

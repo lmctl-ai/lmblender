@@ -1,4 +1,3 @@
-# SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 # SPDX-License-Identifier: MIT
 """Blender (bpy) implementation of the lmblender DSL surface used by the examples.
 
@@ -656,14 +655,17 @@ class Scene:
 
     # ---- camera ---------------------------------------------------------
     def camera_look_at(self, px, py, pz, tx, ty, tz, fov):
+        self._camera_authored = None  # a new explicit camera replaces the authored one
         self.camera = {"p": (px, py, pz), "t": (tx, ty, tz), "fov": math.radians(fov), "ortho": False,
                        "span": 10.0, "fit": False}
 
     def camera_orthographic(self, px, py, pz, tx, ty, tz, span):
+        self._camera_authored = None  # a new explicit camera replaces the authored one
         self.camera = {"p": (px, py, pz), "t": (tx, ty, tz), "fov": math.radians(45.0), "ortho": True,
                        "span": span, "fit": False}
 
     def fit_camera(self, fov):
+        self._camera_authored = None  # a new explicit camera replaces the authored one
         lo, hi = self._bounds()
         self.camera = {"p": (0, 0, 0), "t": tuple((lo + hi) * 0.5), "fov": math.radians(fov), "ortho": False,
                        "span": 10.0, "fit": True}
@@ -716,18 +718,24 @@ class Scene:
         return lo, hi
 
     def _apply_frame(self, frame):
+        """Set every keyed value for `frame`; frame None means a still render, which (like the
+        host's render_png) uses the authored values and ignores keys."""
         for obj in [m.obj for m in self.meshes] + [self.sc.camera]:
             obj.animation_data_clear()  # drop motion-blur keys from an earlier render
+        if frame is None:
+            sample = lambda keys, f, base: base
+        else:
+            sample = sample_keys
         for m in self.meshes:
-            loc = sample_keys(m.transform_keys, frame, tuple(m.translation))
+            loc = sample(m.transform_keys, frame, tuple(m.translation))
             m.obj.location = loc
             m.obj.scale = m.scale_v
-            vis = m.visible and sample_visibility(m.visibility_keys, frame, True)
+            vis = m.visible and (frame is None or sample_visibility(m.visibility_keys, frame, True))
             m.obj.hide_render = not vis
             mat = m.material or (m.source.material if m.source else None)
             if mat is not None:
-                col = sample_keys(mat.color_keys, frame, mat.color)
-                es = sample_keys(mat.emission_keys, frame, (mat.emission_strength,))[0]
+                col = sample(mat.color_keys, frame, mat.color)
+                es = sample(mat.emission_keys, frame, (mat.emission_strength,))[0]
                 bl = mat.build(col, es)
                 if not m.obj.material_slots:
                     m.obj.data.materials.append(None)
@@ -736,15 +744,21 @@ class Scene:
             elif not m.obj.data.materials:
                 m.obj.data.materials.append(self._default_surface())
         for L in self.point_lights:
-            L["obj"].data.energy = sample_keys(L["keys"], frame, (L["s"],))[0]
-        if self.camera_keys:
-            c = sample_keys(self.camera_keys, frame, (*self.camera["p"], *self.camera["t"]))
-            self.camera["p"], self.camera["t"] = c[:3], c[3:]
-        if self.optics_keys:
-            fov, span = sample_keys(self.optics_keys, frame, (self.camera["fov"], self.camera["span"]))
-            self.camera["fov"], self.camera["span"] = fov, span
+            L["obj"].data.energy = sample(L["keys"], frame, (L["s"],))[0]
+        if self.camera_keys or self.optics_keys:
+            # Sample from the authored camera so a later still render gets it back, as in the host.
+            if getattr(self, "_camera_authored", None) is None:
+                self._camera_authored = dict(self.camera)
+            authored = self._camera_authored
+            self.camera = dict(authored)
+            if self.camera_keys:
+                c = sample(self.camera_keys, frame, (*authored["p"], *authored["t"]))
+                self.camera["p"], self.camera["t"] = c[:3], c[3:]
+            if self.optics_keys:
+                fov, span = sample(self.optics_keys, frame, (authored["fov"], authored["span"]))
+                self.camera["fov"], self.camera["span"] = fov, span
         self._place_camera()
-        if self.motion[0]:
+        if self.motion[0] and frame is not None:
             self._motion_keys(frame)
 
     def _motion_keys(self, frame):
@@ -854,17 +868,12 @@ class Scene:
         cam.data.clip_start, cam.data.clip_end = 0.01, 10000.0
         self.sc.render.pixel_aspect_x = self.sc.render.pixel_aspect_y = 1.0
         if self.camera is None:
-            # Host fallback: three-quarter view, fov 0.8 rad on a square viewplane (stretched to the output).
+            # Host fallback: three-quarter view with a 0.8 rad vertical field of view.
             radius = max(0.5, max(hi - lo) * 0.5)
             d = radius * 1.85 / math.tan(0.4)
             p = center + Vector((d * 0.62, -d, d * 0.8))
             cam.matrix_world = _look_matrix(p, center)
             cam.data.type, cam.data.angle_y = "PERSP", 0.8
-            # Measured against lmblender 0.3.x: its fallback view is squeezed ~1.5x horizontally at 4:3.
-            if w > h:
-                self.sc.render.pixel_aspect_x = 1.125 * w / h
-            else:
-                self.sc.render.pixel_aspect_y = 1.125 * h / w
             return
         c = self.camera
         p = c["p"]
@@ -900,9 +909,15 @@ class Scene:
         sc.cycles.sample_clamp_direct, sc.cycles.sample_clamp_indirect = self.clamp
         sc.cycles.seed = self.seed
         sc.cycles.use_denoising = self.denoise
-        sc.cycles.denoiser = "OPENIMAGEDENOISE"
-        sc.cycles.denoising_quality = self.denoise_quality
-        sc.cycles.denoising_prefilter = "FAST"
+        try:
+            sc.cycles.denoiser = "OPENIMAGEDENOISE"
+            sc.cycles.denoising_quality = self.denoise_quality
+            sc.cycles.denoising_prefilter = "FAST"
+        except (TypeError, AttributeError):
+            # Some distribution builds (for example Ubuntu's Blender 4.0) ship without OIDN.
+            if self.denoise:
+                print("warning: this Blender has no OpenImageDenoise; rendering without denoising")
+            sc.cycles.use_denoising = False
         sc.cycles.pixel_filter_type = "BOX"
         sc.cycles.filter_width = 1.0
         sc.render.threads_mode, sc.render.threads = "FIXED", min(self.threads, os.cpu_count() or 1)
@@ -930,7 +945,7 @@ class Scene:
             if hasattr(L, "cycles") and hasattr(L.cycles, "use_multiple_importance_sampling"):
                 L.cycles.use_multiple_importance_sampling = False
 
-    def _render(self, path, frame=0):
+    def _render(self, path, frame=None):
         os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
         self._apply_frame(frame)
         self.sc.render.filepath = os.path.abspath(path)
@@ -964,7 +979,8 @@ class Scene:
         vl.use_pass_z = vl.use_pass_normal = vl.use_pass_diffuse_color = True
         self._render(prefix + "-combined.png")
         # Blender writes all passes into one multilayer EXR (lmblender writes one EXR + PNG per pass).
-        self.sc.render.image_settings.media_type = "MULTI_LAYER_IMAGE"
+        if hasattr(self.sc.render.image_settings, "media_type"):  # Blender 5.0 and newer
+            self.sc.render.image_settings.media_type = "MULTI_LAYER_IMAGE"
         self.sc.render.image_settings.file_format = "OPEN_EXR_MULTILAYER"
         self.sc.render.image_settings.color_depth = "32"
         self._render(prefix + "-passes.exr")

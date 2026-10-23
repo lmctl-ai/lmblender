@@ -6,25 +6,24 @@ Left: lmblender. Right: Blender.
 
 ![procedural-materials.png: lmblender left, Blender right](images/procedural-materials--procedural-materials.jpg)
 
-`procedural-materials.png`: mean absolute difference 11.0 of 255, silhouette overlap 1.00.
+`procedural-materials.png`: mean absolute difference 0.9 of 255, silhouette overlap 1.00.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 10.8 | v0.3.4 release |
-| Blender 5.2.2 | 9.3 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 20.2 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 18.4 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
 - Textures use object-space coordinates on both sides (standalone Cycles fills generated coordinates from object positions).
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -32,7 +31,20 @@ lmscript examples/procedural-materials.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/procedural-materials.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/procedural-materials.png: 17.04s
+blender total 17.19s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -66,4 +78,4 @@ scene.render_png("blender/procedural-materials.png", 96, 640, 480)
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

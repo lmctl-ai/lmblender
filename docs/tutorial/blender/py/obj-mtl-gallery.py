@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lmb_bpy
 
 scene = lmb_bpy.Scene()
-pair = scene.import_obj("build/obj-mtl-assets/study.obj")
+pair = scene.import_obj("tests/fixtures/obj-mtl/study.obj")
 scene.expect_int(pair.vertex_count(), 16)
 scene.expect_int(pair.triangle_count(), 24)
 scene.expect_int(pair.material_count(), 2)

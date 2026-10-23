@@ -6,33 +6,32 @@ Left: lmblender. Right: Blender.
 
 ![animation-visibility-0.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-0.jpg)
 
-`animation-visibility-0.png`: mean absolute difference 7.1 of 255, silhouette overlap 0.85.
+`animation-visibility-0.png`: mean absolute difference 0.3 of 255, silhouette overlap 0.95.
 
 ![animation-visibility-1.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-1.jpg)
 
-`animation-visibility-1.png`: mean absolute difference 6.9 of 255, silhouette overlap 0.95.
+`animation-visibility-1.png`: mean absolute difference 0.3 of 255, silhouette overlap 0.97.
 
 ![animation-visibility-2.png: lmblender left, Blender right](images/animation-visibility-optics--animation-visibility-2.jpg)
 
-`animation-visibility-2.png`: mean absolute difference 7.1 of 255, silhouette overlap 0.85.
+`animation-visibility-2.png`: mean absolute difference 0.3 of 255, silhouette overlap 0.95.
 
 ## Timing
 
 | Renderer | Seconds, whole run | Binary |
 |---|---|---|
-| lmblender | 2.6 | local 0.3.3 build (the v0.3.4 linux-arm64 release crashes with SIGILL when denoising on this CPU) |
-| Blender 5.2.2 | 3.5 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
+| lmblender | 5.0 | built from source with the fixes on page 11 (v0.3.4 plus the color, camera, and denoiser fixes) |
+| Blender 5.2.2 | 6.1 | source build, Cycles CPU, about 0.8 s of it is Blender startup |
 
 Both runs used four threads on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host.
 
 ## Differences and gaps
 
 - The port samples visibility, camera, optics, emission, and point light keys per frame with the same interpolation code as the host.
-- lmblender's Standard view transform renders dark tones darker than Blender (for example 38 instead of 56 out of 255 for a linear value of 0.04), which accounts for most of the difference on dark backgrounds.
 
 ## Run both
 
-From the repository root (the Blender command needs Blender 5.x on your PATH):
+From the repository root, with lmscript and Blender 5.x on your PATH:
 
 ```sh
 mkdir -p build
@@ -40,7 +39,22 @@ lmscript examples/animation-visibility-optics.lms
 blender -b --factory-startup --python docs/tutorial/blender/py/animation-visibility-optics.py
 ```
 
-lmblender writes into `build/`; the Blender port writes the same file names into `blender/`. The lmblender example prints nothing when it succeeds, so check that the image exists; it also leaves its compiled `.dslb` file in `build/`.
+Expected lmblender output (the host's JSON result):
+
+```text
+{"ok": true, "result": null}
+```
+
+Expected Blender output, among Blender's own log lines (seconds vary from run to run):
+
+```text
+blender render blender/animation-visibility-0.png: 1.52s
+blender render blender/animation-visibility-1.png: 1.31s
+blender render blender/animation-visibility-2.png: 1.60s
+blender total 4.56s
+```
+
+lmblender writes into `build/`, including the compiled `.dslb`; the Blender port writes the same file names into `blender/`. Ubuntu's packaged Blender 4.0 also runs the ports, but without denoising (it has no OpenImageDenoise) and its glTF importer needs `python3-numpy`.
 
 ## Blender port
 
@@ -89,4 +103,4 @@ scene.render_sequence("blender/animation-visibility-{frame}.png", 0, 2, 8, 480, 
 lmb_bpy.done()
 ```
 
-Back to [the comparison overview](../09-compare-with-blender.md).
+Back to [the comparison overview](../11-compare-with-blender.md).

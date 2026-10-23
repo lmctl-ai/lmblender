@@ -1,0 +1,63 @@
+name: tutorial
+
+# Runs every docs/tutorial page script on fresh hosted machines, the way a reader would:
+# latest lmscript from npm, lmblender downloaded by the scripts' _dsl_ install= line,
+# one empty directory per page. Output must match the page; images must match the
+# committed images within a small tolerance (Cycles CPU noise differs slightly by ISA).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/tutorial/**
+      - scripts/tutorial-run.py
+      - .github/workflows/tutorial.yml
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  pages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-x64
+            runner: ubuntu-24.04
+          - os: linux-arm64
+            runner: ubuntu-24.04-arm
+          - os: macos-arm64
+            runner: macos-15
+          - os: macos-x64
+            runner: macos-15-intel
+          - os: windows-x64
+            runner: windows-2022
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: install lmscript as a reader would
+        run: |
+          npm install --global @lmctl-ai/lmctl@latest
+          lmscript --version
+      - name: run every tutorial page from an empty directory
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/tutorial-run.py --max-mad 3.0 --report tutorial-${{ matrix.os }}.md
+      - name: publish the page table
+        if: always()
+        run: |
+          echo "## Tutorial on ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          cat tutorial-${{ matrix.os }}.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "no report" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: tutorial-${{ matrix.os }}
+          path: tutorial-${{ matrix.os }}.md
+          if-no-files-found: warn
