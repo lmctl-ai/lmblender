@@ -50,11 +50,11 @@ Expected output:
 wrote textures.png
 ```
 
-![Checkered sphere, bumpy red-orange cube, and gold torus on a checker floor](images/textures.png)
+![Checkered sphere, noise-textured red-orange cube, and gold torus on a checker floor](images/textures.png)
 
 - `checker_material(r1, g1, b1, r2, g2, b2, scale, roughness)` alternates two colors. `scale` is the number of squares per scene unit, measured in the object's own coordinates, so the pattern moves with the object.
 - `noise_material(...)` uses the same arguments and blends the two colors with Cycles noise.
-- `material.bump(strength, distance, scale)` adds a noise height pattern to the surface normal. Call it on the material before assigning it.
+- `material.bump(strength, distance, scale)` adds a noise height pattern to the surface normal. Call it on the material before assigning it. At this distance and strength the bump is subtle; raise the strength toward 1.0 to see it clearly.
 - `checker_ground(half_size, tile_scale)` is a ready-made dark and light checker floor; `tile_scale` is also squares per scene unit.
 
 To use an image file instead, call `scene.image_material("file.png", roughness)`. In v0.3.4, PNG and JPEG images are read without sRGB decoding, so they render lighter than in Blender (fixed in the source for the next release; see [page 11](11-compare-with-blender.md)).

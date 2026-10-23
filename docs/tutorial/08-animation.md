@@ -2,7 +2,7 @@
 
 Goal: move an object over time and render each frame.
 
-The script is page 7 plus two keyframe lines for the sphere, with `render_png` replaced by `render_sequence` at a smaller size so three frames render quickly.
+The script is page 7 plus two keyframe lines for the sphere, with `render_png` replaced by `render_sequence` at a smaller size so three frames render quickly. Like page 7 (and pages 9 and 10), it also writes `pyramid.obj` next to the script.
 
 Download the full script, or copy it from below:
 

@@ -2,7 +2,7 @@
 
 Goal: keep very bright light readable by choosing how scene light maps to pixels.
 
-The script is page 7 (without the animation) plus one glowing orb above the scene, rendered twice: once with the Standard view transform and once with AgX.
+The script is page 8 plus one glowing orb above the scene, with `render_sequence` replaced by two still renders: once with the Standard view transform and once with AgX. The keyframes from page 8 stay in the script; still renders ignore keys and use each object's authored position.
 
 Download the full script, or copy it from below:
 
@@ -38,6 +38,8 @@ let stone = scene.noise_material(0.55, 0.12, 0.05, 0.95, 0.55, 0.35, 3.0, 0.6);
 stone.bump(0.4, 0.1, 12.0);
 box.set_material(stone);
 ring.set_material(scene.material(0.95, 0.7, 0.2, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
+ball.keyframe_transform(0, -1.2, -1.5, 1.0, "ease");
+ball.keyframe_transform(2, 1.2, -1.5, 1.0, "ease");
 let pyramid = scene.import_obj("pyramid.obj");
 scene.expect_int(pyramid.triangle_count(), 6);
 pyramid.translate(1.5, 2.6, 0.0);

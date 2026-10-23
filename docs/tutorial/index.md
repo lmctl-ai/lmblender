@@ -21,7 +21,7 @@ Every page has one script. Save it into an empty directory (or download it with 
 
 ## Pages
 
-Pages 2 to 10 each start from the previous page's script and add one thing, so the scene grows as you go.
+Pages 2 to 9 each start from the previous page's script and add one thing, so the scene grows as you go; page 10 is page 9 with one deliberate mistake.
 
 1. [First render](01-first-render.md): install check and one sphere.
 2. [Place objects](02-place-objects.md): add a cube and a torus and move them.

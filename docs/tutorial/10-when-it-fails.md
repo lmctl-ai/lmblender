@@ -2,7 +2,7 @@
 
 Goal: read an lmblender error and fix the script.
 
-The script is page 9 rendered once with AgX at full size, with one deliberate mistake on line 20: the torus has its two radii swapped, so the tube is thicker than the ring.
+The script is page 9 rendered once with AgX at full size, with one deliberate mistake on line 20: the torus has its two radii swapped, so the tube is thicker than the ring. It writes `pyramid.obj` before the scene block runs, so that file appears even though the render fails.
 
 Download the full script, or copy it from below:
 
@@ -38,6 +38,8 @@ let stone = scene.noise_material(0.55, 0.12, 0.05, 0.95, 0.55, 0.35, 3.0, 0.6);
 stone.bump(0.4, 0.1, 12.0);
 box.set_material(stone);
 ring.set_material(scene.material(0.95, 0.7, 0.2, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
+ball.keyframe_transform(0, -1.2, -1.5, 1.0, "ease");
+ball.keyframe_transform(2, 1.2, -1.5, 1.0, "ease");
 let pyramid = scene.import_obj("pyramid.obj");
 scene.expect_int(pyramid.triangle_count(), 6);
 pyramid.translate(1.5, 2.6, 0.0);

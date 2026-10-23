@@ -2,7 +2,7 @@
 
 Goal: give each object a color and surface.
 
-The script is page 3 plus three `set_material` lines.
+The script is page 3 plus three `set_material` lines, with the samples raised from 16 to 32 because shiny surfaces need more samples to look smooth.
 
 Download the full script, or copy it from below:
 
