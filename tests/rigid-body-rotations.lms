@@ -14,6 +14,9 @@ let z = scene.cube(1.0);
 z.rotate_z(60.0);
 if (z.max_x() < 0.67 || z.min_x() > -0.67) { scene.expect_int(0, 1); }
 z.translate(1.8, 0.0, 0.0);
+let imported = scene.import_obj("tests/fixtures/obj-mtl/study-flat.obj");
+imported.rotate_y(35.0);
+if (imported.max_x() < 1.0) { scene.expect_int(0, 1); }
 scene.camera_orthographic(0.0, -8.0, 2.2, 0.0, 0.0, 0.5, 5.2);
 scene.world_color(0.02, 0.03, 0.05, 0.7);
 scene.point_light(-3.0, -4.0, 5.0, 1.0, 0.85, 0.7, 500.0);

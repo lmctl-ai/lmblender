@@ -59,13 +59,18 @@ for cube, center in enumerate((-1.3, 1.3)):
 
 # All v/vt/vn definitions precede faces, as OBJ's positive indices require.
 geometry = "\n".join(vertex_lines) + "\n" + "\n".join(face_lines[1:]) + "\n"
-(out / "study.obj").write_text("mtllib study.mtl\n" + geometry)
-(out / "study-flat.obj").write_text("mtllib study-flat.mtl\n" + geometry)
-(out / "study-no-bump.obj").write_text("mtllib study-no-bump.mtl\n" + geometry)
-(out / "study-bad.obj").write_text("mtllib study-bad.mtl\n" + geometry)
-(out / "study-huge-coordinate.obj").write_text(
-    "mtllib study.mtl\n" + geometry.replace("v -2.020000", "v 1e307", 1)
-)
+def text(name, contents):
+    # Fixtures are compared byte-for-byte by test.sh. Keep generated text stable
+    # on Windows, where pathlib.write_text otherwise translates LF to CRLF.
+    (out / name).write_text(contents, newline="\n")
+
+
+text("study.obj", "mtllib study.mtl\n" + geometry)
+text("study-flat.obj", "mtllib study-flat.mtl\n" + geometry)
+text("study-no-bump.obj", "mtllib study-no-bump.mtl\n" + geometry)
+text("study-bad.obj", "mtllib study-bad.mtl\n" + geometry)
+text("study-huge-coordinate.obj",
+     "mtllib study.mtl\n" + geometry.replace("v -2.020000", "v 1e307", 1))
 
 red = """newmtl RedCheck
 Kd 0.96 0.35 0.28
@@ -80,8 +85,8 @@ Ns 220
 Tr 0.04
 Ke 0.00 0.00 0.06
 """
-(out / "study.mtl").write_text(red + "map_Kd red-checker.png\nmap_Bump -bm 0.35 height.png\n" + blue + "map_d opacity.png\n")
-(out / "study-flat.mtl").write_text(red + blue)
-(out / "study-no-bump.mtl").write_text(red + "map_Kd red-checker.png\n" + blue + "map_d opacity.png\n")
-(out / "study-bad.mtl").write_text(red + "map_Kd ../outside.png\n" + blue)
+text("study.mtl", red + "map_Kd red-checker.png\nmap_Bump -bm 0.35 height.png\n" + blue + "map_d opacity.png\n")
+text("study-flat.mtl", red + blue)
+text("study-no-bump.mtl", red + "map_Kd red-checker.png\n" + blue + "map_d opacity.png\n")
+text("study-bad.mtl", red + "map_Kd ../outside.png\n" + blue)
 print(f"OBJ/MTL fixture: {out / 'study.obj'}; 16 vertices, 24 triangles, 2 materials")

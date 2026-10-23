@@ -127,7 +127,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `checkmark(x,y,z,size,stroke)` | Green check silhouette mesh; assign its material explicitly. |
 | `label(text,x,y,z,cell_size)` | Extruded 5×7 ASCII uppercase letters and spaces, suitable for flat title plates. |
 | `import_obj/stl/ply/gltf(path)` | Import mesh from a regular file; formats and size limits are validated. OBJ also loads confined `.mtl` libraries with per-face `usemtl`, corner UVs/normals, `Kd`/`Ks`/`Ns`/`d`/`Tr`/`Ke`, and PNG/JPEG/EXR color/bump/opacity maps; `Mesh.material_count()` counts used slots. |
-| `mesh.translate(x,y,z)`, `scale(x,y,z)`, `rotate_x/y/z(degrees)` | Relative translation/scale and baked axis rotations. Rotations are applied to the mesh's authored vertices. |
+| `mesh.translate(x,y,z)`, `scale(x,y,z)`, `rotate_x/y/z(degrees)` | Relative translation/scale and baked axis rotations. Rotations update authored vertices and explicit corner normals; rotate the source before `instance_mesh`. |
 | `material(r,g,b,metallic,roughness,transmission,emission_r,g,b,emission_strength)` | Principled BSDF factors; color [0,1], emission strength [0,10000]. |
 | `checker_material(c1 RGB,c2 RGB,scale,roughness)`, `noise_material(...)`, `ramp_material(...)` | Two RGB colors, procedural scale, roughness. Ramp uses Generated coordinates and Noise → RGB Ramp. |
 | `image_material(path,roughness)` | PNG/JPEG/EXR texture read with the mesh UVs. PNG and JPEG color images (also glTF base color, OBJ `map_Kd`, and `environment_texture` PNGs) are decoded from sRGB; EXR and HDR are read as scene-linear. |

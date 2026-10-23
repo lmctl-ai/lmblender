@@ -1,3 +1,10 @@
+## lmblender 0.3.6 — Linux, macOS and Windows (arm64/x64)
+
+Make generated OBJ/MTL regression fixtures byte-stable on Windows by writing
+explicit LF line endings. The shared fixture comparison now passes consistently
+across platforms and includes a direct newline stability assertion. Axis rotation
+also updates imported corner normals and rejects direct rotation of shared instances.
+
 ## lmblender 0.3.5 — Linux, macOS and Windows (arm64/x64)
 
 Adds bounded baked Y-axis and Z-axis mesh rotations alongside the existing X-axis

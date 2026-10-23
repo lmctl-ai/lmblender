@@ -28,6 +28,7 @@ rm -f "$root/install-and-run.png"
 # Committed fixtures must match their generators byte for byte.
 python3 tests/create_material_maps.py "$build/material-map-assets"
 python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
+python3 tests/fixture_text_eol.py "$build/obj-mtl-assets"
 diff -r tests/fixtures/material-maps "$build/material-map-assets"
 diff -r tests/fixtures/obj-mtl "$build/obj-mtl-assets"
 python3 scripts/tutorial-sync.py --check
