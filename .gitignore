@@ -6,3 +6,4 @@ dist/
 !tests/fixtures/**/*.png
 !docs/tutorial/images/*.png
 /blender/
+!docs/readme/*.png

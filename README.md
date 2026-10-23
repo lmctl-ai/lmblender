@@ -1,5 +1,44 @@
 # lmblender
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.png">
+  <img alt="Stone, glass, gold, jade, and fur objects rendered by lmblender" src="docs/readme/hero-light.png" width="100%">
+</picture>
+
+Render 3D scenes with Blender's Cycles path tracer from a short script: one static executable, no Blender install, no Python.
+
+<table>
+  <tr>
+    <td width="50%"><img alt="A glass sphere under a stone gate, lit by a spot light through blue fog" src="docs/readme/gallery-fog.png" width="100%"></td>
+    <td width="50%"><img alt="Grass blades, a fur ball, and a cyan arch with a black toon outline" src="docs/readme/gallery-strands.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td>Spot light through scattering fog, glass, stone (<a href="docs/readme/gallery.lms">source</a>)</td>
+    <td>Grass and fur strands, a lofted arch with toon outline (<a href="docs/readme/gallery.lms">source</a>)</td>
+  </tr>
+</table>
+
+The hero image is [docs/readme/hero.lms](docs/readme/hero.lms); `docs/readme/render.sh` re-renders all four images.
+
+## Quick start
+
+```sh
+npm install -g @lmctl-ai/lmctl@latest
+curl -O https://raw.githubusercontent.com/lmctl-ai/lmblender/main/docs/tutorial/code/01-first-render.lms
+lmscript 01-first-render.lms
+```
+
+The script downloads the lmblender release for your platform on first use and writes `first-render.png`.
+
+```text
+scene.lms --lmscript--> bytecode (.dslb) --lmblender--> Cycles CPU scene --> PNG, EXR, APNG
+```
+
+- [Tutorial](docs/tutorial/index.md): ten short steps from one sphere to imported meshes, animation, and error handling.
+- [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes.
+- [Compared with Blender](docs/tutorial/11-compare-with-blender.md): 44 examples rendered by lmblender and by Blender 5.2, side by side.
+- [Releases](https://github.com/lmctl-ai/lmblender/releases): Linux, macOS, and Windows executables.
+
 **License:** the combined static executable is distributed under GPL-3.0-or-later because it links GPL Blender intern code. Project-authored files are separately marked MIT where noted; see [the license audit](docs/LICENSE_AUDIT.md) and [relinking guide](docs/RELINKING.md). Every release ships its complete corresponding source as `lmblender-source-vX.Y.Z.tar.gz` ([SOURCE_OFFER.md](SOURCE_OFFER.md)).
 
 On the four-core aarch64 host, `examples/video/throughput.lms` rendered its 1280×720 studio frame at 64 samples with OIDN in 49.88 seconds (about 1.20 frames/minute). This does not meet a few-seconds target; actual speed depends on scene complexity and hardware.
@@ -35,10 +74,11 @@ For latest-release and pinned installation patterns, see [Using lmblender from a
 
 The paired [bridge example](examples/bridge/README.md) creates a multi-object
 `.blend` scene through BlenderCLI worker operations, exports GLB with PBR factors
-and emissive strength, then imports and renders the file with lmblender. Current
-measured parity on the bridge fixture is silhouette IoU `0.9322` (gate >0.92)
-and common-mask RGB MAD `43.57/255` (gate <44); this is useful interchange coverage, not a pixel-identical
-render. Camera, lights, world, and parent hierarchy are currently recreated or
+and emissive strength, then imports and renders the file with lmblender. Rendering the
+same lmblender scene with Blender 5.2 ([tests/bridge_matched_reference.py](tests/bridge_matched_reference.py))
+gives silhouette IoU `0.9989` (gate >0.98) and common-mask RGB MAD `0.86/255` (gate <4). Against
+BlenderCLI's own render, which uses a different rig and view transform, only the silhouette is gated
+(>0.92). Camera, lights, world, and parent hierarchy are currently recreated or
 flattened by the example rather than transferred. Native Cycles curve hair is
 also not imported; the [strand showcase](examples/strands-showcase.lms) uses
 bounded swept-tube meshes and its numeric pixel checks.
@@ -61,8 +101,8 @@ if (r.code != 0) { println(trim(r.stderr)); exit(1); }
 ```
 
 The exact host release is selected by lmscript's `install=` pin and SHA-256
-digest. Linux arm64 and x64 are supported; macOS and Windows are currently out
-of scope. Download a binary or tarball from the [releases page](https://github.com/lmctl-ai/lmblender/releases) if you prefer a manual install.
+digest. Releases since v0.3.4 ship Linux arm64 and x64, macOS arm64 and x64, and
+Windows x64 executables. Download a binary or tarball from the [releases page](https://github.com/lmctl-ai/lmblender/releases) if you prefer a manual install.
 The runnable installer smoke example is [examples/dsl/install-and-run.lms](examples/dsl/install-and-run.lms).
 
 - The static DSL host exposes `scene.version()`, `scene.import_obj(path)`, `scene.import_stl(path)`, `scene.import_ply(path)`, and `scene.import_gltf(path)`. PLY currently accepts bounded ASCII 1.0 meshes with x/y/z vertices and polygon face indices. glTF 2.0 `.gltf` and `.glb` import traverses the selected scene hierarchy, bakes node transforms into render meshes, preserves TEXCOORD_0, reads metallic/roughness and baseColorFactor, and supports external PNG/JPEG base-color images confined to the glTF directory. Imported meshes expose vertex/triangle counts and bounds. Sparse accessors, non-triangle modes, required extensions, skinning, morph targets, and embedded/data-URI images are rejected with structured glTF errors. Inputs are bounded to 256 MiB glTF containers, 512 MiB aggregate buffers, 64 MiB per texture, 10 million decoded vertices, 20 million triangles, 4096 generated meshes/materials, and 200,000 hierarchy visits. `scene.render_png(path, samples, width, height)` builds Cycles `Scene`, `Mesh`, `Object`, `ShaderGraph`, camera, and light nodes directly through the Cycles C++ API and renders them with an in-process CPU session. The renderer uses a fitted Z-up perspective camera by default, and assigns Cycles emission shaders to direct-light nodes so they participate in the light manager.
@@ -77,9 +117,9 @@ The runnable installer smoke example is [examples/dsl/install-and-run.lms](examp
 - `scene.render_settings(max_bounces, seed, denoise)` exposes Cycles bounce depth, sampling seed, and CPU OIDN denoising. Denoising is available when Cycles is configured with `WITH_OPENIMAGEDENOISE=ON`; no GPU backend is built. Bounds are 0–64 bounces and a seed in 0..2147483647.
 - Run `./examples/compose/run.sh` for lmcad-to-lmblender STL composition examples. It exports a mug, plate with holes, and U-channel bracket from lmcad, then renders the bracket from three static camera views and eight-angle mug/bracket turntable sets. STL carries tessellated geometry only; the renderer applies materials after import and assumes source coordinates use Cycles world units. Numeric turntable QA is in `tests/turntable_quality.py`; composition review notes are in `docs/MILESTONE3-QA.md`.
 - `scene.render_exr(path, samples, width, height)` writes a linear 32-bit-float OpenEXR. `scene.render_passes(prefix, samples, width, height)` enables Cycles Combined, Z, Normal, and Diffuse Color (reported as albedo), writing each as a separate EXR plus a normalized PNG (`prefix-{combined,depth,normal,albedo}.{exr,png}`). Depth PNG maps near/far to white/black, normal PNG maps [-1,1] to [0,1], and combined PNG uses AgX. A Blender-backed regression checks monotonic depth across a ramp, unit normals, channel counts, and all eight outputs.
-- `scene.set_view_transform(name)` selects `Standard`, `Filmic`, or `AgX` for PNG output. The host embeds 33³ RGB display LUTs baked from Blender 5.2's OCIO config and applies trilinear interpolation to scene-linear Cycles pixels; no OCIO runtime library or config is loaded. Values above scene-linear 16 are clamped. `test.sh` renders a neutral emission panel with both lmblender and Blender, then checks each transform's center-pixel RGB RMSE is at most 3/255 (currently 0.80, 0.73, and 0.80/255). EXR remains scene-linear.
+- `scene.set_view_transform(name)` selects `Standard`, `Filmic`, or `AgX` for PNG output. Standard is the exact sRGB transfer function with clipping. Filmic and AgX use 33³ RGB LUTs baked from Blender 5.2's OCIO config on a log1p(64 v) shaper ([tools/generate_view_luts.py](tools/generate_view_luts.py)), interpolated trilinearly; against OCIO itself the mean error is about 0.1 to 0.2/255 and dark tones are no longer crushed. No OCIO runtime library or config is loaded. Values above scene-linear 16 are clamped. `test.sh` renders a neutral emission panel with both lmblender and Blender, then checks each transform's center-pixel RGB RMSE is at most 3/255 (currently 0.59, 0.69, and 0.60/255). EXR remains scene-linear.
 - `mesh.translate(dx, dy, dz)` and `mesh.scale(sx, sy, sz)` set per-object transforms; `scene.instance_mesh(mesh, x, y, z, sx, sy, sz)` shares the same Cycles geometry between scene objects and passes a nonblank two-instance pixel test. glTF scene-node transforms are currently baked into each generated render mesh; general DSL object instances use shared geometry.
-- `scene.image_material(path, roughness)` loads a bounded PNG/JPEG/EXR through Cycles' image-texture node. The current fixture verifies PNG decoding and cube-projected UVs; JPEG and EXR input fixtures and explicit colorspace controls remain unverified. Input files are limited to 64 MiB.
+- `scene.image_material(path, roughness)` loads a bounded PNG/JPEG/EXR through Cycles' image-texture node. The current fixture verifies PNG decoding and cube-projected UVs; PNG/JPEG color images are decoded from sRGB and EXR/HDR read as scene-linear (the host runs Cycles without an OCIO config, so it tags them explicitly); JPEG and EXR input fixtures and per-image colorspace overrides remain open. Input files are limited to 64 MiB.
 - A standalone static Cycles executable has been built at `build/cycles-static/bin/cycles` on the development host. It renders XML scenes to PNG with no `LD_LIBRARY_PATH` or `OCIO` environment and passes the `ldd: not a dynamic executable` check.
 - A Cornell-box-style XML smoke scene rendered identically with static and dynamic Cycles at 128x128 and 16 samples (RGB MAD 0/255). The fixture uses emissive room panels and a blue box to check geometry/XML/image output; it is not a lighting parity fixture.
 - OBJ/STL mesh handles render without launching another process. Production rendering uses the Cycles C++ node API; the XML reader is only a test oracle. Separate depth/normal/albedo passes are implemented. CPU denoising is linked through static OIDN archives and covered by the quality regression described below.
