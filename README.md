@@ -53,8 +53,10 @@ let ball = scene.uv_sphere(1.0, 32, 20, true);
 scene.studio_setup();
 scene.render_png("hello.png", 8, 640, 480);
 end _dsl_
-file = "hello.dslb"; savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file}; delete_file(file);
+file = "hello.dslb";
+savedsl(p, file);
+r = system ${dsl_cli(p)} --dsl ${file};
+delete_file(file);
 if (r.code != 0) { println(trim(r.stderr)); exit(1); }
 ```
 
