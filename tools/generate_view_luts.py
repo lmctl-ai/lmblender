@@ -16,6 +16,10 @@ config_path = Path(sys.argv[1])
 output_path = Path(sys.argv[2] if len(sys.argv) > 2 else "cpp/view_luts.h")
 config = ocio.Config.CreateFromFile(str(config_path))
 size = 33
+# Shaper: index = log1p(K * v) / log1p(16 K) * (size - 1). A large K packs samples into the
+# dark range where display curves bend most; K = 1 left the first step at 0.093 linear.
+shaper_scale = 64.0
+log_range = math.log1p(16.0 * shaper_scale)
 views = ("Standard", "Filmic", "AgX")
 rows = []
 for view in views:
@@ -30,7 +34,7 @@ for view in views:
             for bi in range(size):
                 rgb = []
                 for index in (ri, gi, bi):
-                    scene_linear = math.expm1(index * math.log1p(16.0) / (size - 1))
+                    scene_linear = math.expm1(index * log_range / (size - 1)) / shaper_scale
                     rgb.append(scene_linear)
                 display_rgb = processor.applyRGB(rgb)
                 values.extend(max(0.0, min(1.0, float(channel))) for channel in display_rgb)
@@ -38,10 +42,11 @@ for view in views:
 
 output_path.parent.mkdir(parents=True, exist_ok=True)
 with output_path.open("w") as out:
-    out.write("// Generated from Blender 5.2 config.ocio; input is scene-linear Rec.709, output sRGB display.\n")
+    out.write("// SPDX-FileCopyrightText: Blender Authors and Blender color-management contributors\n// SPDX-License-Identifier: GPL-3.0-or-later\n// Generated from Blender 5.2 config.ocio; input is scene-linear Rec.709, output sRGB display.\n")
     out.write("#pragma once\n#include <array>\n\nnamespace view_luts {\n")
     out.write(f"inline constexpr int kSize = {size};\n")
-    out.write("inline constexpr float kLogRange = 2.833213344056216f; // log(17)\n")
+    out.write(f"inline constexpr float kShaperScale = {shaper_scale:.1f}f;\n")
+    out.write(f"inline constexpr float kLogRange = {log_range!r}f; // log1p(16 * kShaperScale)\n")
     for view, values in rows:
         name = {"Standard": "kStandard", "Filmic": "kFilmic", "AgX": "kAgX"}[view]
         out.write(f"inline constexpr std::array<float, {len(values)}> {name} = {{\n")

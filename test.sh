@@ -25,8 +25,11 @@ find "$build" -maxdepth 1 -type f \
      -o -name 'install-example.log' \) -delete
 rm -rf "$build/video" "$build/test-tool-cache" "$build/material-map-assets"
 rm -f "$root/install-and-run.png"
+# Committed fixtures must match their generators byte for byte.
 python3 tests/create_material_maps.py "$build/material-map-assets"
 python3 tests/create_obj_mtl_fixture.py "$build/obj-mtl-assets"
+diff -r tests/fixtures/material-maps "$build/material-map-assets"
+diff -r tests/fixtures/obj-mtl "$build/obj-mtl-assets"
 python3 scripts/tutorial-sync.py --check
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
   -DBLENDER_SOURCE_TREE="$blender_source" \
@@ -278,7 +281,10 @@ python3 tests/spot_falloff_quality.py "$build/spot-falloff.png"
 "$exe" --dsl "$build/light-falloff.dslb" >"$build/light-falloff-result.json"
 python3 tests/light_falloff_quality.py "$build/light-falloff.png"
 "$exe" --dsl "$build/bridge-render.dslb" >"$build/bridge-render-result.json"
-python3 tests/bridge_parity.py tests/fixtures/bridge/blendercli-reference.png "$build/bridge-from-blendercli.png"
+# Matched rig: the same scene rendered by Blender 5.2 through tests/bridge_matched_reference.py.
+python3 tests/bridge_parity.py tests/fixtures/bridge/blender-matched-reference.png "$build/bridge-from-blendercli.png" 0.98 4 "Blender-matched-rig"
+# BlenderCLI's own render uses a different rig and view transform, so only the geometry is compared.
+python3 tests/bridge_parity.py tests/fixtures/bridge/blendercli-reference.png "$build/bridge-from-blendercli.png" 0.92 256 "BlenderCLI-to-lmblender"
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
   "$exe" --dsl "$build/$effect.dslb" >"$build/$effect-result.json"
 done
@@ -292,6 +298,11 @@ cp "$build/mesh-instances.png" "$build/mesh-instances-first.png"
 "$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-repeat-result.json"
 cmp "$build/mesh-instances-first.png" "$build/mesh-instances.png"
 "$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-result.json"
+# Same scene through Cycles BVH2 in this build: the reference stays in the current display encoding.
+cp "$build/embree-heavy.png" "$build/embree-heavy-embree.png"
+LMBLENDER_TEST_BVH2=1 "$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-bvh2-result.json"
+mv "$build/embree-heavy.png" "$build/embree-heavy-bvh2.png"
+mv "$build/embree-heavy-embree.png" "$build/embree-heavy.png"
 "$exe" --dsl "$build/render-settings.dslb" >"$build/render-settings-result.json"
 "$exe" --dsl "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
 "$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
@@ -405,7 +416,7 @@ python3 tests/png_centered_object.py "$build/camera-look-at.png"
 python3 tests/exr_header.py "$build/imported-mesh.exr"
 python3 tests/png_metrics.py "$build/mesh-instances.png"
 python3 tests/png_instances.py "$build/mesh-instances.png"
-python3 tests/embree_quality.py tests/fixtures/embree-heavy-bvh2.png "$build/embree-heavy.png"
+python3 tests/embree_quality.py "$build/embree-heavy-bvh2.png" "$build/embree-heavy.png"
 python3 tests/png_metrics.py "$build/render-settings.png"
 python3 tests/procedural_materials_quality.py "$build/procedural-materials.png"
 python3 tests/orthographic_camera_quality.py "$build/perspective-reference.png" "$build/orthographic-camera.png"

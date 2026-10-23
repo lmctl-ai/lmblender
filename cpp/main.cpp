@@ -544,7 +544,7 @@ std::array<float, 3> apply_view_lut(const std::array<float, view_luts::kSize * v
 {
   auto coordinate = [](float value) {
     value = std::clamp(value, 0.0f, 16.0f);
-    return std::log1p(value) / view_luts::kLogRange * float(view_luts::kSize - 1);
+    return std::log1p(value * view_luts::kShaperScale) / view_luts::kLogRange * float(view_luts::kSize - 1);
   };
   const std::array<float, 3> c{coordinate(r), coordinate(g), coordinate(b)};
   std::array<int, 3> lo{}, hi{};
@@ -562,10 +562,32 @@ std::array<float, 3> apply_view_lut(const std::array<float, view_luts::kSize * v
   return result;
 }
 
+/* The host runs Cycles without an OCIO config, so Cycles cannot convert images tagged
+ * plain sRGB and would use their encoded values as linear. Integer PNG/JPEG color
+ * images are sRGB-encoded Rec.709; tagging them scene_linear_srgb makes the Cycles
+ * kernel decode them exactly. EXR/HDR stay on auto, which Cycles treats as linear. */
+ccl::ustring color_image_colorspace(const std::string &path)
+{
+  std::string extension = std::filesystem::path(path).extension().string();
+  std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return char(std::tolower(c)); });
+  return extension == ".png" || extension == ".jpg" || extension == ".jpeg" ? ccl::u_colorspace_scene_linear_srgb : ccl::u_colorspace_auto;
+}
+
+/* Blender's Standard view on an sRGB display is the sRGB transfer function with
+ * clipping, so it is evaluated exactly instead of through the LUT. */
+std::array<float, 3> apply_standard_view(float r, float g, float b)
+{
+  auto encode = [](float value) {
+    value = std::clamp(value, 0.0f, 1.0f);
+    return value <= 0.0031308f ? 12.92f * value : 1.055f * std::pow(value, 1.0f / 2.4f) - 0.055f;
+  };
+  return {encode(r), encode(g), encode(b)};
+}
+
 class ViewTransformOutputDriver final : public ccl::OutputDriver {
  public:
   ViewTransformOutputDriver(std::string filepath, const std::string &view)
-      : filepath_(std::move(filepath)), lut_(view_lut(view)) {}
+      : filepath_(std::move(filepath)), lut_(view_lut(view)), standard_(view == "Standard") {}
 
   void write_render_tile(const Tile &tile) override
   {
@@ -578,7 +600,8 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
     for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
       const size_t src = (size_t(height - y - 1) * width + x) * 4;
       const size_t dst = (size_t(y) * width + x) * 4;
-      const auto mapped = apply_view_lut(lut_, source[src], source[src + 1], source[src + 2]);
+      const auto mapped = standard_ ? apply_standard_view(source[src], source[src + 1], source[src + 2]) :
+                                      apply_view_lut(lut_, source[src], source[src + 1], source[src + 2]);
       pixels[dst] = mapped[0]; pixels[dst + 1] = mapped[1]; pixels[dst + 2] = mapped[2];
       pixels[dst + 3] = std::clamp(source[src + 3], 0.0f, 1.0f);
     }
@@ -597,6 +620,7 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
  private:
   std::string filepath_;
   const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut_;
+  bool standard_ = false;
   int64_t encode_ms_ = 0;
 };
 
@@ -784,6 +808,8 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   if (ccl::len_squared(camera_right) < 1.0e-8f) camera_right = ccl::cross(camera_forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
   camera_right = ccl::normalize(camera_right);
   const ccl::float3 camera_up = ccl::normalize(ccl::cross(camera_right, camera_forward));
+  /* Mirror the direct path's pixel-aspect correction so the oracle checks the same projection. */
+  camera_right *= (float(width) / float(height)) * 0.5f;
   const ccl::Transform camera_tfm = ccl::make_transform(camera_right.x, camera_up.x, camera_forward.x, camera_position.x,
                                                         camera_right.y, camera_up.y, camera_forward.y, camera_position.y,
                                                         camera_right.z, camera_up.z, camera_forward.z, camera_position.z);
@@ -800,6 +826,8 @@ void render_xml_oracle(const Scene &source, const std::string &output, int sampl
   params.samples = samples;
   params.threads = std::min(source.render_threads, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
+  /* Test-only: render with Cycles BVH2 so test.sh can compare it with Embree in the same build. */
+  if (std::getenv("LMBLENDER_TEST_BVH2")) scene_params.bvh_layout = ccl::BVH_LAYOUT_BVH2;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
 
@@ -917,6 +945,8 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   params.samples = samples;
   params.threads = std::min(source.render_threads, int(std::max(1u, std::thread::hardware_concurrency())));
   ccl::SceneParams scene_params;
+  /* Test-only: render with Cycles BVH2 so test.sh can compare it with Embree in the same build. */
+  if (std::getenv("LMBLENDER_TEST_BVH2")) scene_params.bvh_layout = ccl::BVH_LAYOUT_BVH2;
   auto session = ccl::make_unique<ccl::Session>(params, scene_params);
   ccl::Scene *scene = session->scene.get();
   scene->params.bvh_type = ccl::BVH_TYPE_STATIC;
@@ -972,6 +1002,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       ccl::TextureCoordinateNode *coordinates = graph->create_node<ccl::TextureCoordinateNode>();
       ccl::ImageTextureNode *image = graph->create_node<ccl::ImageTextureNode>();
       image->set_filename(ccl::ustring(material.image_path));
+      image->set_colorspace(color_image_colorspace(material.image_path));
       image->set_interpolation(ccl::INTERPOLATION_LINEAR);
       image->set_extension(ccl::EXTENSION_REPEAT);
       graph->connect(coordinates->output("UV"), image->input("Vector"));
@@ -1142,6 +1173,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     ccl::TextureCoordinateNode *coordinates = world_graph->create_node<ccl::TextureCoordinateNode>();
     ccl::EnvironmentTextureNode *environment = world_graph->create_node<ccl::EnvironmentTextureNode>();
     environment->set_filename(ccl::ustring(source.environment_image));
+    environment->set_colorspace(color_image_colorspace(source.environment_image));
     environment->set_projection(ccl::NODE_ENVIRONMENT_EQUIRECTANGULAR);
     environment->set_interpolation(ccl::INTERPOLATION_LINEAR);
     environment->set_tex_mapping_rotation(ccl::make_float3(0.0f, 0.0f, source.environment_rotation));
@@ -1366,6 +1398,9 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     if (ccl::len_squared(right) < 1.0e-8f) right = ccl::cross(forward, ccl::make_float3(0.0f, 1.0f, 0.0f));
     right = ccl::normalize(right);
     const ccl::float3 up = ccl::normalize(ccl::cross(right, forward));
+    /* Same pixel-aspect correction as explicit cameras below, so the fallback view
+     * is isotropic too (it used to be squeezed horizontally in landscape output). */
+    right *= (float(width) / float(height)) * 0.5f;
     camera_tfm = ccl::make_transform(right.x, up.x, forward.x, p.x,
                                      right.y, up.y, forward.y, p.y,
                                      right.z, up.z, forward.z, p.z);

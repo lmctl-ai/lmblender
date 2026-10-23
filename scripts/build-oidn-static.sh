@@ -14,11 +14,21 @@ jobs=${BUILD_JOBS:-2}
 test -f "$source/CMakeLists.txt"
 test -x "$ispc"
 test -f "$static_prefix/lib/libtbb.a"
+# ISPC tunes for the build machine's CPU unless told otherwise, and CI runners
+# have newer ISAs than users: GitHub's arm64 runners have SVE, so the v0.3.3 and
+# v0.3.4 linux-arm64 denoisers stopped with SIGILL on Graviton2/Neoverse-N1.
+# Pin a baseline CPU on Linux; the ISPC --target list still selects the vector ISA.
+ispc_flags=(-O3)
+case "$(uname -s)-$(uname -m)" in
+  Linux-aarch64|Linux-arm64) ispc_flags+=(--cpu=cortex-a57) ;;
+  Linux-x86_64) ispc_flags+=(--cpu=x86-64) ;;
+esac
 cmake -S "$source" -B "$build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib \
   -DOIDN_STATIC_LIB=ON -DOIDN_DEVICE_CPU=ON -DOIDN_DEVICE_CUDA=OFF \
   -DOIDN_DEVICE_HIP=OFF -DOIDN_DEVICE_SYCL=OFF -DOIDN_APPS=OFF -DOIDN_FILTER_RT=ON \
-  -DISPC_EXECUTABLE="$ispc" -DTBB_ROOT="$static_prefix" -DCMAKE_PREFIX_PATH="$static_prefix"
+  -DISPC_EXECUTABLE="$ispc" -DISPC_FLAGS_RELEASE="${ispc_flags[*]}" \
+  -DTBB_ROOT="$static_prefix" -DCMAKE_PREFIX_PATH="$static_prefix"
 cmake --build "$build" --parallel "$jobs"
 cmake --install "$build"
 # Older experiments used a different source directory for this build tree.

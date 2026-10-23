@@ -9,3 +9,11 @@
 - `*.png` in .gitignore hides fixtures; add explicit exceptions.
 - Per-arch SHA256SUMS used to overwrite each other in the release job; one merged SHA256SUMS now covers all assets.
 - Never judge CI by workflow-level success when jobs are `continue-on-error`.
+- ISPC tunes for the build host CPU by default. GitHub's arm64 runners have SVE, so OIDN kernels in the v0.3.3/v0.3.4
+  linux-arm64 releases SIGILL on Graviton2/Neoverse-N1 when denoising. build-oidn-static.sh now pins `--cpu`
+  on Linux and CI runs scripts/check-no-sve.sh on the arm64 binary.
+- The host runs Cycles without an OCIO config: images tagged plain sRGB are NOT linearized. PNG/JPEG color
+  textures and environment maps must be tagged `scene_linear_srgb` (Cycles decodes them in the kernel).
+- View LUTs: a log1p(v) shaper put the first LUT step at 0.093 linear and crushed dark tones by up to 20/255.
+  The shaper is now log1p(64 v); Standard is evaluated analytically. Re-bake with tools/generate_view_luts.py.
+- The fallback camera (no camera call) needs the same pixel-aspect correction as explicit cameras.

@@ -27,7 +27,9 @@ def measures(path):
     for y in range(height):
         for x in range(width):
             r, g, b = image[y][x]
-            mask[y][x] = b > r * 1.35 and b > g * 1.15
+            # The b > 60 floor keeps dim bluish background pixels (no longer crushed to black
+            # since the display LUT fix) out of the subject mask.
+            mask[y][x] = b > r * 1.35 and b > g * 1.15 and b > 60
     for y in range(1, height - 1):
         for x in range(1, width - 1):
             values = [luminance(image[yy][xx]) for yy in range(y - 1, y + 2) for xx in range(x - 1, x + 2)]

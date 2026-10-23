@@ -210,6 +210,9 @@ jobs:
           cat build/lmblender.ldd
           grep -q 'not a dynamic executable' build/lmblender.ldd
           build/lmblender --version
+      - name: assert no SVE instructions (arm64 users without SVE would hit SIGILL)
+        if: matrix.arch == 'linux-arm64'
+        run: scripts/check-no-sve.sh build/lmblender
       - name: stage release assets
         env:
           LMBLENDER_ARCH: ${{ matrix.machine }}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/obj-mtl-control.dslb";
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
-let pair = scene.import_obj("build/obj-mtl-assets/study-flat.obj");
+let pair = scene.import_obj("tests/fixtures/obj-mtl/study-flat.obj");
 scene.expect_int(pair.material_count(), 2);
 scene.checker_ground(8.0, 4.0);
 scene.world_color(0.34, 0.37, 0.42, 0.55);
