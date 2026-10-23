@@ -12,5 +12,5 @@ def rgb(path):
 w1, h1, a = rgb(sys.argv[1]); w2, h2, b = rgb(sys.argv[2])
 assert (w1, h1) == (w2, h2) and len(a) == len(b)
 mad = sum(abs(x-y) for x,y in zip(a,b)) / len(a)
-assert mad < 0.75, f"rotated explicit normals diverge from pre-rotated reference: MAD={mad:.3f}"
+assert mad < 0.001, f"rotated explicit normals diverge from pre-rotated reference: MAD={mad:.3f}"
 print(f"rotated explicit-normal render parity: RGB MAD={mad:.3f}")
