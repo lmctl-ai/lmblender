@@ -12,5 +12,10 @@ scene.render_settings(2,17,true);
 scene.render_png("build/preset-diagram-dark-16x9-draft.png",8,320,240);
 end _dsl_
 savedsl(p,out);
-run = system ${dsl_cli(p)} --dsl ${out};
-if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }
+// system() stops a program after 60 s by default; renders can take longer.
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+if (run.code != 0) { println(trim(f"lmblender exit {run.code}: {trim(run.stdout)} {trim(run.stderr)}")); exit(1); }
+println(trim(run.stdout));

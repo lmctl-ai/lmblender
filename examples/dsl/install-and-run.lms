@@ -12,7 +12,11 @@ end _dsl_
 
 file = "install-and-run.dslb";
 savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file};
+// system() stops a program after 60 s by default; renders can take longer.
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, file);
+r = system(argv, 3600000);
 delete_file(file);
 if (r.code != 0) {
   println(f"lmblender exit {r.code}: {trim(r.stdout)} {trim(r.stderr)}");
