@@ -97,3 +97,11 @@ These come from the recipe and from how stage prompts reached this session; no q
 2. Pass GITHUB_TOKEN through to provider sessions by default, and surface HTTP 403 from installs as a named failure in the transcript.
 
 3. Long stages leave background work running (CI runs, renders, monitors) when the next stage prompt arrives, and a previous session's monitors were marked stopped without a result. A stage prompt could carry or request a short status of still-running tasks, so the next stage starts from a known state.
+
+## Additional recipe feedback, 2026-10-23
+
+The release gate in step 2 is too strict for a documented multi-line version command. The v0.3.6 Linux arm64 binary reports its exact release as the first line, lmblender 0.3.6 (DSL bytecode v5), followed by the Cycles and OpenImageDenoise versions. The embedded schema matches the repository schema file byte for byte, and the binary signatures match the lmscript signatures generated from that schema. Requiring the entire output to be exactly NAME X.Y.Z rejects this valid release. Require the documented output to identify the exact tag version, and allow documented build or dependency details.
+
+The release was freshly installed into an empty LMSCRIPT_TOOL_CACHE from the v0.3.6 tag; its reported SHA256 was ac8d91147d845c487352d66dafe4ccdcc240ee9a62828941384553b033f22526. The release is built from commit bdddf4a02487e566ca9675bc2cc43529a783e192. The checked-out main revision is 302c526fadb0328a625a06ad793e64b305ba179a and has successful CI and platform workflow runs. The 12-story examples were added after the v0.3.6 tag, so this book tests those source examples against the pinned released host rather than claiming they are present in the tag source tree.
+
+The story examples use the command-literal form of system, which has a 60-second default timeout. The first 900 by 500 backlit-skin render exceeded that default, causing the script's assertion to fail before the renderer finished. Use an argument list with an explicit timeout for examples that render, while keeping the whole render under the 180-second book limit. The published copies use a 240-second host process timeout and the generator enforces the 180-second render limit.
