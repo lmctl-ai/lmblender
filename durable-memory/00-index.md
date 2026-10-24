@@ -8,7 +8,7 @@ PNG/EXR/APNG. Repo: https://github.com/lmctl-ai/lmblender. Combined binary is GP
 A from-source build is heavy (Blender `build_environment` + Cycles + OIDN, hours; `scripts/build-deps.sh`, `scripts/configure-cycles-static.sh`),
 so day to day work runs against the released host: `mkdir /tmp/w && cd /tmp/w && lmscript /path/to/lmblender/examples/cornell-box.lms`
 (lmscript fetches `github:lmctl-ai/lmblender@latest` into `~/.cache/lmscript/tools/github/lmctl-ai/lmblender/`). The full `test.sh` and releases
-run in CI. Change flow: host/schema/example edit, check examples with lmscript, docs, `git commit && git push origin main`.
+run in CI. Change flow: host/schema/example edit, check the examples with lmscript, read the README gate in `test.sh`.
 
 ## Doc map
 
@@ -16,7 +16,7 @@ run in CI. Change flow: host/schema/example edit, check examples with lmscript, 
 - `04-gotchas.md`: miscompiles, colour management, camera aspect, SVE/arm64 lessons.
 - `05-open-items.md`, `05-platform-status.md` (macOS/Windows build facts and history; the `platforms` jobs are `continue-on-error`).
 - `06-examples-and-images.md`: how examples and README images work, the story examples, shared scenes, homepage clips.
-- `20-sibling-3d-hosts-and-conventions.md`: the four 3D repos side by side, DSL cheat sheet, porting rules, **mandatory working conventions**.
+- `20-sibling-3d-hosts.md`: pointer to the cross-repo reference in lmcad (host comparison, DSL cheat sheet, porting rules, shared examples).
 - `docs/` (not durable-memory): the large reference set (PLATFORMS, RELINKING, ROADMAP, QA reports, tutorial, API/LLM guides). Start with `docs/LLM_GUIDE.md` for the scene API.
 - Also see `tool-book-feedback/` for notes from users of the tool book.
 

@@ -8,5 +8,5 @@ sculpt-like ops) is lmctlhq/blendercli; its `export_lmblender` op bridges to thi
 
 Install story: `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"`. Release assets are bare
 executables named `lmblender-OS-ARCH[.exe]` (OS linux/macos/windows, ARCH x64/arm64). `--version` first line
-must contain exactly one MAJOR.MINOR.PATCH token equal to the release tag. VERSION is the single source; CI stamps `MAJOR.MINOR.<run number>` into it for every automatic release (the committed file keeps the base, change MAJOR.MINOR only deliberately).
+must contain exactly one MAJOR.MINOR.PATCH token equal to the release tag. VERSION is the single source; CI stamps `MAJOR.MINOR.<run number>` into it for every automatic release (the committed file keeps the MAJOR.MINOR base).
 License: combined binary GPL-3.0-or-later (Blender/Cycles-derived); lmblender-authored files MIT (SPDX headers).
