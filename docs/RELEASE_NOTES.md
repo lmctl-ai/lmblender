@@ -1,5 +1,9 @@
 ## Unreleased
 
+Checker materials and `checker_ground` fade to the mean of their two colors where a check covers fewer
+than about two pixels (from the camera field of view and render height), removing distance moiré;
+normal-size checks are unchanged. `tests/checker_moire_quality.py`: 32.6 -> 6.3 near-floor aliasing.
+
 `hair_patch` seeds its blade layout, jitter and per-blade lean direction from the patch centre and size,
 so tiled patches no longer repeat (visible seams and a uniform lean); adjacent-tile correlation fell
 from 0.96 to 0.00 in `tests/hair_tiling_quality.py`. Output is still deterministic.

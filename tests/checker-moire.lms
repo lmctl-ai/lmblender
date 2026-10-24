@@ -1,0 +1,12 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// A very fine checker floor must fade to its mean color instead of aliasing (tests/checker_moire_quality.py).
+out = ARGV.len() > 0 ? ARGV[0] : "build/checker-moire.dslb";
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+scene.checker_ground(30.0, 30.0);
+scene.world_color(0.6, 0.65, 0.7, 1.0);
+scene.camera_look_at(0.0, -8.0, 2.5, 0.0, 0.0, 0.5, 40.0);
+scene.render_png("build/checker-moire.png", 16, 320, 180);
+end _dsl_
+savedsl(p, out);

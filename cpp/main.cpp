@@ -963,7 +963,13 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
     return shader;
   };
   std::map<const Material *, ccl::Shader *> material_shader_cache;
-  auto make_principled_shader = [scene, &material_shader_cache](const Material &material) {
+  /* Approximate checker anti-aliasing: Cycles' checker texture is unfiltered,
+   * so once a check covers fewer than ~2 pixels it aliases into moire. Fade
+   * the checker toward its mean color between 3 and 1.5 pixels per check. */
+  const bool checker_ortho = source.custom_camera && source.camera.orthographic;
+  const float checker_pixel_angle = (source.custom_camera ? source.camera.fov_radians : 0.8f) / float(height);
+  const float checker_pixel_world = (checker_ortho ? source.camera.ortho_scale : 0.0f) / float(height);
+  auto make_principled_shader = [scene, &material_shader_cache, checker_ortho, checker_pixel_angle, checker_pixel_world](const Material &material) {
     const auto cached = material_shader_cache.find(&material);
     if (cached != material_shader_cache.end()) return cached->second;
     ccl::Shader *shader = scene->create_node<ccl::Shader>();
@@ -988,6 +994,27 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       checker->set_color2(ccl::make_float3(material.texture_color2[0], material.texture_color2[1], material.texture_color2[2]));
       checker->set_scale(material.texture_scale);
       base_color_source = checker->output("Color");
+      const float tile = 1.0f / std::max(material.texture_scale, 1.0e-3f);
+      ccl::MixColorNode *antialias = graph->create_node<ccl::MixColorNode>();
+      antialias->set_b(ccl::make_float3(0.5f * (material.color[0] + material.texture_color2[0]),
+                                        0.5f * (material.color[1] + material.texture_color2[1]),
+                                        0.5f * (material.color[2] + material.texture_color2[2])));
+      graph->connect(base_color_source, antialias->input("A"));
+      if (checker_ortho) {
+        const float pixels = tile / std::max(checker_pixel_world, 1.0e-9f);
+        antialias->set_fac(std::clamp((3.0f - pixels) / 1.5f, 0.0f, 1.0f));
+      } else {
+        ccl::CameraNode *camera_data = graph->create_node<ccl::CameraNode>();
+        ccl::MapRangeNode *fade = graph->create_node<ccl::MapRangeNode>();
+        fade->set_from_min(tile / (3.0f * checker_pixel_angle));
+        fade->set_from_max(tile / (1.5f * checker_pixel_angle));
+        fade->set_to_min(0.0f);
+        fade->set_to_max(1.0f);
+        fade->set_clamp(true);
+        graph->connect(camera_data->output("View Distance"), fade->input("Value"));
+        graph->connect(fade->output("Result"), antialias->input("Factor"));
+      }
+      base_color_source = antialias->output("Result");
     } else if (material.texture_kind == 2) {
       ccl::NoiseTextureNode *noise = graph->create_node<ccl::NoiseTextureNode>();
       noise->set_scale(material.texture_scale);
