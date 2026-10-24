@@ -36,6 +36,23 @@ Every picture below is made by one example program. Each one runs from a raw URL
 | <img src="docs/images/saturn-rings.png" width="290" alt="Saturn with its C, B and A rings, the Cassini Division and the planet shadow on the rings"> | <img src="docs/images/kepler-orbit.gif" width="290" alt="A planet on an eccentric orbit speeding up near the Sun, with equal-time beads and spokes"> | <img src="docs/images/bouncing-ball-strobe.png" width="290" alt="A white ball photographed every 1/25 s while bouncing; red bars mark predicted peak heights"> |
 | Ring radii from 1.24 to 2.27 planet radii, Cassini Division at 1.95<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/saturn-rings.lms` | Kepler equation solved per frame; equal areas in equal times (GIF)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/kepler-orbit.lms` | Restitution 0.8: each peak is 0.64 of the last; spacing shows speed<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bouncing-ball-strobe.lms` |
 
+### Scenes shared with lmcad, lmmagnum and lmfilament
+
+| Water molecule | Buckminsterfullerene C60 | Pratt truss footbridge |
+| --- | --- | --- |
+| <img src="docs/images/ball-stick.png" width="290" alt="Water molecule"> | <img src="docs/images/buckyball.png" width="290" alt="Buckminsterfullerene C60"> | <img src="docs/images/truss-bridge.png" width="290" alt="Pratt truss footbridge"> |
+| 104.5 degree H-O-H angle (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/ball-stick.lms` | 60 atoms from icosahedral symmetry, 90 bonds (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/buckyball.lms` | Red tension, blue compression, closed-form member forces (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/truss-bridge.lms` |
+
+| Metal roughness sweep | Material sandbox | Model viewer |
+| --- | --- | --- |
+| <img src="docs/images/pbr-spheres.png" width="290" alt="Metal roughness sweep"> | <img src="docs/images/material-sandbox.png" width="290" alt="Material sandbox"> | <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> |
+| Five gold spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/material-sandbox.lms` | A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/model-viewer.lms` |
+
+| 3D text |   |   |
+| --- | --- | --- |
+| <img src="docs/images/text.png" width="290" alt="3D text"> |   |   |
+| Two lines with scene.label (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/text.lms` |   |   |
+
 ## Quick start (one minute)
 
 ```sh

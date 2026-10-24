@@ -8,6 +8,9 @@
   backlit-skin, gear-pair-render [lmcad + lmblender], caffeine-molecule, dna-double-helix, salt-crystal,
   saturn-rings, kepler-orbit [GIF via ffmpeg], bouncing-ball-strobe). Each must stay under ~60 s on 4 cores:
   900 px wide, 24-64 samples + OIDN. `examples/render-all.sh` reruns them in a temp dir and copies to docs/images/.
+- A second README table, "Scenes shared with lmcad, lmmagnum and lmfilament", holds ball-stick, buckyball, truss-bridge (lmcad),
+  pbr-spheres, material-sandbox, model-viewer, text (lmmagnum/lmfilament). They were ported by swapping the scene API calls
+  (Z-up here, Y-up there: (x,y,z) -> (x,-z,y)); test.sh compiles and runs each, no image-quality gate.
 - test.sh: compile_dsl truncates at the first savedsl and rewrites `"images/` to `"$build/`, so regression
   checks still read `$build/<file>`; story renders get tests/story_quality.py gates; README autorun URLs and
   docs/images magic bytes/size limits are checked. gear-pair-render runs only when lmcad is on PATH (SKIP printed).

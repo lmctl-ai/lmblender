@@ -1,0 +1,105 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Buckminsterfullerene, C60, built from symmetry alone: the 60 atoms are the vertices of a truncated icosahedron
+// (cyclic permutations of (0, +-1, +-3phi), (+-1, +-(2+phi), +-2phi), (+-phi, +-2, +-phi^3)); every pair of atoms
+// at the edge length becomes a bond (90 of them), so V - E + F = 60 - 90 + 32 = 2. Scaled to a 1.44 angstrom mean C-C bond.
+// Ported from lmcad examples/buckyball.lms.
+out = ARGV.len() > 0 ? ARGV[0] : "build/buckyball.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let carbon = scene.material(0.20, 0.22, 0.26, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0);
+let bond = scene.material(0.55, 0.62, 0.72, 0.4, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0);
+let phi = (1.0 + sqrt(5.0)) / 2.0;
+let scale = 1.44 / 2.0;        # edge length is 2 in these coordinates
+
+let bonds = 0;
+let rmax = 0.0;
+for (i in range(0, 60)) {
+  # decode atom i: group, cyclic permutation, sign bits
+  let a = 0.0;
+  let b = 1.0;
+  let c = 3.0 * phi;
+  let local = i;
+  let nsign = 4;
+  if (i >= 12) {
+    a = 1.0;
+    b = 2.0 + phi;
+    c = 2.0 * phi;
+    local = i - 12;
+    nsign = 8;
+  }
+  if (i >= 36) {
+    a = phi;
+    b = 2.0;
+    c = phi * phi * phi;
+    local = i - 36;
+  }
+  let perm = local / nsign;
+  let s = local - perm * nsign;
+  if (nsign == 4) { s = s * 2; }
+  if (s - (s / 2) * 2 == 1) { a = 0.0 - a; }
+  if ((s / 2) - (s / 4) * 2 == 1) { b = 0.0 - b; }
+  if (s / 4 == 1) { c = 0.0 - c; }
+  let x = a;
+  let y = b;
+  let z = c;
+  if (perm == 1) { x = c; y = a; z = b; }
+  if (perm == 2) { x = b; y = c; z = a; }
+  rmax = max(rmax, sqrt(x * x + y * y + z * z));
+  let atom = scene.uv_sphere(0.34, 32, 24, true);
+  atom.translate(x * scale, 0.0 - z * scale, y * scale + 5.0);
+  atom.set_material(carbon);
+
+  for (j in range(i + 1, 60)) {
+    let a2 = 0.0;
+    let b2 = 1.0;
+    let c2 = 3.0 * phi;
+    let local2 = j;
+    let nsign2 = 4;
+    if (j >= 12) {
+      a2 = 1.0;
+      b2 = 2.0 + phi;
+      c2 = 2.0 * phi;
+      local2 = j - 12;
+      nsign2 = 8;
+    }
+    if (j >= 36) {
+      a2 = phi;
+      b2 = 2.0;
+      c2 = phi * phi * phi;
+      local2 = j - 36;
+    }
+    let perm2 = local2 / nsign2;
+    let s2 = local2 - perm2 * nsign2;
+    if (nsign2 == 4) { s2 = s2 * 2; }
+    if (s2 - (s2 / 2) * 2 == 1) { a2 = 0.0 - a2; }
+    if ((s2 / 2) - (s2 / 4) * 2 == 1) { b2 = 0.0 - b2; }
+    if (s2 / 4 == 1) { c2 = 0.0 - c2; }
+    let x2 = a2;
+    let y2 = b2;
+    let z2 = c2;
+    if (perm2 == 1) { x2 = c2; y2 = a2; z2 = b2; }
+    if (perm2 == 2) { x2 = b2; y2 = c2; z2 = a2; }
+    let dd = (x - x2) * (x - x2) + (y - y2) * (y - y2) + (z - z2) * (z - z2);
+    if (abs(dd - 4.0) < 0.001) {
+      bonds = bonds + 1;
+      scene.tube_between(x * scale, 0.0 - z * scale, y * scale + 5.0, x2 * scale, 0.0 - z2 * scale, y2 * scale + 5.0, 0.11).set_material(bond);
+    }
+  }
+}
+
+scene.expect_int(bonds, 90);
+scene.ground_plane(0.0, 80.0, 0.20, 0.23, 0.28);
+scene.world_color(0.55, 0.62, 0.75, 0.6);
+scene.area_light(-8.0, -8.0, 14.0, 0.0, 0.0, 5.0, 1.0, 0.95, 0.88, 2500.0, 8.0);
+scene.area_light(9.0, -3.0, 6.0, 0.0, 0.0, 5.0, 0.6, 0.75, 1.0, 900.0, 6.0);
+scene.camera_look_at(3.0, -17.5, 9.5, 0.0, 0.0, 5.0, 30.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/buckyball.png", 32, 900, 640);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/buckyball.png");

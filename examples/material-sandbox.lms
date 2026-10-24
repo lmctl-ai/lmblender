@@ -1,0 +1,29 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// A 3x3 grid of spheres: rows are three base colours, columns go from matte to glossy. Ported from lmmagnum/lmfilament examples/material-sandbox.lms.
+out = ARGV.len() > 0 ? ARGV[0] : "build/material-sandbox.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let s00 = scene.uv_sphere(0.8, 48, 32, true); s00.translate(-2.0, 0.0, 5.0); s00.set_material(scene.material(0.85, 0.25, 0.2, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s01 = scene.uv_sphere(0.8, 48, 32, true); s01.translate(0.0, 0.0, 5.0); s01.set_material(scene.material(0.85, 0.25, 0.2, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s02 = scene.uv_sphere(0.8, 48, 32, true); s02.translate(2.0, 0.0, 5.0); s02.set_material(scene.material(0.85, 0.25, 0.2, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s10 = scene.uv_sphere(0.8, 48, 32, true); s10.translate(-2.0, 0.0, 3.0); s10.set_material(scene.material(0.25, 0.75, 0.3, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s11 = scene.uv_sphere(0.8, 48, 32, true); s11.translate(0.0, 0.0, 3.0); s11.set_material(scene.material(0.25, 0.75, 0.3, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s12 = scene.uv_sphere(0.8, 48, 32, true); s12.translate(2.0, 0.0, 3.0); s12.set_material(scene.material(0.25, 0.75, 0.3, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s20 = scene.uv_sphere(0.8, 48, 32, true); s20.translate(-2.0, 0.0, 1.0); s20.set_material(scene.material(0.25, 0.4, 0.9, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s21 = scene.uv_sphere(0.8, 48, 32, true); s21.translate(0.0, 0.0, 1.0); s21.set_material(scene.material(0.25, 0.4, 0.9, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+let s22 = scene.uv_sphere(0.8, 48, 32, true); s22.translate(2.0, 0.0, 1.0); s22.set_material(scene.material(0.25, 0.4, 0.9, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0));
+scene.ground_plane(0.0, 80.0, 0.20, 0.23, 0.28);
+scene.world_color(0.35, 0.42, 0.55, 0.5);
+scene.area_light(-6.0, -7.0, 10.0, 0.0, 0.0, 3.0, 1.0, 0.92, 0.82, 1500.0, 6.0);
+scene.area_light(8.0, -2.0, 6.0, 0.0, 0.0, 1.0, 0.6, 0.75, 1.0, 700.0, 5.0);
+scene.camera_look_at(0.0, -14.0, 3.0, 0.0, 0.0, 3.0, 30.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/material-sandbox.png", 32, 640, 640);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/material-sandbox.png");

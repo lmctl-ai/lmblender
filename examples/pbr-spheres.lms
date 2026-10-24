@@ -1,0 +1,27 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Five spheres sweep roughness from 0.05 to 0.95. Ported from lmmagnum/lmfilament examples/pbr-spheres.lms (Filament hellopbr).
+out = ARGV.len() > 0 ? ARGV[0] : "build/pbr-spheres.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+for (i in range(0, 5)) {
+  let t = float(i) / 4.0;
+  let m = scene.material(0.95, 0.78, 0.45, 1.0, lerp(0.05, 0.95, t), 0.0, 0.0, 0.0, 0.0, 0.0);
+  let b = scene.uv_sphere(0.9, 64, 48, true);
+  b.translate((float(i) - 2.0) * 2.0, 0.0, 0.9);
+  b.set_material(m);
+}
+scene.ground_plane(0.0, 80.0, 0.20, 0.23, 0.28);
+scene.world_color(0.35, 0.42, 0.55, 0.5);
+scene.area_light(-6.0, -7.0, 10.0, 0.0, 0.0, 1.0, 1.0, 0.92, 0.82, 1500.0, 6.0);
+scene.area_light(8.0, -2.0, 6.0, 0.0, 0.0, 1.0, 0.6, 0.75, 1.0, 700.0, 5.0);
+scene.camera_look_at(0.0, -14.0, 2.0, 0.0, 0.0, 0.9, 17.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/pbr-spheres.png", 32, 800, 300);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/pbr-spheres.png");

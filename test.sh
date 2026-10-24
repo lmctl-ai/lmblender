@@ -462,6 +462,12 @@ for story in caustic-ball-lens:900:560 sunset-long-shadows:900:560 backlit-skin:
   "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
   python3 tests/story_quality.py "$name" "$build/$name.png" "$width" "$height"
 done
+# Scenes shared with lmcad, lmmagnum and lmfilament (README table "Scenes shared ..."): each must render a PNG.
+for name in ball-stick buckyball truss-bridge pbr-spheres material-sandbox model-viewer text; do
+  compile_dsl "examples/$name.lms" "$build/$name.dslb"
+  "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
+  test -s "$build/$name.png"
+done
 test -s build/kepler-orbit/frame-35.png
 python3 tests/story_quality.py kepler-frame build/kepler-orbit/frame-35.png 560 350
 # The gear story is an lmcad + lmblender pipeline; it needs the lmcad host as well.

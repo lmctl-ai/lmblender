@@ -1,0 +1,97 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Pratt truss footbridge: method of joints, solved in closed form. Span 24 m in six 4 m panels, depth 4 m, 100 kN on each of the
+// five deck joints. Support reactions R = 250 kN; the middle top chord carries -450 kN (compression) and the centre vertical nothing.
+// Red members are in tension, blue in compression, grey carry zero; tube radius grows with |F|.
+// Ported from lmcad examples/truss-bridge.lms (only the 3D part; the lmplot elevation is left out).
+out = ARGV.len() > 0 ? ARGV[0] : "build/truss-bridge.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let steel = scene.material(0.30, 0.33, 0.38, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+let deck_mat = scene.material(0.74, 0.72, 0.68, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
+let n = 6;
+let d = 4.0;
+let h = 4.0;
+let load = 100.0;
+let reaction = float(n - 1) * load / 2.0;
+let diag = sqrt(d * d + h * h);
+let sin_t = h / diag;
+let fmax = 450.0;
+
+for (side in range(0, 2)) {
+  let z = -2.6 + 5.2 * float(side);
+  for (i in range(0, n + 1)) {
+    let j = scene.uv_sphere(0.30, 24, 16, true); j.translate(float(i) * d, 0.0 - (z), 0.0); j.set_material(steel);
+    if (i > 0) {
+      if (i < n) { let j = scene.uv_sphere(0.30, 24, 16, true); j.translate(float(i) * d, 0.0 - (z), h); j.set_material(steel); }
+    }
+  }
+  for (k in range(0, n)) {
+    let kk = k;
+    if (k >= n / 2) { kk = n - 1 - k; }
+    let j = max(kk, 1);
+    let m = reaction * float(j) * d - load * d * float(j * (j - 1)) / 2.0;
+    let f = m / h;
+    let t = abs(f) / fmax;
+    scene.tube_between(float(k) * d, 0.0 - (z), 0.0, float(k + 1) * d, 0.0 - (z), 0.0, 0.10 + 0.16 * t).set_material(scene.material(lerp(0.62, 0.86, t), lerp(0.62, 0.18, t), lerp(0.64, 0.14, t), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  }
+  for (k in range(1, n - 1)) {
+    let kk = k;
+    if (k >= n / 2) { kk = n - 1 - k; }
+    let j = kk + 1;
+    let m = reaction * float(j) * d - load * d * float(j * (j - 1)) / 2.0;
+    let f = 0.0 - m / h;
+    let t = abs(f) / fmax;
+    scene.tube_between(float(k) * d, 0.0 - (z), h, float(k + 1) * d, 0.0 - (z), h, 0.10 + 0.16 * t).set_material(scene.material(lerp(0.62, 0.14, t), lerp(0.62, 0.36, t), lerp(0.64, 0.86, t), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  }
+  let fe = reaction / sin_t;
+  let te = fe / fmax;
+  scene.tube_between(0.0, 0.0 - (z), 0.0, d, 0.0 - (z), h, 0.10 + 0.16 * te).set_material(scene.material(lerp(0.62, 0.14, te), lerp(0.62, 0.36, te), lerp(0.64, 0.86, te), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  scene.tube_between(float(n) * d, 0.0 - (z), 0.0, float(n - 1) * d, 0.0 - (z), h, 0.10 + 0.16 * te).set_material(scene.material(lerp(0.62, 0.14, te), lerp(0.62, 0.36, te), lerp(0.64, 0.86, te), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  for (k in range(1, n / 2)) {
+    let f = (reaction - float(k) * load) / sin_t;
+    let t = f / fmax;
+    scene.tube_between(float(k) * d, 0.0 - (z), h, float(k + 1) * d, 0.0 - (z), 0.0, 0.10 + 0.16 * t).set_material(scene.material(lerp(0.62, 0.86, t), lerp(0.62, 0.18, t), lerp(0.64, 0.14, t), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+    scene.tube_between(float(n - k) * d, 0.0 - (z), h, float(n - k - 1) * d, 0.0 - (z), 0.0, 0.10 + 0.16 * t).set_material(scene.material(lerp(0.62, 0.86, t), lerp(0.62, 0.18, t), lerp(0.64, 0.14, t), 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  }
+  for (i in range(1, n)) {
+    let ii = i;
+    if (i > n / 2) { ii = n - i; }
+    let f = 0.0;
+    if (ii == 1) { f = load; }
+    if (ii > 1) {
+      if (ii < n / 2) { f = 0.0 - (reaction - float(ii) * load); }
+    }
+    let t = abs(f) / fmax;
+    let cr = 0.62; let cg = 0.62; let cb = 0.64;
+    if (f > 0.0) { cr = lerp(0.62, 0.86, t); cg = lerp(0.62, 0.18, t); cb = lerp(0.64, 0.14, t); }
+    if (f < 0.0) { cr = lerp(0.62, 0.14, t); cg = lerp(0.62, 0.36, t); cb = lerp(0.64, 0.86, t); }
+    scene.tube_between(float(i) * d, 0.0 - (z), 0.0, float(i) * d, 0.0 - (z), h, 0.10 + 0.16 * t).set_material(scene.material(cr, cg, cb, 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  }
+}
+for (i in range(0, n + 1)) {
+  scene.tube_between(float(i) * d, 0.0 - (-2.6), -0.05, float(i) * d, 0.0 - (2.6), -0.05, 0.12).set_material(scene.material(0.30, 0.33, 0.38, 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+  if (i > 0) {
+    if (i < n) {
+      scene.tube_between(float(i) * d, 0.0 - (-2.6), h, float(i) * d, 0.0 - (2.6), h, 0.09).set_material(scene.material(0.30, 0.33, 0.38, 0.2, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0));
+    }
+  }
+}
+let deck = scene.cube(1.0);
+deck.scale(float(n) * d + 1.2, 4.6, 0.22);
+deck.translate(float(n) * d / 2.0, 0.0, 0.30 - 0.60);
+deck.set_material(deck_mat);
+scene.ground_plane(-0.45, 120.0, 0.55, 0.57, 0.6);
+scene.world_color(0.55, 0.65, 0.8, 0.35);
+scene.area_light(-8.0, -12.0, 22.0, 0.0, 0.0, 0.0, 1.0, 0.95, 0.88, 3500.0, 10.0);
+scene.area_light(30.0, -8.0, 10.0, 0.0, 0.0, 0.0, 0.6, 0.75, 1.0, 1500.0, 8.0);
+scene.camera_look_at(1.0, -27.0, 9.5, 12.0, 0.0, 1.3, 28.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/truss-bridge.png", 32, 900, 400);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/truss-bridge.png");
