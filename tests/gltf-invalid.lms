@@ -6,5 +6,10 @@ p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let broken = scene.import_gltf("tests/fixtures/gltf/malformed-json.glb");
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
+if (run.code == null) { println("lmblender child timed out"); exit(1); }
 if (run.code == 0) { println("expected this example to fail validation or time out"); exit(1); }

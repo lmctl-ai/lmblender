@@ -33,6 +33,7 @@ python3 tests/create_rotated_obj_fixture.py "$build/rotation-fixture"
 diff -r tests/fixtures/material-maps "$build/material-map-assets"
 diff -r tests/fixtures/obj-mtl "$build/obj-mtl-assets"
 python3 scripts/tutorial-sync.py --check
+python3 scripts/migrate-system-timeouts.py --check
 cmake -S . -B "$build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMBLENDER_FULL_STATIC=ON \
   -DBLENDER_SOURCE_TREE="$blender_source" \
   -DBLENDER_DEPS_INSTALL="$deps_install" \

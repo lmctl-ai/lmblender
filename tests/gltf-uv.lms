@@ -15,5 +15,9 @@ scene.render_settings(4, 7, false);
 scene.render_png("build/gltf-uv.png", 16, 128, 128);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

@@ -13,5 +13,9 @@ scene.expect_int(grass.vertex_count(), 576);
 scene.expect_int(grass.triangle_count(), 1056);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

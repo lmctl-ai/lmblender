@@ -14,5 +14,9 @@ scene.camera_look_at(0.0, -5.0, 1.5, 0.0, 0.0, 0.0, 40.0);
 scene.render_png("build/no-default-light.png", 4, 64, 64);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

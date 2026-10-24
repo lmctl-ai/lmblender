@@ -7,5 +7,10 @@ scene.set_threads(2);
 scene.render_sequence("build/should-not-render-{frame}.png", 0, 239, 8, 960, 540);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
+if (run.code == null) { println("lmblender child timed out"); exit(1); }
 if (run.code == 0) { println("expected this example to fail validation or time out"); exit(1); }

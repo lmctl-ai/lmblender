@@ -9,5 +9,10 @@ scene.camera_look_at(3.0, -4.0, 2.5, 0.0, 0.0, 0.0, 40.0);
 scene.render_png("/tmp/lmblender-output-escape.png", 1, 16, 16);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
+if (run.code == null) { println("lmblender child timed out"); exit(1); }
 if (run.code == 0) { println("expected the output root policy to refuse this path"); exit(1); }

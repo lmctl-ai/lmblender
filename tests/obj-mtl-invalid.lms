@@ -6,5 +6,9 @@ let pair = scene.import_obj("tests/fixtures/obj-mtl/study-bad.obj");
 scene.render_png("build/obj-mtl-invalid.png", 8, 64, 64);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

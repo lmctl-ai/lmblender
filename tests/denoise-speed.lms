@@ -17,5 +17,9 @@ scene.render_png("build/denoise-speed-reference.png", 256, 640, 360);
 end _dsl_
 out = ARGV.len() > 0 ? ARGV[0] : "build/denoise-speed.dslb";
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

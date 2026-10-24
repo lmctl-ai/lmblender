@@ -16,5 +16,9 @@ scene.area_light(-3.0, -4.0, 4.5, 0.0, 0.0, 0.0, 0.02, 1.0, 0.025, 1800.0, 2.0);
 scene.render_png("build/preset-override-light.png", 12, 320, 240);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
 if (run.code != 0) { println(f"lmblender exit {run.code}: {trim(run.stderr)}"); exit(1); }

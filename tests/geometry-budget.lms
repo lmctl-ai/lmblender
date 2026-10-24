@@ -11,5 +11,10 @@ for (i in range(0, 200)) {
 scene.render_png("build/geometry-budget.png", 1, 16, 16);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
+if (run.code == null) { println("lmblender child timed out"); exit(1); }
 if (run.code == 0) { println("expected the scene geometry budget to refuse this program"); exit(1); }

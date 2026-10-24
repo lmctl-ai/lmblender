@@ -11,5 +11,10 @@ cube.set_material(picture);
 scene.render_png("build/image-limit.png", 1, 16, 16);
 end _dsl_
 savedsl(p, out);
-run = system ${dsl_cli(p)} --dsl ${out};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+run = system(argv, 3600000);
+println(trim(run.stdout));
+if (run.code == null) { println("lmblender child timed out"); exit(1); }
 if (run.code == 0) { println("expected image_material to refuse the oversized image"); exit(1); }
