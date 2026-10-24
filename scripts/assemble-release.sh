@@ -5,6 +5,14 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist=${1:?usage: assemble-release.sh DIST_DIR}
+# Automatic releases require all targets; exploratory/manual assembly may omit
+# optional targets. Never infer completeness from continue-on-error job results.
+required=${REQUIRE_PLATFORMS:-linux}
+case "$required" in
+  all|linux) ;;
+  *) echo "invalid REQUIRE_PLATFORMS: $required (expected all or linux)" >&2; exit 1 ;;
+esac
+echo "Required release platforms: $required"
 version=${RELEASE_VERSION:-$(cat "$root/VERSION")}
 version=${version#v}
 [[ "$version" == "$(cat "$root/VERSION")" ]] || { echo 'release version differs from VERSION' >&2; exit 1; }
@@ -15,7 +23,7 @@ for platform in linux-arm64 linux-x64 macos-arm64 macos-x64 windows-x64; do
   base=lmblender-$platform
   binary=$base
   [[ $platform != windows-* ]] || binary=$base.exe
-  if [[ $platform != linux-* && ! -e "$dist/$binary" ]]; then
+  if [[ $required != all && $platform != linux-* && ! -e "$dist/$binary" ]]; then
     # Optional means absent, never partially staged.
     if compgen -G "$dist/*$platform*" >/dev/null; then
       echo "incomplete optional platform: $platform" >&2; exit 1

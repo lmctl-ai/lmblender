@@ -2,8 +2,8 @@
 
 Shipped since v0.3.4: linux-arm64, linux-x64 (fully static), macos-arm64, macos-x64, windows-x64.exe.
 The `platforms` workflow jobs are still continue-on-error, so a green workflow run does NOT mean those jobs
-passed: read the per-job conclusions (`gh run view RUN --json jobs`). The release job requires only the Linux
-builds + source; it publishes the other platforms when their jobs succeeded.
+passed: read the per-job conclusions (`gh run view RUN --json jobs`). Automatic main-push releases require all five platform packages in dist, regardless of workflow-level
+results. Tag releases and manual dry runs remain tolerant unless strict assembly is requested.
 
 Known facts:
 - Blender's precompiled lib repos (lib-windows_x64) return HTTP 403 to non-browser clients: Windows must not use
@@ -181,3 +181,10 @@ Host build (test.sh) on macOS:
 ## Automatic releases
 
 Every push to `main` that CI accepts is released automatically. The `version` job in `.github/workflows/ci.yml` picks `MAJOR.MINOR.<run number>` (MAJOR.MINOR come from the version source in the repo, the patch is the workflow run number), every build job runs `scripts/stamp-version.sh` to write that version into the working tree before building (never committed), so the binary reports it. When all platform builds and tests pass, the `release` job creates the tag `vMAJOR.MINOR.N` on the pushed commit and publishes the assets, marked latest. Pull requests and manual runs never release. Pushing a `v*` tag by hand still releases exactly that version. MAJOR.MINOR is the committed base: `project(... VERSION x.y.z)` in `CMakeLists.txt` (the `VERSION` file for lmblender).
+
+## Complete automatic releases (2026-10-24)
+
+- v0.3.127 was published with only four bare executables; the Windows asset was absent. Keep that release intact; the next complete successful automatic release supersedes it.
+- Main-push release assembly now sets `REQUIRE_PLATFORMS=all`. Every bare binary, checksum, archive, notices, source-offer and relinking file is required before publication. Manual validation can exercise the exact gate with `dry_run=true require_all_platforms=true`.
+- CI-called platform jobs use per-run concurrency groups, separate from standalone platform workflows. `cancel-in-progress: false` alone does not protect a pending job from replacement. Cancelled parent runs cannot enter release assembly; cancelled individual platforms cannot pass the strict asset gate.
+- Version job, run-number stamping, source stamping and publication target design are unchanged. Fixtures reject every four-of-five platform combination and missing Windows checksum/notices, while preserving tolerant manual assembly.

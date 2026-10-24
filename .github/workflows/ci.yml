@@ -7,6 +7,10 @@ on:
         description: Assemble and verify all release assets without publishing
         type: boolean
         default: true
+      require_all_platforms:
+        description: Validate the complete automatic-release platform set in a dry run
+        type: boolean
+        default: false
   push:
     branches: [main]
     tags: ["v*"]
@@ -313,9 +317,10 @@ jobs:
     uses: ./.github/workflows/platforms.yml
     with:
       version: ${{ needs.version.outputs.v }}
+      release_run: true
 
   release:
-    if: always() && needs.build.result == 'success' && needs.source.result == 'success' && (needs.version.outputs.release == 'true' || (github.event_name == 'workflow_dispatch' && inputs.dry_run))
+    if: always() && !cancelled() && needs.build.result == 'success' && needs.source.result == 'success' && (needs.version.outputs.release == 'true' || (github.event_name == 'workflow_dispatch' && inputs.dry_run))
     needs: [version, build, source, platforms]
     runs-on: ubuntu-24.04
     env:
@@ -342,6 +347,9 @@ jobs:
           merge-multiple: true
       - name: validate source, platform packages, and one merged SHA256SUMS
         env:
+          # Main-push releases must never promote an incomplete Latest. Manual
+          # dry runs can opt into this exact gate; tag releases retain tolerance.
+          REQUIRE_PLATFORMS: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.require_all_platforms) && 'all' || 'linux' }}
           TAG_VERSION: ''
         run: |
           RELEASE_VERSION=${TAG_VERSION:-$(cat VERSION)} scripts/assemble-release.sh dist

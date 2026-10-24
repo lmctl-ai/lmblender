@@ -1,13 +1,17 @@
 name: platforms
 
-# Optional release platforms. Only fully tested jobs upload release assets;
-# a platform failure must not prevent publishing the successful Linux builds.
+# Only fully tested jobs upload release assets. The caller decides whether
+# optional targets may be absent or all five targets are required for publication.
 on:
   workflow_call:
     inputs:
       platform:
         type: string
         default: all
+      release_run:
+        description: Isolate CI release/dry-run builds from standalone platform runs
+        type: boolean
+        default: false
       version:
         description: Release version to stamp into VERSION (empty = leave as committed)
         type: string
@@ -51,10 +55,11 @@ jobs:
             machine: x64
     runs-on: ${{ matrix.runner }}
     continue-on-error: true
-    # Per-job groups: let cold dependency builds finish so their prefix caches
-    # are saved, without making Windows wait behind macOS (and vice versa).
+    # Even with cancel-in-progress=false, a concurrency group keeps only one
+    # pending job. Isolate each CI run so standalone pushes cannot supersede its
+    # release jobs. Standalone jobs keep the existing per-ref serialization.
     concurrency:
-      group: platforms-${{ matrix.arch }}-${{ github.ref }}
+      group: platforms-${{ matrix.arch }}-${{ github.ref }}-${{ inputs.release_run && github.run_id || 'standalone' }}
       cancel-in-progress: false
     timeout-minutes: 330
     env:
@@ -224,7 +229,7 @@ jobs:
     runs-on: windows-2022
     continue-on-error: true
     concurrency:
-      group: platforms-windows-x64-${{ github.ref }}
+      group: platforms-windows-x64-${{ github.ref }}-${{ inputs.release_run && github.run_id || 'standalone' }}
       cancel-in-progress: false
     timeout-minutes: 330
     env:
