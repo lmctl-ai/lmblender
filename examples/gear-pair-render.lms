@@ -107,9 +107,12 @@ scene.export_stl("build/gear-wheel.stl");
 end _dsl_
 cad_out = "build/gear-pair-cad.dslb";
 savedsl(cad, cad_out);
-c = system ${dsl_cli(cad)} --dsl ${cad_out};
-if (c.code != 0) { println(trim(c.stdout)); println(trim(c.stderr)); }
-assert(c.code == 0);
+cad_argv = dsl_cli(cad);
+push(cad_argv, "--dsl");
+push(cad_argv, cad_out);
+c = system(cad_argv, 3600000);
+println(trim(c.stdout));
+if (c.code != 0) { println(trim(f"lmcad exit {c.code}: {c.stderr}")); exit(1); }
 p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let pinion = scene.import_stl("build/gear-pinion.stl");
 pinion.scale(0.1, 0.1, 0.1);
@@ -134,7 +137,10 @@ scene.render_settings(8, 54, true);
 scene.render_png("images/gear-pair-render.png", 32, 900, 560);
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
-assert(r.code == 0);
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+r = system(argv, 3600000);
+println(trim(r.stdout));
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 println("wrote images/gear-pair-render.png");

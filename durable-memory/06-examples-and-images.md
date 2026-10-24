@@ -1,9 +1,9 @@
 # Examples and README images
 
-- Every example self-executes: `out = ARGV...; mkdir("images"); mkdir("build"); p = _dsl_ ...; savedsl(p, out);
-  r = system ${dsl_cli(p)} --dsl ${out}; assert(r.code == 0);` and writes `images/<name>.png` in the current
-  directory, so `lmctl autorun <raw URL>` from an empty directory produces the picture. Feature/regression
-  examples keep the long `system(argv, 3600000)` form (lmscript's default system() timeout is 60 s).
+- Every example self-executes: it creates the output directories, compiles the `_dsl_` block with `savedsl`,
+  calls `system(argv, 3600000)`, prints stdout, and exits on a nonzero result. It writes `images/<name>.png` in
+  the current directory, so `lmctl autorun <raw URL>` from an empty directory produces the picture. The explicit
+  one-hour timeout covers slow renders; lmscript's default is 60 seconds.
 - README gallery = 12 story examples (caustic-ball-lens, sunset-long-shadows, god-rays-window, cornell-box,
   backlit-skin, gear-pair-render [lmcad + lmblender], caffeine-molecule, dna-double-helix, salt-crystal,
   saturn-rings, kepler-orbit [GIF via ffmpeg], bouncing-ball-strobe). Each must stay under ~60 s on 4 cores:

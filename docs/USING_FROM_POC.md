@@ -16,7 +16,11 @@ end _dsl_
 
 file = "mug.dslb";
 savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, file);
+r = system(argv, 3600000);
+println(trim(r.stdout));
 delete_file(file);
 if (r.code != 0) { println(trim(r.stderr)); exit(1); }
 ```

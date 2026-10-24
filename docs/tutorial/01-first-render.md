@@ -25,9 +25,13 @@ scene.render_png("first-render.png", 16, 640, 480);
 end _dsl_
 file = "first-render.dslb";
 savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, file);
+r = system(argv, 3600000);
+println(trim(r.stdout));
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 println("wrote first-render.png");
 ```
 
@@ -51,7 +55,7 @@ What each part does:
 - `scene.uv_sphere(1.0, 48, 24, true)` adds a sphere of radius 1 with 48 segments and 24 rings, smooth shaded. Units are scene units and Z points up.
 - `scene.studio_setup()` frames the camera on the geometry and adds a floor and three soft lights.
 - `scene.render_png(path, samples, width, height)` renders with CPU Cycles. More samples means less grain and more time.
-- After `end _dsl_`, `savedsl` writes the compiled bytecode, `system ${dsl_cli(p)} --dsl ${file}` runs lmblender on it, and the script prints the host's error and exits 1 if the render failed.
+- After `end _dsl_`, `savedsl` writes the compiled bytecode, `system(argv, 3600000)` runs lmblender with a one-hour timeout, and the script prints the host's error and exits 1 if the render failed.
 
 The sphere looks flat white because it has no material yet; meshes without one get a plain unlit surface. Page 4 adds materials.
 

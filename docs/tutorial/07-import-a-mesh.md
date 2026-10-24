@@ -50,9 +50,13 @@ scene.render_png("import-a-mesh.png", 32, 640, 480);
 end _dsl_
 file = "import-a-mesh.dslb";
 savedsl(p, file);
-r = system ${dsl_cli(p)} --dsl ${file};
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, file);
+r = system(argv, 3600000);
+println(trim(r.stdout));
 delete_file(file);
-if (r.code != 0) { println(trim(r.stdout)); if (trim(r.stderr) != "") { println(trim(r.stderr)); } exit(1); }
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 println("wrote import-a-mesh.png");
 ```
 

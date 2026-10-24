@@ -49,12 +49,15 @@ This evaluation measures that directly.
    Every baseline agent spent one to three attempts reverse-engineering it from compiler errors.
    *Fix:* a verified, copyable skeleton at the top of the guide, with the lmscript-vs-DSL rules: no int→float
    conversion and no list literals in the body.
-2. **Renders over 60 s silently vanished.** The documented `system ${dsl_cli(p)} --dsl FILE;` uses lmscript's
+2. **Renders over 60 s silently vanished.** The formerly documented shell-style host invocation uses lmscript's
    default 60 s `system` timeout and discards lmblender's exit code and JSON. Any longer render (turntables,
    sequences, volumes, grass at 2 threads) killed the renderer with exit 0, no message and no image. This was the
    main cause of the 8 baseline failures.
    *Fix:* the skeleton uses `system([exe, "--dsl", file], 3600000)`, prints `stdout`, and exits on a non-zero code.
    The guide explains the limit.
+   Reproduced on 2026-10-23 with the same 4096-sample, 1280×720 sphere scene: the shorthand returned
+   `code=null` after 60.24 s without a PNG, while the argument-list call returned code 0 and wrote the PNG
+   after 95.64 s. `test.sh` now rejects any remaining shorthand in examples and documentation.
 3. **Methods with bare typed signatures.** 25 host methods could not be found by name in the parameter table (about 15 had no description at all), including `ground_plane`,
    `checker_ground`, `wall_plane_y`, `studio_setup`, `Material.volume`/`subsurface`, `camera_keyframe`, the mesh
    bounds and `light_clamp`. Agents guessed argument order, for example "r,g,b,roughness,z" for `ground_plane`.

@@ -54,7 +54,10 @@ scene.render_settings(6, 25, true);
 scene.render_png("images/bouncing-ball-strobe.png", 24, 900, 520);
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
-if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
-assert(r.code == 0);
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+r = system(argv, 3600000);
+println(trim(r.stdout));
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 println("wrote images/bouncing-ball-strobe.png");

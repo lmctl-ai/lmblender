@@ -83,8 +83,12 @@ scene.studio_setup();
 scene.render_png("images/hello.png", 32, 640, 480);
 end _dsl_
 savedsl(p, out);
-r = system ${dsl_cli(p)} --dsl ${out};
-assert(r.code == 0);
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+r = system(argv, 3600000);
+println(trim(r.stdout));
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 println("wrote images/hello.png");
 ```
 
