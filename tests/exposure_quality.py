@@ -16,7 +16,7 @@ def clipped(path):
     return hit / (w * h)
 
 
-hot, fixed, stderr = sys.argv[1], sys.argv[2], Path(sys.argv[3]).read_text()
+hot, fixed, stderr = sys.argv[1], sys.argv[2], Path(sys.argv[3]).read_text(encoding="utf-8")
 warn = re.search(r"exposure-hot\.png: (\d+)% of pixels are clipped.*scene\.exposure\((-?[\d.]+)\)", stderr)
 assert warn, f"no blowout warning for the over-lit frame:\n{stderr}"
 assert -5.5 <= float(warn.group(2)) <= -3.5, f"suggested exposure drifted from the -4.5 used by tests/exposure.lms: {warn.group(2)}"

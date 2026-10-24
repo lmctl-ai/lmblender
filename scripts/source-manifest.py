@@ -64,7 +64,7 @@ def read_versions(blender_tree):
     if not path.is_file():
         fail(f"{path} is missing; run scripts/fetch-cycles-source.sh")
     values = {}
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         match = re.match(r"^\s*set\((\w+)\s+(.*?)\)\s*(#.*)?$", line)
         if match:
             values[match.group(1)] = match.group(2).strip().strip('"')
@@ -78,13 +78,13 @@ def read_versions(blender_tree):
 
 
 def blender_series(blender_tree):
-    text = (blender_tree / "build_files/build_environment/cmake/download.cmake").read_text()
+    text = (blender_tree / "build_files/build_environment/cmake/download.cmake").read_text(encoding="utf-8")
     match = re.search(r"^\s*set\(BLENDER_VERSION\s+([\d.]+)\)", text, re.M)
     return match.group(1) if match else "main"
 
 
 def script_pin(script, pattern, what):
-    match = re.search(pattern, (ROOT / script).read_text(), re.M)
+    match = re.search(pattern, (ROOT / script).read_text(encoding="utf-8"), re.M)
     if not match:
         fail(f"{what} pin not found in {script}")
     return match.group(1)
@@ -93,7 +93,7 @@ def script_pin(script, pattern, what):
 def components(blender_tree):
     versions = read_versions(blender_tree)
     series = blender_series(blender_tree)
-    configure = (ROOT / "scripts/configure-cycles-static.sh").read_text()
+    configure = (ROOT / "scripts/configure-cycles-static.sh").read_text(encoding="utf-8")
     embree_on = "WITH_CYCLES_EMBREE=ON" in configure
     out = []
     for key, name, role in COMPONENTS:
@@ -119,7 +119,7 @@ def components(blender_tree):
         })
         if key == "EMBREE":
             # The static build verifies SHA-256 rather than Blender's older MD5 pin.
-            build_script = (ROOT / "scripts/build-deps.sh").read_text()
+            build_script = (ROOT / "scripts/build-deps.sh").read_text(encoding="utf-8")
             expected_archive = f"embree-v{versions['EMBREE_VERSION']}.zip"
             if expected_archive not in build_script:
                 fail(f"Embree archive {expected_archive} is not pinned in scripts/build-deps.sh")
@@ -147,7 +147,7 @@ def components(blender_tree):
         "shipped": None,
     })
     ispc_version = script_pin(bootstrap, r"ispc/releases/download/v([\d.]+)/", "ISPC version")
-    for archive, sha in re.findall(r"ispc_archive=(ispc-v[\d.]+-[\w.]+\.tar\.gz)\s*\n\s*ispc_sha=([0-9a-f]{64})", (ROOT / bootstrap).read_text()):
+    for archive, sha in re.findall(r"ispc_archive=(ispc-v[\d.]+-[\w.]+\.tar\.gz)\s*\n\s*ispc_sha=([0-9a-f]{64})", (ROOT / bootstrap).read_text(encoding="utf-8")):
         out.append({
             "name": "ISPC (build tool, not linked)",
             "component": "ISPC",
@@ -218,7 +218,7 @@ def standalone_entry():
 
 
 def vendored_entries():
-    lock = dict(line.split("=", 1) for line in (ROOT / "sdk.lock").read_text().split() if "=" in line)
+    lock = dict(line.split("=", 1) for line in (ROOT / "sdk.lock").read_text(encoding="utf-8").split() if "=" in line)
     header = (ROOT / "third_party/nlohmann/json.hpp").read_text(errors="replace")
     json_version = re.search(r"version (\d+\.\d+\.\d+)", header).group(1)
     return [
@@ -348,7 +348,7 @@ def markdown(manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--blender", type=Path, required=True, help="pinned Blender source tree")
-    parser.add_argument("--version", default=(ROOT / "VERSION").read_text().strip())
+    parser.add_argument("--version", default=(ROOT / "VERSION").read_text(encoding="utf-8").strip())
     parser.add_argument("--commit", default="unknown", help="lmblender git commit recorded in the manifest")
     parser.add_argument("--upstream-dir", type=Path, help="directory holding the shipped upstream archives")
     parser.add_argument("--fetch", action="store_true", help="download missing archives into --upstream-dir")

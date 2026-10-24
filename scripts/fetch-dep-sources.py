@@ -26,7 +26,7 @@ MIRROR = "https://projects.blender.org/blender/lib-source/media/branch/blender-v
 
 def parse_versions(path: pathlib.Path) -> dict:
     values = {}
-    for m in re.finditer(r'^set\((\w+)\s+(.*?)\)\s*(?:#.*)?$', path.read_text(), re.M):
+    for m in re.finditer(r'^set\((\w+)\s+(.*?)\)\s*(?:#.*)?$', path.read_text(encoding="utf-8"), re.M):
         values[m.group(1)] = m.group(2).strip().strip('"')
 
     def expand(text, depth=0):
@@ -92,7 +92,7 @@ def main():
                 raise SystemExit(f"{file_name}: {algo} mismatch from {url}")
         target = dest_root / name.lower()
         stamp = target / ".lmblender-source-hash"
-        if stamp.exists() and stamp.read_text() == expected:
+        if stamp.exists() and stamp.read_text(encoding="utf-8") == expected:
             print(f"{name}: up to date ({target})")
             continue
         extract(archive, target)

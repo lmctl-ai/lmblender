@@ -19,17 +19,17 @@ def main() -> int:
     check = "--check" in sys.argv[1:]
     drift = []
     for page in sorted(ROOT.rglob("*.md")):
-        text = page.read_text()
+        text = page.read_text(encoding="utf-8")
 
         def fill(match: re.Match) -> str:
-            source = (ROOT / match["path"]).read_text()
+            source = (ROOT / match["path"]).read_text(encoding="utf-8")
             if source != match["body"]:
                 drift.append(f"{page.relative_to(ROOT)}: {match['path']}")
             return f"<!-- code: {match['path']} -->\n```{match['lang']}\n{source}```\n"
 
         updated = MARK.sub(fill, text)
         if not check and updated != text:
-            page.write_text(updated)
+            page.write_text(updated, encoding="utf-8")
     if check and drift:
         print("tutorial code blocks differ from their files:\n  " + "\n  ".join(drift))
         return 1

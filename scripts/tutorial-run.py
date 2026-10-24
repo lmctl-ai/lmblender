@@ -52,7 +52,7 @@ def main() -> int:
         return 2
     rows, failures = [], 0
     for page in sorted(TUTORIAL.glob("[0-9][0-9]-*.md")):
-        text = page.read_text()
+        text = page.read_text(encoding="utf-8")
         code = re.search(r"<!-- code: (code/[^ ]+\.lms) -->", text)
         expected = re.search(r"Expected output[^\n]*\n\n```text\n(.*?)```", text, re.S)
         if not code or not expected:
@@ -93,7 +93,7 @@ def main() -> int:
               for p, c, o, i, s, n in rows]
     print("\n".join(table))
     if args.report:
-        pathlib.Path(args.report).write_text("\n".join(table) + "\n")
+        pathlib.Path(args.report).write_text("\n".join(table) + "\n", encoding="utf-8")
     print(f"{len(rows) - failures} of {len(rows)} pages pass")
     return 1 if failures or not rows else 0
 

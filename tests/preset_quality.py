@@ -39,10 +39,10 @@ for name, expected in requirements.items():
     print(f"{name}: luminance mean={mean:.1f}, spread={spread:.1f}; " +
           ", ".join(f"{c} pixels={len(masks[c])}" for c in expected))
 
-listed = (root / "presets-list.txt").read_text()
+listed = (root / "presets-list.txt").read_text(encoding="utf-8")
 for name in requirements:
     assert name in listed, f"--presets omitted {name}"
-shown = json.loads((root / "preset-product-studio.json").read_text())
+shown = json.loads((root / "preset-product-studio.json").read_text(encoding="utf-8"))
 assert shown["name"] == "product-studio" and shown["render"]["tier"] == "final"
 assert shown["render"]["threads"] == 4 and shown["ground"]["enabled"] is True
 print("preset CLI list/show JSON checks passed")

@@ -15,7 +15,7 @@ for name in ("red-checker.png", "height.png", "opacity.png"):
     if (source / name).exists(): shutil.copy2(source / name, out / name)
 c, s = math.cos(math.radians(35.0)), math.sin(math.radians(35.0))
 lines = []
-for line in (source / "study-flat.obj").read_text().splitlines():
+for line in (source / "study-flat.obj").read_text(encoding="utf-8").splitlines():
     fields = line.split()
     if fields and fields[0] in ("v", "vn"):
         x, y, z = map(float, fields[1:4])

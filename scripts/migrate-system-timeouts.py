@@ -31,7 +31,7 @@ def files():
 
 
 def rewrite(path: pathlib.Path) -> bool:
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     matches = list(SHORT.finditer(source))
     if not matches:
         return False
@@ -68,13 +68,13 @@ def rewrite(path: pathlib.Path) -> bool:
             marker + f'if ({result}.code == null) {{ println("lmblender child timed out"); exit(1); }}\n',
             1,
         )
-    path.write_text(updated)
+    path.write_text(updated, encoding="utf-8")
     return True
 
 
 def rewrite_concat(path: pathlib.Path) -> bool:
     """Use the guide's checked form for recent long-running video examples."""
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     old = ('r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);\n'
            'if (r.code != 0) { println(r.stderr + r.stdout); }\n'
            'assert(r.code == 0);')
@@ -86,13 +86,13 @@ def rewrite_concat(path: pathlib.Path) -> bool:
            'r = system(argv, 3600000);\n'
            'println(trim(r.stdout));\n'
            'if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }')
-    path.write_text(source.replace(old, new, 1))
+    path.write_text(source.replace(old, new, 1), encoding="utf-8")
     return True
 
 
 def normalize_stdout(path: pathlib.Path) -> bool:
     """Print host stdout even on success, so JSON errors never vanish."""
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     edits = []
     for match in TIMED.finditer(source):
         result = match.group("result")
@@ -104,13 +104,13 @@ def normalize_stdout(path: pathlib.Path) -> bool:
         return False
     for offset, replacement in reversed(edits):
         source = source[:offset] + replacement + source[offset:]
-    path.write_text(source)
+    path.write_text(source, encoding="utf-8")
     return True
 
 
 def dedupe_stdout(path: pathlib.Path) -> bool:
     """Earlier examples printed stdout after the error check; keep the early copy."""
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     updated = source
     for result in ("r", "run"):
         line = f"println(trim({result}.stdout));\n"
@@ -120,7 +120,7 @@ def dedupe_stdout(path: pathlib.Path) -> bool:
             updated = updated[:second] + updated[second + len(line):]
     if updated == source:
         return False
-    path.write_text(updated)
+    path.write_text(updated, encoding="utf-8")
     return True
 
 
@@ -138,7 +138,7 @@ def main() -> int:
         print(f"normalized stdout for {len(printed)} more lmscript files")
         deduped = [p for p in paths if p.suffix == ".lms" and dedupe_stdout(p)]
         print(f"removed duplicate stdout prints in {len(deduped)} files")
-    remaining = [str(p.relative_to(ROOT)) for p in paths if OLD.search(p.read_text()) or CONCAT.search(p.read_text())]
+    remaining = [str(p.relative_to(ROOT)) for p in paths if OLD.search(p.read_text(encoding="utf-8")) or CONCAT.search(p.read_text(encoding="utf-8"))]
     if remaining:
         print("60-second DSL host shorthand remains:\n  " + "\n  ".join(remaining), file=sys.stderr)
         return 1
@@ -146,7 +146,7 @@ def main() -> int:
     for path in paths:
         if path.suffix != ".lms":
             continue
-        source = path.read_text()
+        source = path.read_text(encoding="utf-8")
         for match in TIMED.finditer(source):
             following = source[match.end():].splitlines()[1:2]
             if not following or not re.match(rf"\s*println\(.*\b{match.group('result')}\.stdout\b", following[0]):

@@ -38,7 +38,7 @@ for entry in source.iterdir():
         motion_patch = Path(__file__).resolve().parent.parent / "patches/cycles-motion-vectorizer.patch"
         subprocess.run(["patch", "--batch", "-p1", "-i", str(motion_patch)], cwd=output, check=True)
         transform_header = output / "intern/cycles/util/transform.h"
-        transform_text = transform_header.read_text()
+        transform_text = transform_header.read_text(encoding="utf-8")
         interpolation_start = """ccl_device void transform_motion_array_interpolate(ccl_private Transform *tfm,
                                                    const ccl_global DecomposedTransform *motion,
                                                    const int numsteps,
@@ -61,7 +61,7 @@ for entry in source.iterdir():
             raise RuntimeError("Cycles motion interpolation guard insertion point is missing")
         transform_header.write_text(transform_text.replace(interpolation_start, interpolation_guard, 1))
         cpu_cmake = output / "intern/cycles/kernel/device/cpu/CMakeLists.txt"
-        cpu_text = cpu_cmake.read_text()
+        cpu_text = cpu_cmake.read_text(encoding="utf-8")
         cpu_marker = "cycles_set_solution_folder(cycles_kernel_cpu)"
         cpu_workaround = (
             "# Keep this target's inline motion interpolation off the GCC14 tree vectorizer.\n"

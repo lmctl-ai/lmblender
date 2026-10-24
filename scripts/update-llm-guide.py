@@ -50,7 +50,7 @@ def main():
     parser.add_argument("--check", action="store_true", help="exit 1 instead of rewriting when the block is stale")
     args = parser.parse_args()
     signatures = subprocess.run([args.binary, "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.strip()
-    text = GUIDE.read_text()
+    text = GUIDE.read_text(encoding="utf-8")
     span = locate_block(text)
     if not span:
         print("docs/LLM_GUIDE.md has no '## Host API signatures' ```text block", file=sys.stderr)
@@ -75,7 +75,7 @@ def main():
         for line in stale:
             print(f"  stale:   {line}", file=sys.stderr)
         return 1
-    GUIDE.write_text(text[:start] + signatures + text[end:])
+    GUIDE.write_text(text[:start] + signatures + text[end:], encoding="utf-8")
     print(f"docs/LLM_GUIDE.md host API block rewritten ({len(signatures.splitlines())} signatures)")
     return 0
 
