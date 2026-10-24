@@ -235,6 +235,8 @@ jobs:
     env:
       CC: cl
       CXX: cl
+      # Repository fixtures are UTF-8, independent of the Windows ANSI locale.
+      PYTHONUTF8: "1"
       CMAKE_POLICY_VERSION_MINIMUM: "3.5"
       BLENDER_SOURCE_TREE: ${{ github.workspace }}/build/blender-src-upstream-v5.2.2
       LMBLENDER_DEPS_ROOT: ${{ github.workspace }}/build/portable-deps
