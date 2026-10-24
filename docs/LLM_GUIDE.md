@@ -86,6 +86,7 @@ method Scene.cone(float, float, int, bool) -> Mesh
 method Scene.cube(float) -> Mesh
 method Scene.cylinder(float, float, int, bool) -> Mesh
 method Scene.denoise_quality(string) -> void
+method Scene.depth_range(float, float) -> void
 method Scene.environment_texture(string, float, float) -> void
 method Scene.expect_int(int, int) -> void
 method Scene.fit_camera(float) -> void
@@ -184,7 +185,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `render_png(path,samples,width,height)`, `render_exr(path,samples,width,height)` | Single frame, samples 1..65536 (`render_png` also accepts 0 = preset count), dimensions and total pixel bounds apply. Set `LMBLENDER_OUTPUT_ROOT` to confine every output path to one directory. |
 | `render_sequence(pattern,start,end,samples,width,height)` | Inclusive integer frames; the path must contain `{frame}` (unpadded: `move_1.png`) or `####` (zero-padded to the number of `#`: `move_0001.png`); key interpolation is `linear` or `ease`. A 12-frame sequence easily exceeds 60 s, so use the `system([...], 3600000)` form from the skeleton. |
 | `render_apng(path,start,end,samples,width,height,fps)` | Inclusive frames; exact rational frame delay is 1/fps; fps 1..240. |
-| `render_passes(prefix,samples,width,height)` | Writes `PREFIX-combined`, `PREFIX-depth`, `PREFIX-normal` and `PREFIX-albedo`, each as linear `.exr` plus a viewable `.png` (depth normalized from the nearest to the farthest visible surface, near=white/far=dark, background black, so a long floor compresses subject contrast — shrink the floor or use the `.exr` for metric depth; normals mapped to RGB, background flat grey). Example: `scene.render_passes("out/passes", 32, 640, 480)` writes `out/passes-depth.png` etc. |
+| `render_passes(prefix,samples,width,height)`, `depth_range(near,far)` | Writes `PREFIX-combined`, `PREFIX-depth`, `PREFIX-normal` and `PREFIX-albedo`, each as linear `.exr` plus a viewable `.png` (depth normalized from the nearest to the farthest visible surface, near=white/far=dark, background black, so a long floor compresses subject contrast — call `scene.depth_range(near, far)` first to map that scene-unit distance range to white..dark instead (`(0.0, 0.0)` restores automatic), or use the `.exr` for metric depth; normals mapped to RGB, background flat grey). Example: `scene.render_passes("out/passes", 32, 640, 480)` writes `out/passes-depth.png` etc. |
 | `set_view_transform(name)` | `Standard`, `Filmic`, or `AgX`. |
 | `ground_plane(z,half_size,r,g,b)` | Horizontal matte floor at height `z`, a square from -half_size..+half_size in X and Y (half_size up to 1,000,000), linear base color in [0,1]. Example: `scene.ground_plane(-1.0, 20.0, 0.8, 0.8, 0.8)` under a radius-1 sphere at the origin. |
 | `checker_ground(half_size,tile_scale)` | Matte dark-navy/light-grey checkerboard floor at z = -0.02; half_size (0,10000], tile_scale 0.1..1000; each check is 1/tile_scale scene units wide (1.0 = 1-unit squares, 0.5 = 2-unit squares). Checks smaller than about 2 pixels fade smoothly to the mean of the two colors (approximate anti-aliasing), so very fine scales read as an even tone instead of moiré; 0.5–2 keeps visible checks at typical distances. For custom colors use `plane` + `checker_material`. |

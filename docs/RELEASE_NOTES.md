@@ -1,5 +1,10 @@
 ## Unreleased
 
+New `Scene.depth_range(near, far)` maps a chosen scene-unit distance range to the white..dark depth PNG of
+`render_passes`; `(0, 0)` (the default) keeps automatic normalization over visible surfaces. A long floor
+no longer has to flatten subject depth: cube-to-cone spread 31 -> 179 grey levels in
+`tests/depth_range_quality.py`. The EXR depth is unchanged.
+
 Checker materials and `checker_ground` fade to the mean of their two colors where a check covers fewer
 than about two pixels (from the camera field of view and render height), removing distance moiré;
 normal-size checks are unchanged. `tests/checker_moire_quality.py`: 32.6 -> 6.3 near-floor aliasing.

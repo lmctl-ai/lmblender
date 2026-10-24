@@ -328,6 +328,15 @@
             "returns": "void"
           }
         ],
+        "depth_range": [
+          {
+            "params": [
+              "float",
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
         "render_timeout": [
           {
             "params": [

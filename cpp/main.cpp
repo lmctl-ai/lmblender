@@ -178,6 +178,7 @@ struct Scene {
   float environment_rotation = 0.0f;
   float environment_strength = 1.0f;
   bool transparent_background = false;
+  float depth_near = 0.0f, depth_far = 0.0f;  // 0,0 = normalize depth PNG over visible surfaces
   float camera_aperture = 0.0f;
   float camera_focus_distance = 10.0f;
   bool custom_camera = false;
@@ -626,7 +627,8 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
 
 class PassOutputDriver final : public ccl::OutputDriver {
  public:
-  explicit PassOutputDriver(std::string prefix) : prefix_(std::move(prefix)) {}
+  explicit PassOutputDriver(std::string prefix, float depth_near = 0.0f, float depth_far = 0.0f)
+      : prefix_(std::move(prefix)), depth_near_(depth_near), depth_far_(depth_far) {}
   ~PassOutputDriver() override
   {
     if (!published_) for (const auto &item : outputs_) { std::error_code ec; std::filesystem::remove(item.first, ec); }
@@ -692,6 +694,7 @@ class PassOutputDriver final : public ccl::OutputDriver {
         near_depth = std::min(near_depth, value); far_depth = std::max(far_depth, value);
       }
       if (!std::isfinite(near_depth)) return false;
+      if (depth_far_ > depth_near_) { near_depth = depth_near_; far_depth = depth_far_; }
       const float range = std::max(1.0e-20f, far_depth - near_depth);
       for (size_t i = 0; i < count; ++i) {
         const float value = ordered[i];
@@ -718,6 +721,7 @@ class PassOutputDriver final : public ccl::OutputDriver {
   }
 
   std::string prefix_;
+  float depth_near_ = 0.0f, depth_far_ = 0.0f;
   std::vector<std::pair<std::string, std::string>> outputs_;
   bool wrote_ = false;
   bool failed_ = false;
@@ -1514,7 +1518,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   PassOutputDriver *pass_driver = nullptr;
   ViewTransformOutputDriver *png_driver = nullptr;
   if (emit_passes) {
-    auto driver = ccl::make_unique<PassOutputDriver>(output);
+    auto driver = ccl::make_unique<PassOutputDriver>(output, source.depth_near, source.depth_far);
     pass_driver = driver.get();
     session->set_output_driver(std::move(driver));
   } else if (extension == ".png") {
@@ -3112,6 +3116,16 @@ dslvm::Registry make_registry() {
     if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
       throw dslvm::Error("render_exr samples and dimensions are outside supported bounds");
     render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "depth_range", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {
+    auto *scene = static_cast<Scene *>(p);
+    const double near_value = a[0].f, far_value = a[1].f;
+    const bool automatic = near_value == 0.0 && far_value == 0.0;
+    if (!std::isfinite(near_value) || !std::isfinite(far_value) ||
+        (!automatic && (near_value < 0.0 || far_value <= near_value || far_value > 1'000'000.0)))
+      throw dslvm::Error("depth_range needs 0 <= near < far <= 1000000 scene units, or (0, 0) for automatic normalization");
+    scene->depth_near = float(near_value); scene->depth_far = float(far_value);
     return dslvm::Value::none();
   });
   registry.method("Scene", "render_passes", {"string", "int", "int", "int"}, "void", [](void *p, dslvm::Args &a) {
