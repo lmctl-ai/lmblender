@@ -21,7 +21,9 @@ on:
         options: [all, windows, macos]
   push:
     branches: [main]
+    paths-ignore: ["durable-memory/**", "**.md"]
   pull_request:
+    paths-ignore: ["durable-memory/**", "**.md"]
 
 permissions:
   contents: read
