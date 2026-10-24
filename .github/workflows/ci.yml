@@ -32,7 +32,29 @@ env:
   PREFIX_CACHE_VERSION: v2
 
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      v: ${{ steps.v.outputs.v }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # Every push to main is a release: MAJOR.MINOR comes from the repo, the patch is the workflow run number.
+      # A pushed v* tag releases that exact version. Pull requests and manual runs never release.
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "v=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"; echo "release=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "v=$(scripts/stamp-version.sh --base).$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"; echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "v=" >> "$GITHUB_OUTPUT"; echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +90,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      - name: stamp release version
+        if: needs.version.outputs.v != ''
+        run: scripts/stamp-version.sh "${{ needs.version.outputs.v }}"
       - name: free runner disk
         run: |
           df -h /
@@ -219,7 +244,7 @@ jobs:
           # Keep the host-facing stable layout inside the ephemeral runner;
           # release.sh otherwise defaults to this developer host's path.
           LMBLENDER_HOST_RELEASE: ${{ github.workspace }}/build/host-release
-          TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          TAG_VERSION: ''
         run: |
           VERSION_FILE=$(cat VERSION)
           if [[ -n "$TAG_VERSION" && "${TAG_VERSION#v}" != "$VERSION_FILE" ]]; then
@@ -248,6 +273,7 @@ jobs:
   # tree, the pinned Blender subset, the patched Cycles overlay, and every
   # hash-verified third-party source archive (scripts/release-source.sh).
   source:
+    needs: version
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
@@ -256,11 +282,14 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      - name: stamp release version
+        if: needs.version.outputs.v != ''
+        run: scripts/stamp-version.sh "${{ needs.version.outputs.v }}"
       - name: fetch pinned upstream Blender source (sparse)
         run: scripts/fetch-cycles-source.sh
       - name: build the corresponding-source asset
         env:
-          TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          TAG_VERSION: ''
         run: |
           VERSION_FILE=$(cat VERSION)
           if [[ -n "$TAG_VERSION" && "${TAG_VERSION#v}" != "$VERSION_FILE" ]]; then
@@ -277,19 +306,27 @@ jobs:
           if-no-files-found: error
 
   platforms:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
+    needs: version
+    if: needs.version.outputs.release == 'true' || (github.event_name == 'workflow_dispatch' && inputs.dry_run)
     uses: ./.github/workflows/platforms.yml
+    with:
+      version: ${{ needs.version.outputs.v }}
 
   release:
-    if: always() && needs.build.result == 'success' && needs.source.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.dry_run))
-    needs: [build, source, platforms]
+    if: always() && needs.build.result == 'success' && needs.source.result == 'success' && (needs.version.outputs.release == 'true' || (github.event_name == 'workflow_dispatch' && inputs.dry_run))
+    needs: [version, build, source, platforms]
     runs-on: ubuntu-24.04
+    env:
+      REL_VERSION: ${{ needs.version.outputs.v }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+      - name: stamp release version
+        if: needs.version.outputs.v != ''
+        run: scripts/stamp-version.sh "${{ needs.version.outputs.v }}"
       - name: test release assembly guards
         run: |
           bash tests/release_assembly_test.sh
@@ -303,7 +340,7 @@ jobs:
           merge-multiple: true
       - name: validate source, platform packages, and one merged SHA256SUMS
         env:
-          TAG_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          TAG_VERSION: ''
         run: |
           RELEASE_VERSION=${TAG_VERSION:-$(cat VERSION)} scripts/assemble-release.sh dist
           ls -la dist
@@ -316,13 +353,13 @@ jobs:
           path: dist/
           if-no-files-found: error
       - name: publish binaries, archives, checksums, notices, and corresponding source
-        if: startsWith(github.ref, 'refs/tags/v') && !inputs.dry_run
+        if: needs.version.outputs.release == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber dist/*
-            gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft=false --latest
+          if gh release view "v$REL_VERSION" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "v$REL_VERSION" -R "$GITHUB_REPOSITORY" --clobber dist/*
+            gh release edit "v$REL_VERSION" -R "$GITHUB_REPOSITORY" --draft=false --latest
           else
-            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --latest dist/*
+            gh release create "v$REL_VERSION" -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "v$REL_VERSION" --generate-notes --latest dist/*
           fi
