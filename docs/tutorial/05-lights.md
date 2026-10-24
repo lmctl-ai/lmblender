@@ -49,6 +49,7 @@ lmscript 05-lights.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote lights.png
 ```
 

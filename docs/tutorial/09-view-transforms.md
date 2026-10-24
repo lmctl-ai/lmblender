@@ -75,6 +75,7 @@ lmscript 09-view-transforms.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote view-standard.png, view-agx.png
 ```
 

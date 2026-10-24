@@ -69,6 +69,7 @@ lmscript 07-import-a-mesh.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote import-a-mesh.png
 ```
 

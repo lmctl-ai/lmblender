@@ -44,6 +44,7 @@ lmscript 03-camera.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote camera.png
 ```
 

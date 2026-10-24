@@ -44,6 +44,7 @@ lmscript 01-first-render.lms
 Expected output (the first run also downloads the lmblender release, so it takes longer):
 
 ```text
+{"ok": true, "result": null}
 wrote first-render.png
 ```
 

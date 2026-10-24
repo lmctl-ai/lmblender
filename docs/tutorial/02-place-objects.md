@@ -43,6 +43,7 @@ lmscript 02-place-objects.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote place-objects.png
 ```
 

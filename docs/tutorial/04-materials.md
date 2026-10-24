@@ -47,6 +47,7 @@ lmscript 04-materials.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote materials.png
 ```
 

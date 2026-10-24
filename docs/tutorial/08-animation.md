@@ -71,6 +71,7 @@ lmscript 08-animation.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote animation-0.png, animation-1.png, animation-2.png
 ```
 

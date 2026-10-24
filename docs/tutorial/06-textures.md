@@ -51,6 +51,7 @@ lmscript 06-textures.lms
 Expected output:
 
 ```text
+{"ok": true, "result": null}
 wrote textures.png
 ```
 
