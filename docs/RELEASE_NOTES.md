@@ -1,5 +1,10 @@
 ## Unreleased
 
+`import_gltf` now returns a single Mesh holding every node and primitive, with glTF materials as
+per-triangle slots. Before, each node became a separate object and only the first was returned, so
+`translate`/`scale` on a multi-node asset left the other nodes behind (overlapping panels rendered
+black). `tests/gltf_transform_quality.py`: 12% of the frame left behind -> 0%.
+
 New `Scene.exposure(stops)` sets film exposure (-10..10, default 0). After each PNG, lmblender now warns on
 stderr when most of the frame is clipped to white or it is nearly black, and suggests an absolute
 `scene.exposure(...)` value (median luminance to middle grey) plus the equivalent light-power factor.

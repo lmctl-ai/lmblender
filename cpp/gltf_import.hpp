@@ -300,7 +300,7 @@ inline Material *make_material(Scene &scene, const Json &root, const int materia
 
 inline void append_primitive(Scene &scene, const Json &root, const std::vector<BufferData> &buffers,
                              const Json &primitive, const Matrix &world, size_t &total_vertices, size_t &total_triangles,
-                             const std::filesystem::path &asset_root, Mesh *&first_mesh)
+                             const std::filesystem::path &asset_root, Mesh &mesh, std::map<int, uint16_t> &slot_of)
 {
   if (primitive.value("mode", 4) != 4) fail("GLTF_UNSUPPORTED", "only TRIANGLES glTF primitives are supported");
   if (primitive.contains("targets")) fail("GLTF_UNSUPPORTED", "morph targets are not supported");
@@ -337,28 +337,34 @@ inline void append_primitive(Scene &scene, const Json &root, const std::vector<B
   if (indices.empty() || indices.size()/3 > 20'000'000 || total_triangles + indices.size()/3 > 20'000'000)
     fail("GLTF_LIMIT", "glTF triangle budget exceeded (20 million)");
   total_triangles += indices.size()/3;
-  auto mesh=std::make_unique<Mesh>();
-  mesh->smooth=true;
-  mesh->vertices.reserve(positions.count);
+  /* Every node and primitive is appended to one Mesh so the returned handle
+   * moves, scales and re-materials the whole asset; glTF materials become
+   * per-triangle slots (as OBJ usemtl does). */
+  const uint32_t base=uint32_t(mesh.vertices.size());
+  mesh.vertices.reserve(mesh.vertices.size()+positions.count);
   for (size_t i=0;i<positions.count;++i) {
     const std::array<double,3> p{read_component(positions,i,0),read_component(positions,i,1),read_component(positions,i,2)};
-    mesh->vertices.push_back(transform_point(world,p));
+    mesh.vertices.push_back(transform_point(world,p));
   }
-  Material *material = nullptr;
-  if (primitive.contains("material")) material=make_material(scene,root,primitive.at("material").get<int>(),asset_root);
-  else material=make_material(scene,root,-1,asset_root);
-  mesh->material=material;
+  const int material_index = primitive.contains("material") ? primitive.at("material").get<int>() : -1;
+  auto slot=slot_of.find(material_index);
+  if (slot==slot_of.end()) {
+    if (mesh.material_slots.size()>=4096) fail("GLTF_LIMIT", "glTF material limit exceeded (4096)");
+    slot=slot_of.emplace(material_index,uint16_t(mesh.material_slots.size())).first;
+    mesh.material_slots.push_back(make_material(scene,root,material_index,asset_root));
+  }
+  /* Primitives without TEXCOORD_0 get zero UVs once any primitive has UVs. */
+  if (has_uv && mesh.uvs.empty()) mesh.uvs.assign(mesh.triangles.size()*3, {0.0f,0.0f});
   const bool mirrored = determinant3(world) < 0;
-  mesh->triangles.reserve(indices.size()/3);
+  mesh.triangles.reserve(mesh.triangles.size()+indices.size()/3);
   for(size_t i=0;i<indices.size();i+=3) {
     uint32_t a=indices[i],b=indices[i+1],c=indices[i+2];
     if(mirrored)std::swap(b,c);
-    mesh->triangles.push_back({a,b,c});
-    if(has_uv) for(uint32_t index : {a,b,c}) mesh->uvs.push_back({float(read_component(uvs,index,0)),1.0f-float(read_component(uvs,index,1))});
+    mesh.triangles.push_back({base+a,base+b,base+c});
+    mesh.triangle_materials.push_back(slot->second);
+    if(has_uv) for(uint32_t index : {a,b,c}) mesh.uvs.push_back({float(read_component(uvs,index,0)),1.0f-float(read_component(uvs,index,1))});
+    else if(!mesh.uvs.empty()) for(int k=0;k<3;++k) mesh.uvs.push_back({0.0f,0.0f});
   }
-  if(scene.meshes.size()>=4096)fail("GLTF_LIMIT","glTF object limit exceeded (4096)");
-  Mesh *result=adopt_mesh(scene,std::move(mesh));
-  if(!first_mesh)first_mesh=result;
 }
 
 inline Mesh *read(Scene &scene, const std::string &filename)
@@ -444,7 +450,9 @@ inline Mesh *read(Scene &scene, const std::string &filename)
     }
     size_t total_vertices=0,total_triangles=0,visited=0;
     std::set<size_t> active;
-    Mesh *first_mesh=nullptr;
+    auto merged=std::make_unique<Mesh>();
+    merged->smooth=true;
+    std::map<int, uint16_t> slot_of;
     std::function<void(size_t,const Matrix&)> visit=[&](const size_t index,const Matrix &parent) {
       if(index>=nodes.size())fail("GLTF_INVALID","scene node index is out of range");
       if(active.contains(index))fail("GLTF_INVALID","node hierarchy contains a cycle");
@@ -456,14 +464,20 @@ inline Mesh *read(Scene &scene, const std::string &filename)
         if(mesh_index>=root.at("meshes").size())fail("GLTF_INVALID","node mesh index is out of range");
         const Json &mesh=root.at("meshes")[mesh_index];
         if(!mesh.contains("primitives")||!mesh.at("primitives").is_array())fail("GLTF_INVALID","mesh primitives are missing");
-        for(const Json &primitive:mesh.at("primitives"))append_primitive(scene,root,buffers,primitive,world,total_vertices,total_triangles,asset_root,first_mesh);
+        for(const Json &primitive:mesh.at("primitives"))append_primitive(scene,root,buffers,primitive,world,total_vertices,total_triangles,asset_root,*merged,slot_of);
       }
       if(node.contains("children"))for(const Json &child:node.at("children"))visit(child.get<size_t>(),world);
       active.erase(index);
     };
     for(size_t index:roots)visit(index,identity());
-    if(!first_mesh)fail("GLTF_INVALID","selected glTF scene has no triangle mesh nodes");
-    return first_mesh;
+    if(merged->triangles.empty())fail("GLTF_INVALID","selected glTF scene has no triangle mesh nodes");
+    if(merged->material_slots.size()==1) {
+      merged->material=merged->material_slots.front();
+      merged->material_slots.clear();
+      merged->triangle_materials.clear();
+    }
+    if(scene.meshes.size()>=4096)fail("GLTF_LIMIT","glTF object limit exceeded (4096)");
+    return adopt_mesh(scene,std::move(merged));
   } catch(const dslvm::Error &) { throw; }
     catch(const std::exception &) { fail("GLTF_INVALID","glTF contains malformed or missing fields"); }
 }
