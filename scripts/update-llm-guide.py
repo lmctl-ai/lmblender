@@ -10,6 +10,7 @@ The block is the fenced ```text section that follows the "## Host API signatures
 heading; everything else in the guide is left untouched.
 """
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +31,19 @@ def locate_block(text):
     return None if end < 0 else (start, end)
 
 
+def undocumented_methods(text, signatures):
+    """Host methods whose name never appears in the '## Parameter guide' table.
+
+    Blind LLM evaluations (docs/LLM_EVAL.md) showed that a bare typed signature
+    such as `checker_ground(float, float)` is not enough to call a method.
+    """
+    begin = text.find("## Parameter guide")
+    end = text.find("\n## ", begin + 1)
+    table = text[begin:end] if begin >= 0 else ""
+    names = re.findall(r"^method \w+\.(\w+)\(", signatures, re.M)
+    return sorted({n for n in names if not re.search(r"\b" + re.escape(n) + r"\b", table)})
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", required=True, help="lmblender executable to query")
@@ -43,6 +57,12 @@ def main():
         return 2
     start, end = span
     current = text[start:end].strip()
+    undocumented = undocumented_methods(text, signatures)
+    if undocumented:
+        print("docs/LLM_GUIDE.md '## Parameter guide' has no row naming these host methods:", file=sys.stderr)
+        for name in undocumented:
+            print(f"  undocumented: {name}", file=sys.stderr)
+        return 1
     if current == signatures:
         print("docs/LLM_GUIDE.md host API block matches --dsl-signatures")
         return 0

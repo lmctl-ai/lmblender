@@ -43,7 +43,7 @@ inline std::filesystem::path confined_uri(const std::filesystem::path &root, con
   for (const auto &part : rel) if (part == "..") fail("GLTF_INVALID", std::string(kind) + " URI traversal is forbidden");
   std::error_code ec;
   const auto resolved = std::filesystem::canonical(root / rel, ec);
-  if (ec) fail("GLTF_INVALID", std::string(kind) + " file is missing or unreadable");
+  if (ec) fail("GLTF_INVALID", std::string(kind) + " file is missing or unreadable: " + uri + " (URIs resolve relative to the glTF file's directory)");
   const auto canonical_root = std::filesystem::canonical(root, ec);
   if (ec) fail("GLTF_INVALID", "glTF asset directory is unavailable");
   auto root_it = canonical_root.begin(), file_it = resolved.begin();
