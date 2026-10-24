@@ -83,9 +83,12 @@ scene.render_sequence("build/level-1-sessions/frame-{frame}.png", 180, 239, 0, 6
 end _dsl_
 savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
-r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
-if (r.code != 0) { println(r.stderr + r.stdout); }
-assert(r.code == 0);
+argv = dsl_cli(p);
+push(argv, "--dsl");
+push(argv, out);
+r = system(argv, 3600000);
+println(trim(r.stdout));
+if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }
 if (which("ffmpeg") != null) {
   a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-1-sessions.mp4;
   assert(a.code == 0);

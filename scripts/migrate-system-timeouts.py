@@ -19,6 +19,7 @@ SHORT = re.compile(
     re.M,
 )
 OLD = re.compile(r"\bsystem\s+\$\{dsl_cli\([^)]*\)\}")
+CONCAT = re.compile(r"\bsystem\(concat\(dsl_cli\(")
 TIMED = re.compile(r"^(?P<indent>[ \t]*)(?P<result>r|run) = system\(argv, 3600000\);$", re.M)
 
 
@@ -71,6 +72,24 @@ def rewrite(path: pathlib.Path) -> bool:
     return True
 
 
+def rewrite_concat(path: pathlib.Path) -> bool:
+    """Use the guide's checked form for recent long-running video examples."""
+    source = path.read_text()
+    old = ('r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);\n'
+           'if (r.code != 0) { println(r.stderr + r.stdout); }\n'
+           'assert(r.code == 0);')
+    if old not in source:
+        return False
+    new = ('argv = dsl_cli(p);\n'
+           'push(argv, "--dsl");\n'
+           'push(argv, out);\n'
+           'r = system(argv, 3600000);\n'
+           'println(trim(r.stdout));\n'
+           'if (r.code != 0) { println(trim(f"lmblender exit {r.code}: {r.stderr}")); exit(1); }')
+    path.write_text(source.replace(old, new, 1))
+    return True
+
+
 def normalize_stdout(path: pathlib.Path) -> bool:
     """Print host stdout even on success, so JSON errors never vanish."""
     source = path.read_text()
@@ -111,13 +130,15 @@ def main() -> int:
     args = parser.parse_args()
     paths = sorted(files())
     if not args.check:
+        concat = [p for p in paths if p.suffix == ".lms" and rewrite_concat(p)]
+        print(f"normalized {len(concat)} video host calls")
         changed = [p for p in paths if rewrite(p)]
         print(f"migrated {len(changed)} example/test/tutorial source files")
         printed = [p for p in paths if p.suffix == ".lms" and normalize_stdout(p)]
         print(f"normalized stdout for {len(printed)} more lmscript files")
         deduped = [p for p in paths if p.suffix == ".lms" and dedupe_stdout(p)]
         print(f"removed duplicate stdout prints in {len(deduped)} files")
-    remaining = [str(p.relative_to(ROOT)) for p in paths if OLD.search(p.read_text())]
+    remaining = [str(p.relative_to(ROOT)) for p in paths if OLD.search(p.read_text()) or CONCAT.search(p.read_text())]
     if remaining:
         print("60-second DSL host shorthand remains:\n  " + "\n  ".join(remaining), file=sys.stderr)
         return 1
