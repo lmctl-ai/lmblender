@@ -1,37 +1,47 @@
-> **Current 2026-10-22 note:** Core `test.sh`, numeric image checks and four video sequences pass; Linux arm64/x64 CI is green at `aba77c0`. A stricter Claude review flagged 20 of 24 historical gallery checks on its first pass, so the Claude `full-check.sh` is red. See [the Claude QA record](CLAUDE_QA_2026-10-22.md). The report below is an older Gemini run.
-
 # Full-check status
 
-Generated: 2026-10-21 00:50 UTC
+Generated: 2026-10-24 00:30 UTC
 
-Source revision tested: `f0ed527 (clean worktree)`
+Source revision tested: `09b0854 (clean worktree)`
 
 ## Results
 
 - `BUILD_JOBS=2 ./test.sh`: PASS.
 - Video sequences: four 24-frame 640×360 sequences passed all per-frame numeric gates; ffmpeg encoding was attempted when available.
-- Strict pixel and file checks: PASS; 14 gallery images are at least 640×480.
+- Strict pixel and file checks: PASS; 20 gallery images are at least 640×480.
 - Static linkage: PASS (`ldd` reports “not a dynamic executable” for both binaries).
-- Binary sizes: `lmblender` 81165344 bytes; standalone Cycles 79138952 bytes.
-- QA provider `agy/gemini-4-argon-medium`: PASS on all 18 named images; exact responses follow.
+- Binary sizes: `lmblender` 90503640 bytes; standalone Cycles 88386432 bytes.
+- QA provider `agy/gemini-3.8-flash-high`: PASS on all 24 named images; exact responses follow.
 
 ## QA responses
 
-- gltf-json: PASS | score 5/5 | 1) Exactly two separate upright checker-textured panels are visible on the left and right; 2) both panels are completely inside the frame with a clear gap between them; 3) red and yellow checker squares are clearly visible on both panels. ([import-gltf-gltf.png](../build/import-gltf-gltf.png))
-- glb: PASS | score 5/5 | 1) Exactly two separate upright checker-textured panels are visible on the left and right; 2) both panels are completely inside the frame with a clear gap between them; 3) red and yellow checker squares are clearly visible on both panels. ([import-gltf-glb.png](../build/import-gltf-glb.png))
-- primitives: PASS | score 5/5 | 1) All five distinct primitives (cube, sphere, cylinder, cone, torus) are clearly visible; 2) they are cleanly separated, completely framed, and do not overlap; 3) their red, blue, green, yellow, and magenta colors are easily distinguishable; 4) the sphere, cylinder, and torus are smoothly shaded. ([primitives-gallery.png](../build/primitives-gallery.png))
-- environment: PASS | score 5/5 | 1) A reflective metallic sphere is clearly visible in the center; 2) the sphere reflects the colored horizon along with distinct warm (orange/yellow) and cool (cyan/blue) sky regions; 3) the checkerboard floor is clearly visible below and reflected in the lower hemisphere of the sphere. ([environment-texture.png](../build/environment-texture.png))
-- sky: PASS | score 5/5 | 1) Both the checkerboard ground plane and the sky horizon line are clearly visible; 2) the sky brightness visibly transitions from a brighter horizon band toward a deeper blue upper sky; 3) the central brown/copper sphere subject is well-shaded and not clipped white. ([sky-texture.png](../build/sky-texture.png))
-- transparent: PASS | score 5/5 | 1) One blue sphere is clearly visible in the center; 2) the background around the sphere and checkerboard floor is transparent and visibly distinct from the sphere; 3) the sphere is completely inside the frame. ([transparent-film.png](../build/transparent-film.png))
-- dof: PASS | score 5/5 | 1) Three colored spheres (red foreground, green middle, blue far) appear in a diagonal row; 2) the middle green sphere is in crisp focus and visibly much sharper than the blurred blue far sphere (and blurred red near sphere); 3) no sphere is clipped or overlaps another. ([camera-dof.png](../build/camera-dof.png))
-- fog: PASS | score 5/5 | 1) A lit red sphere subject is clearly visible inside a blue-tinted volumetric haze; 2) the haze visibly reduces the checkerboard floor contrast with distance; 3) the image shows a well-lit sphere, volumetric spotlight cone, and checkerboard floor rather than an isolated blob. ([volume-fog.png](../build/volume-fog.png))
-- subsurface: PASS | score 5/5 | 1) A warm orange/amber wax-like sphere is clearly visible in the center; 2) the sphere shows a smooth lit-to-shadow subsurface scattering gradient across its surface; 3) it is 3D-shaded rather than a flat silhouette and is completely inside the frame. ([subsurface.png](../build/subsurface.png))
-- glass: PASS | score 5/5 | 1) A clear glass sphere is visibly positioned over a checkerboard floor; 2) the checkerboard pattern is cleanly refracted and inverted through the center of the sphere; 3) specular highlights are localized and clean with no conspicuous firefly specks. ([glass-transmission.png](../build/glass-transmission.png))
-- procedural: PASS | score 5/5 | 1) Two distinct triangular wedge objects are clearly visible; 2) the left object displays a red/yellow checker procedural material and the right displays a blue mottled noise variation; 3) both objects and their ground shadows are completely inside the frame. ([procedural-materials.png](../build/procedural-materials.png))
-- image-texture: PASS | score 5/5 | 1) The textured cube is completely visible inside the frame; 2) red and yellow checker regions from the image texture clearly appear across the top, front-left, and front-right faces; 3) the cube is richly textured rather than plain gray. ([image-texture.png](../build/image-texture.png))
-- material-maps: PASS | score 5/5 | 1) Exactly two smooth spheres sit separated on the ground plane and are fully framed; 2) the left orange/copper sphere exhibits visible irregular normal-map relief ripples and quadrant variations in metallic/roughness highlights; 3) the right sphere clearly alternates gold and blue in a texture-driven checker/stripe mix; 4) neither sphere overlaps or is cropped. ([material-maps.png](../build/material-maps.png))
-- backface-culling: PASS | score 5/5 | 1) One bright green square panel is clearly visible on the left; 2) the corresponding right panel area is empty dark gray because the red panel is viewed from its culled backface; 3) both left and right regions are unclipped inside the frame and the distinction is unmistakable. ([backface-culling.png](../build/backface-culling.png))
-- video-level1: PASS | score 5/5 | 1) Both CODER and RESEARCH (as well as PLANNER) orb teams have clearly readable labels; 2) every visible ring and satellite orb is completely inside the frame; 3) [level1-8.png](../build/video/level1-8.png) is visibly closer/larger than [level1-0.png](../build/video/level1-0.png); 4) the orb groups remain cleanly separated. ([level1-8.png](../build/video/level1-8.png))
-- video-level2: PASS | score 5/5 | 1) One central yellow LEAD orb and the cyan, green, pink, and purple agents are all visible; 2) the CODER, LEAD, and BROWSER labels are readable below their respective nodes; 3) connecting message arrows and the red-orange token are clearly visible; 4) the entire scene is well inside the frame. ([level2-12.png](../build/video/level2-12.png))
-- video-level3: PASS | score 5/5 | 1) HUMAN, LEAD, TEAM, and RESULT cards are all visible in left-to-right order; 2) the text on all four cards is readable; 3) white arrows clearly connect consecutive cards; 4) the red-orange message token is visible along the middle arrow without hiding any card labels. ([level3-12.png](../build/video/level3-12.png))
-- video-level4: PASS | score 5/5 | 1) INPUT, BUILD, REVIEW, and SHIP labels are visible in left-to-right order below the four stage orbs; 2) the green checkmark is large and completely inside the frame; 3) the green checkmark is positioned right beside the final SHIP stage; 4) the moving red-orange token is clearly visible at the final SHIP orb. ([level4-23.png](../build/video/level4-23.png))
+- gltf-json: PASS
+- glb: PASS
+- primitives: **PASS**
+- environment: PASS
+- sky: PASS
+- transparent: PASS
+- dof: **PASS**
+- fog: **PASS**
+- subsurface: PASS
+- glass: **PASS**
+- procedural: PASS
+- image-texture: PASS
+- material-maps: PASS
+- backface-culling: PASS
+- strands: PASS
+- loft-outline: PASS
+- spot-falloff: PASS
+- light-falloff: **PASS**
+- bridge: **PASS**
+- obj-mtl: **PASS**
+- video-level1: PASS
+- video-level2: PASS
+- video-level3: **PASS**
+- video-level4: PASS
+
+## Comparison with the 2026-10-22 Claude review
+
+The [historical Claude review](CLAUDE_QA_2026-10-22.md) reported 4 PASS and 20 FAIL on its first pass over the same 24 named checks. This default Gemini run passed 24/24 after two corrections: the bridge checklist now describes the intentional sphere-over-cube occlusion visible in the matched Blender reference, and the OBJ/MTL scene now has a readable localized blue-cube highlight. The former was a checklist mismatch; the latter was a real lighting/material presentation defect. No failing numeric gate was removed.
+
+The separate README story gallery review (`scripts/story-qa.sh`) passed 12/12 specific visual checklists with the same default Gemini judge; its responses are in `build/story-qa/`. Eleven story images were regenerated and passed numeric checks in `test.sh`. The gear-pair image used the committed reference because `lmcad` was not on PATH for this run.
