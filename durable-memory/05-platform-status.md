@@ -92,15 +92,15 @@ Known facts:
 - Windows run [39833128994](https://github.com/lmctl-ai/lmblender/actions/runs/39833128994), job 120014297816, passed the rendering regression assertions through the direct Cycles/XML oracle. The subsequent hostile corpus failed before compilation: Python CreateProcess does not resolve bare `lmscript` through PATHEXT to npm's `.cmd` launcher. Resolve the compiler once with `shutil.which` (also honors explicit LMSCRIPT), preserving the full corpus and assertions. Run-level success is not evidence: the Windows job failed because jobs use continue-on-error.
 - Follow-up [39839086836/job/120035061008](https://github.com/lmctl-ai/lmblender/actions/runs/39839086836/job/120035061008) resolved the npm launcher successfully; the corpus then exposed Windows `Path` backslashes embedded unescaped in generated DSL (`unknown escape \h`). Serialize input and bytecode paths with `Path.as_posix()` for portable DSL literals. Rendering checks again passed; suite reached the corpus after 6m57s.
 
-### Windows x64 green handoff — PlatAstra, 2026-10-22
+### Windows x64 verification (2026-10-22)
 
-- Branch `platastra/windows-static`, tested code `30bba1a444ee0f8004a688dced65fa59f855b1b6`. **Windows job conclusion: success**, [run 39840532704 / job 120040054074](https://github.com/lmctl-ai/lmblender/actions/runs/39840532704/job/120040054074), not merely the continue-on-error workflow conclusion.
+- Tested code `30bba1a444ee0f8004a688dced65fa59f855b1b6`. **Windows job conclusion: success**, [run 39840532704 / job 120040054074](https://github.com/lmctl-ai/lmblender/actions/runs/39840532704/job/120040054074), not merely the continue-on-error workflow conclusion.
 - MSVC standalone Cycles + portable static dependency prefix remains the solution: `/MT`, no Blender top-level CMake, Python or GUI runtime. Host build and `--version`, full `test.sh`, explicit DLL check, render smoke, release staging, and artifact upload all passed. The full suite includes 287 hostile import/texture/bytecode/source cases; this Release job is not an ASan build. Optional external-Blender oracle checks remain conditional as before.
 - `dumpbin` imports for the host are exactly `KERNEL32.DLL` and `ADVAPI32.DLL`. No VC runtime or third-party DLLs. The required bare executable `lmblender-windows-x64.exe` is 70,555,648 bytes, staged alongside checksums/notices. [CI artifact 12454415884](https://github.com/lmctl-ai/lmblender/actions/runs/39840532704/artifacts/12454415884) contains it; nothing was tagged or published as a release.
 - Warm-cache Windows job: 19:29:30–19:43:21 UTC (13m51s); full suite 19:31:02–19:43:07 (12m05s). Earlier cold dependency build was 28m34s and standalone Cycles about 5m05s; see preceding investigation notes.
-- After green, fetched and ran `git rebase origin/main`; already up to date on `51831ca`. Opus's Windows fixes are reconciled in this branch (one dependency cache and one static dependency/standalone Cycles route). Only this handoff note follows the tested code commit. Lead can merge the branch.
+- Reconciled in main with dependency cache and static dependency / standalone Cycles build.
 
-## macOS findings (PlatFable, 2026-10-22, branch platfable/macos)
+## macOS findings (2026-10-22)
 
 Runner timings observed (runs 39805494859, 39820850743):
 - macos-15 (arm64, 3 cores): bootstrap-static-deps 26-29 min, build-deps 5-6 min, OIDN <1 min; dependency cache
@@ -140,9 +140,9 @@ Host build (test.sh) on macOS:
   As plain link options CMake then de-duplicates the repeated `-framework` token; each pair is passed as a
   `SHELL:-framework X` link option group.
 
-### macOS arm64 + x64 green handoff (PlatFable, 2026-10-22)
+### macOS arm64 + x64 verification (2026-10-22)
 
-- Branch `platfable/macos`, tested tip `004ec4d` (= origin/main `e022bee` + three host-side commits: Apple-only
+- Tested tip `004ec4d` (= origin/main `e022bee` + three host-side commits: Apple-only
   Cycles archive list, SSE4.2-only Embree on Intel, `SHELL:-framework X` link options). Verification run
   https://github.com/lmctl-ai/lmblender/actions/runs/39844042875: every job success (macos-arm64 job
   120052468817, macos-x64 job 120052468832, windows too). Same result one commit earlier on run 39841404317.
