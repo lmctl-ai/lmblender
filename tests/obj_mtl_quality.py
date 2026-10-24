@@ -38,4 +38,17 @@ bump_mad = sum(red_bump_delta) / len(red_bump_delta)
 assert red_mad > 7.0, f"map_Kd UV checker has too little effect relative to flat Kd: {red_mad:.2f}/255"
 assert blue_mad > 1.0, f"map_d opacity has too little effect relative to opaque blue control: {blue_mad:.2f}/255"
 assert bump_mad > 0.5, f"map_Bump has too little effect relative to no-bump control: {bump_mad:.2f}/255"
+def bright_blue_face(x0, x1):
+    return sum(
+        gallery[y][x * channels] > 190
+        and gallery[y][x * channels + 1] > 190
+        and gallery[y][x * channels + 2] > 205
+        for y in range(210, 270) for x in range(x0, x1)
+    )
+
+highlight = bright_blue_face(380, 430)
+far_face = bright_blue_face(430, 480)
+assert highlight > 250 and far_face < highlight * 0.3, (
+    f"BlueGloss needs a localized specular highlight: lit={highlight}, far={far_face}"
+)
 print(f"OBJ MTL QA: red={len(red)}, blue={len(blue)}, UV texture MAD={red_mad:.2f}, alpha map MAD={blue_mad:.2f}, bump MAD={bump_mad:.2f}/255")
