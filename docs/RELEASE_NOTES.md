@@ -1,5 +1,9 @@
 ## Unreleased
 
+`hair_patch` seeds its blade layout, jitter and per-blade lean direction from the patch centre and size,
+so tiled patches no longer repeat (visible seams and a uniform lean); adjacent-tile correlation fell
+from 0.96 to 0.00 in `tests/hair_tiling_quality.py`. Output is still deterministic.
+
 Primitive meshes now carry box-projected UVs instead of a single top-down XY projection, so an
 `image_material` on `cube` (and on cylinder/cone sides) shows the image on every face rather than a
 smeared average; planes keep their previous mapping. `tests/primitive_uv_quality.py` covers it.

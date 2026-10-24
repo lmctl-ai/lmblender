@@ -2208,15 +2208,26 @@ dslvm::Registry make_registry() {
     std::vector<std::array<double,3>> profile;
     for (int j=0;j<6;++j) { const double angle=2*M_PI*j/6;profile.push_back({std::cos(angle),std::sin(angle),0}); }
     auto mesh=std::make_unique<Mesh>();mesh->smooth=true;
+    /* Deterministic per-patch seed from the centre and size, so neighbouring
+     * patches no longer repeat the same blade layout (visible tile seams), and
+     * a per-blade jitter and lean direction to break the lattice look. */
+    auto mix64=[](uint64_t h){h+=0x9e3779b97f4a7c15ULL;h=(h^(h>>30))*0xbf58476d1ce4e5b9ULL;h=(h^(h>>27))*0x94d049bb133111ebULL;return h^(h>>31);};
+    auto unit=[&](uint64_t h){return double(mix64(h)>>11)*(1.0/9007199254740992.0);};
+    uint64_t seed=0;
+    for (const double value : {x,y,z,size}) { uint64_t bits=0; std::memcpy(&bits,&value,sizeof bits); seed=mix64(seed^bits); }
+    const double cell=size/std::sqrt(double(count));
+    const double su=unit(seed^0x51ULL),sv=unit(seed^0xa3ULL);
     for (int i=0;i<count;++i) {
-      const double u=std::fmod((i+0.5)*0.7548776662466927,1.0),
-                   v=std::fmod((i+0.5)*0.5698402909980532,1.0),
-                   px=x+(u-0.5)*size,py=y+(v-0.5)*size,
-                   h=height*(0.72+0.28*std::fmod((i+1)*0.618033988749895,1.0)),
-                   lean=0.22*h;
-      const std::vector<std::array<double,3>> path{{px,py,z},{px+0.02*h,py,z+0.4*h},
-                                                   {px+0.11*h,py+0.04*h,z+0.76*h},
-                                                   {px+lean,py+0.08*h,z+h}};
+      const uint64_t key=seed^(uint64_t(i)*0x2545f4914f6cdd1dULL);
+      const double u=std::fmod((i+0.5)*0.7548776662466927+su,1.0),
+                   v=std::fmod((i+0.5)*0.5698402909980532+sv,1.0),
+                   jx=(unit(key^1)-0.5)*0.8*cell, jy=(unit(key^2)-0.5)*0.8*cell,
+                   px=std::clamp(x+(u-0.5)*size+jx,x-0.5*size,x+0.5*size),
+                   py=std::clamp(y+(v-0.5)*size+jy,y-0.5*size,y+0.5*size),
+                   h=height*(0.72+0.28*unit(key^3)),
+                   lean=0.22*h, angle=2.0*M_PI*unit(key^4), ca=std::cos(angle), sa=std::sin(angle);
+      auto at=[&](double along,double side,double up){return std::array<double,3>{px+along*ca-side*sa,py+along*sa+side*ca,z+up};};
+      const std::vector<std::array<double,3>> path{at(0,0,0),at(0.02*h,0,0.4*h),at(0.11*h,0.04*h,0.76*h),at(lean,0.08*h,h)};
       append_sweep(*mesh,path,profile,width,width*0.07,true);
     }
     Mesh *result=adopt_mesh(*scene,std::move(mesh));
