@@ -1,5 +1,9 @@
 ## Unreleased
 
+Primitive meshes now carry box-projected UVs instead of a single top-down XY projection, so an
+`image_material` on `cube` (and on cylinder/cone sides) shows the image on every face rather than a
+smeared average; planes keep their previous mapping. `tests/primitive_uv_quality.py` covers it.
+
 `instance_mesh` copies of a smooth-shaded source (for example `uv_sphere(..., true)`) now render
 smooth like the source instead of flat-shaded; `tests/instance_smooth_quality.py` covers it. Examples
 write `images/<name>.png` and run themselves, and twelve new story examples form the README gallery.

@@ -2099,7 +2099,20 @@ dslvm::Registry make_registry() {
     if(mesh->vertices.size()>2'000'000||mesh->triangles.size()>4'000'000)throw dslvm::Error("primitive geometry budget exceeded");
     std::array<double,3> lo{INFINITY,INFINITY,INFINITY},hi{-INFINITY,-INFINITY,-INFINITY};
     for(const auto &q:mesh->vertices)for(int k=0;k<3;++k){lo[k]=std::min(lo[k],q[k]);hi[k]=std::max(hi[k],q[k]);}
-    for(const auto &t:mesh->triangles)for(int k=0;k<3;++k){const auto &q=mesh->vertices[t[k]];mesh->uvs.push_back({float((q[0]-lo[0])/std::max(hi[0]-lo[0],1e-9)),float((q[1]-lo[1])/std::max(hi[1]-lo[1],1e-9))});}
+    /* Box-projected UVs: each triangle uses the two axes perpendicular to its
+     * dominant normal axis, normalized by the primitive bounds. A single XY
+     * projection collapsed one UV axis on every vertical face, so image
+     * textures smeared into a flat average on cube and cylinder sides. Planes
+     * (all faces along Z) keep exactly the previous XY mapping. */
+    for(const auto &t:mesh->triangles){
+      const auto &a=mesh->vertices[t[0]],&b=mesh->vertices[t[1]],&c=mesh->vertices[t[2]];
+      const double nx=std::abs((b[1]-a[1])*(c[2]-a[2])-(b[2]-a[2])*(c[1]-a[1]));
+      const double ny=std::abs((b[2]-a[2])*(c[0]-a[0])-(b[0]-a[0])*(c[2]-a[2]));
+      const double nz=std::abs((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));
+      const int u=(nz>=nx&&nz>=ny)?0:(nx>=ny?1:0);
+      const int w=(nz>=nx&&nz>=ny)?1:2;
+      for(int k=0;k<3;++k){const auto &q=mesh->vertices[t[k]];mesh->uvs.push_back({float((q[u]-lo[u])/std::max(hi[u]-lo[u],1e-9)),float((q[w]-lo[w])/std::max(hi[w]-lo[w],1e-9))});}
+    }
     Mesh *result=mesh.get();adopt_mesh(*scene, std::move(mesh));return dslvm::Value::object("Mesh",result);
   };
   registry.method("Scene","plane",{"float"},"Mesh",[primitive](void*p,dslvm::Args&a){if(!std::isfinite(a[0].f)||a[0].f<=0||a[0].f>10000)throw dslvm::Error("plane size must be in (0,10000]");return primitive(p,"plane",&a[0].f,1,false);});
