@@ -20,7 +20,7 @@ The `lmblender` release is a statically linked executable. This file records the
 | libtiff, OpenJPH | image and compression support | `licenses/upstream/libtiff-license.md`, `OpenJPH-license.txt` |
 | pugixml, fmt, expat, pystring, yaml-cpp, minizip-ng | XML, formatting, OCIO/OIIO support | matching files in `licenses/upstream/` |
 | sse2neon | Cycles x86-intrinsics compatibility on aarch64 | `licenses/upstream/sse2neon-MIT.txt` |
-| cpp-dsl-sdk | vendored DSL v5 VM | `licenses/cpp-dsl-sdk-MIT.txt`; source pin in `sdk.lock` |
+| lmcode-cpp | vendored DSL v5 VM | `licenses/lmcode-cpp-MIT.txt`; source pin in `sdk.lock` |
 | nlohmann/json | vendored glTF JSON parser | `licenses/nlohmann-json-MIT.txt` |
 | GNU libc, libstdc++, libgcc | static C/C++ runtime | `licenses/upstream/GCC-14-runtime-copyright.txt`, `licenses/upstream/LGPL-2.1.txt`; provide corresponding relinkable objects/source as required by their terms |
 

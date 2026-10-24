@@ -1,6 +1,6 @@
 # Purpose and place
 
-lmblender is a static, Python-free, GUI-free, OpenGL-free host for lmscript `_dsl_` bytecode (cpp-dsl-sdk
+lmblender is a static, Python-free, GUI-free, OpenGL-free host for lmscript `_dsl_` bytecode (lmcode-cpp
 dslvm v5). It drives the Cycles C++ API directly (CPU, Embree, OIDN denoise) and writes PNG/EXR/APNG.
 It is the Cycles-render sibling of lmcad (CAD + raster); the two stay separate binaries, usable alone or
 combined (lmcad exports a model, lmblender renders it). The private proving ground (.blend editing, baking,

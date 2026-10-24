@@ -29,7 +29,7 @@ The project-authored host and helper source files are kept MIT-licensed where in
 | zlib, libpng, libjpeg-turbo, libtiff, zstd | dependency/static prefix archives | zlib/libpng/IJG/BSD-style licenses; `licenses/upstream/zlib-license.txt`, `libpng-license.txt`, `libjpeg-license.md`, `libtiff-license.md`, `zstd-license.txt` | No GPL constraint in selected builds. |
 | pugixml, fmt, expat, pystring, yaml-cpp, minizip-ng | dependency / OCIO extension archives | MIT/zlib/BSD-style; matching files in `licenses/upstream/` | No GPL constraint. |
 | `sse2neon.h` | `${BLENDER_LIBDIR}/sse2neon` from the static dependency prefix (`build/blender-deps-harvest/sse2neon` after `scripts/bootstrap-static-deps.sh`) | MIT; `licenses/upstream/sse2neon-MIT.txt` | No GPL constraint; keep its notice with the build source. |
-| cpp-dsl-sdk (`dslvm.hpp`) | vendored file pinned by `sdk.lock` | MIT; `licenses/cpp-dsl-sdk-MIT.txt` | No GPL constraint. |
+| lmcode-cpp (`dslvm.hpp`) | vendored file pinned by `sdk.lock` | MIT; `licenses/lmcode-cpp-MIT.txt` | No GPL constraint. |
 | nlohmann/json | vendored headers in `third_party/nlohmann` | MIT; `licenses/nlohmann-json-MIT.txt` | No GPL constraint. |
 | libc / libstdc++ / libgcc | static host link flags `-static -static-libstdc++ -static-libgcc` | glibc LGPL-2.1-or-later; GCC runtime components carry GPL-3.0-or-later with the GCC Runtime Library Exception where applicable. Debian GCC 14 copyright and exception text: `licenses/upstream/GCC-14-runtime-copyright.txt`; glibc text: `licenses/upstream/LGPL-2.1.txt`. | No GPL-3 constraint from runtime exceptions, but static-link relinking obligations remain. |
 

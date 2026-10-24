@@ -4,7 +4,7 @@
 
 set -eu
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SDK="${CPP_DSL_SDK:-$HERE/../cpp-dsl-sdk}"
+SDK="${LMCODE_CPP:-$HERE/../lmcode-cpp}"
 LOCK="$HERE/sdk.lock"
 HEADER="$HERE/cpp/dslvm.hpp"
 hash() { sha256sum "$1" | cut -c1-64; }
@@ -15,9 +15,9 @@ if [ "${1:-}" = "--verify" ]; then
   echo "cpp/dslvm.hpp matches sdk.lock ($(sed -n 's/^commit=//p' "$LOCK"))"
   exit 0
 fi
-[ -f "$SDK/include/dslvm.hpp" ] || { echo "SDK checkout missing at $SDK (set CPP_DSL_SDK)" >&2; exit 1; }
-ref="${CPP_DSL_SDK_REF:-origin/main}"
+[ -f "$SDK/include/dslvm.hpp" ] || { echo "SDK checkout missing at $SDK (set LMCODE_CPP)" >&2; exit 1; }
+ref="${LMCODE_CPP_REF:-origin/main}"
 commit="$(git -C "$SDK" rev-parse "$ref")"
 git -C "$SDK" show "$commit:include/dslvm.hpp" > "$HEADER"
-printf 'repo=https://github.com/lmctl-ai/cpp-dsl-sdk\ncommit=%s\nsha256=%s\n' "$commit" "$(hash "$HEADER")" > "$LOCK"
-echo "synced cpp/dslvm.hpp from cpp-dsl-sdk $commit"
+printf 'repo=https://github.com/lmctl-ai/lmcode-cpp\ncommit=%s\nsha256=%s\n' "$commit" "$(hash "$HEADER")" > "$LOCK"
+echo "synced cpp/dslvm.hpp from lmcode-cpp $commit"

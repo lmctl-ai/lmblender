@@ -223,8 +223,8 @@ def vendored_entries():
     json_version = re.search(r"version (\d+\.\d+\.\d+)", header).group(1)
     return [
         {
-            "name": "cpp-dsl-sdk (dslvm.hpp, vendored in lmblender/cpp)",
-            "component": "CPP_DSL_SDK",
+            "name": "lmcode-cpp (dslvm.hpp, vendored in lmblender/cpp)",
+            "component": "LMCODE_CPP",
             "version": lock["commit"],
             "upstream_uri": f"{lock['repo']}/tree/{lock['commit']}",
             "blender_mirror_uri": None,
