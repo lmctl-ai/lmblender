@@ -337,6 +337,14 @@
             "returns": "void"
           }
         ],
+        "exposure": [
+          {
+            "params": [
+              "float"
+            ],
+            "returns": "void"
+          }
+        ],
         "render_timeout": [
           {
             "params": [

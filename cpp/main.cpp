@@ -179,6 +179,7 @@ struct Scene {
   float environment_strength = 1.0f;
   bool transparent_background = false;
   float depth_near = 0.0f, depth_far = 0.0f;  // 0,0 = normalize depth PNG over visible surfaces
+  float exposure_stops = 0.0f;
   float camera_aperture = 0.0f;
   float camera_focus_distance = 10.0f;
   bool custom_camera = false;
@@ -605,6 +606,12 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
                                       apply_view_lut(lut_, source[src], source[src + 1], source[src + 2]);
       pixels[dst] = mapped[0]; pixels[dst + 1] = mapped[1]; pixels[dst + 2] = mapped[2];
       pixels[dst + 3] = std::clamp(source[src + 3], 0.0f, 1.0f);
+      if (pixels[dst + 3] > 0.0f) {
+        ++covered_;
+        if (std::max({pixels[dst], pixels[dst + 1], pixels[dst + 2]}) >= 0.996f) ++clipped_;
+        luminance_sum_ += 0.2126 * pixels[dst] + 0.7152 * pixels[dst + 1] + 0.0722 * pixels[dst + 2];
+        linear_.push_back(0.2126f * source[src] + 0.7152f * source[src + 1] + 0.0722f * source[src + 2]);
+      }
     }
     std::unique_ptr<OIIO::ImageOutput> output(OIIO::ImageOutput::create(filepath_));
     if (output && output->open(filepath_, spec)) {
@@ -617,12 +624,26 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
   }
 
   int64_t encode_ms() const { return encode_ms_; }
+  double clipped_fraction() const { return covered_ ? double(clipped_) / double(covered_) : 0.0; }
+  double mean_luminance() const { return covered_ ? luminance_sum_ / double(covered_) : 0.0; }
+  /* Exposure change in stops that brings the median scene-linear luminance to
+   * middle grey (0.18), clamped to the exposure() range. */
+  double suggested_stops_delta()
+  {
+    if (linear_.empty()) return 0.0;
+    auto mid = linear_.begin() + linear_.size() / 2;
+    std::nth_element(linear_.begin(), mid, linear_.end());
+    return std::clamp(std::log2(0.18 / std::max(double(*mid), 1e-6)), -10.0, 10.0);
+  }
 
  private:
   std::string filepath_;
   const std::array<float, view_luts::kSize * view_luts::kSize * view_luts::kSize * 3> &lut_;
   bool standard_ = false;
   int64_t encode_ms_ = 0;
+  uint64_t covered_ = 0, clipped_ = 0;
+  double luminance_sum_ = 0.0;
+  std::vector<float> linear_;
 };
 
 class PassOutputDriver final : public ccl::OutputDriver {
@@ -1496,6 +1517,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   scene->integrator->set_denoiser_prefilter(source.denoise_prefilter);
   scene->integrator->set_motion_blur(source.motion_blur);
 
+  scene->film->set_exposure(std::exp2(source.exposure_stops));
   if (emit_passes) {
     auto add_pass = [scene](const ccl::PassType type, const char *name) {
       auto pass = ccl::make_unique<ccl::Pass>();
@@ -1548,6 +1570,25 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
   }
   if (emit_passes && (!pass_driver || !pass_driver->publish()))
     throw dslvm::Error("Cycles did not produce all combined/depth/normal/albedo pass files");
+  /* Exposure diagnostics on stderr (stdout carries the single JSON result):
+   * blind LLM authors otherwise cannot tell a blown-out or black frame from
+   * the exit status alone. */
+  std::string exposure_warning;
+  if (png_driver && !emit_passes) {
+    const double clipped = png_driver->clipped_fraction(), mean = png_driver->mean_luminance();
+    const double delta = png_driver->suggested_stops_delta();
+    const double stops = std::clamp(std::round((source.exposure_stops + delta) * 2.0) / 2.0, -10.0, 10.0);
+    char line[512];
+    if (clipped > 0.25 && delta < -0.5) {
+      std::snprintf(line, sizeof line, "lmblender: warning: %s: %.0f%% of pixels are clipped to white (mean brightness %.2f); divide light powers by about %.0f or call scene.exposure(%.1f) before rendering\n",
+                    output.c_str(), clipped * 100.0, mean, std::exp2(-delta), stops);
+      exposure_warning = line;
+    } else if (mean < 0.04 && delta > 0.5) {
+      std::snprintf(line, sizeof line, "lmblender: warning: %s: image is nearly black (mean brightness %.3f); multiply light powers by about %.0f or call scene.exposure(%.1f) before rendering\n",
+                    output.c_str(), mean, std::exp2(delta), stops);
+      exposure_warning = line;
+    }
+  }
   session.reset();
   if (!emit_passes) {
     std::filesystem::rename(tmp, output, ec);
@@ -1555,6 +1596,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       std::filesystem::remove(tmp);
       throw dslvm::Error("Cycles rendered the PNG but could not publish the output");
     }
+    std::cerr << exposure_warning;
   }
 }
 
@@ -3116,6 +3158,12 @@ dslvm::Registry make_registry() {
     if (a[1].i < 1 || a[1].i > 65536 || a[2].i < 16 || a[2].i > 4096 || a[3].i < 16 || a[3].i > 4096)
       throw dslvm::Error("render_exr samples and dimensions are outside supported bounds");
     render_image(*scene, a[0].s, int(a[1].i), int(a[2].i), int(a[3].i));
+    return dslvm::Value::none();
+  });
+  registry.method("Scene", "exposure", {"float"}, "void", [](void *p, dslvm::Args &a) {
+    if (!std::isfinite(a[0].f) || a[0].f < -10.0 || a[0].f > 10.0)
+      throw dslvm::Error("exposure must be finite and within [-10, 10] stops");
+    static_cast<Scene *>(p)->exposure_stops = float(a[0].f);
     return dslvm::Value::none();
   });
   registry.method("Scene", "depth_range", {"float", "float"}, "void", [](void *p, dslvm::Args &a) {

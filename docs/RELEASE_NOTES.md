@@ -1,5 +1,11 @@
 ## Unreleased
 
+New `Scene.exposure(stops)` sets film exposure (-10..10, default 0). After each PNG, lmblender now warns on
+stderr when most of the frame is clipped to white or it is nearly black, and suggests an absolute
+`scene.exposure(...)` value (median luminance to middle grey) plus the equivalent light-power factor.
+The JSON on stdout is unchanged. An over-lit label scene (4000-power area light) went from 90% clipped
+to 0% with the suggested `exposure(-4.5)` in `tests/exposure_quality.py`.
+
 New `Scene.depth_range(near, far)` maps a chosen scene-unit distance range to the white..dark depth PNG of
 `render_passes`; `(0, 0)` (the default) keeps automatic normalization over visible surfaces. A long floor
 no longer has to flatten subject depth: cube-to-cone spread 31 -> 179 grey levels in

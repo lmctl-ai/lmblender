@@ -22,6 +22,7 @@ savedsl(p, "out/scene.dslb");
 let exe = dsl_cli(p).get(0, "lmblender");
 let run = system([exe, "--dsl", "out/scene.dslb"], 3600000);
 println(run.stdout);
+println(run.stderr);  // exposure warnings, e.g. "... clipped to white ... call scene.exposure(-2.5)"
 if (run.code != 0) { println(f"lmblender failed ({run.code}): {run.stdout} {run.stderr}"); exit(1); }
 ```
 
@@ -89,6 +90,7 @@ method Scene.denoise_quality(string) -> void
 method Scene.depth_range(float, float) -> void
 method Scene.environment_texture(string, float, float) -> void
 method Scene.expect_int(int, int) -> void
+method Scene.exposure(float) -> void
 method Scene.fit_camera(float) -> void
 method Scene.glow_orb(float, float, float, float, float, float, float, float) -> Mesh
 method Scene.ground_plane(float, float, float, float, float) -> void
@@ -196,6 +198,7 @@ method Scene.world_color(float, float, float, float) -> void
 | `Mesh.set_smooth(enabled)` | `true` welds shared vertices and uses smooth vertex normals; `false` keeps faceted shading. |
 | `Mesh.min_x/min_y/min_z/max_x/max_y/max_z()`, `vertex_count()`, `triangle_count()` | Bounds of the mesh's own vertices **after** `rotate_*` but **before** `translate`/`scale` (add your own translation); counts of authored vertices/triangles. Useful to center or rest imported meshes on the floor. |
 | `light_clamp(direct,indirect)` | Clamp sample brightness to suppress fireflies; 0..10000, 0 disables (default). If glossy/metal surfaces or the floor show white sparkle at 32–64 samples, `scene.light_clamp(10.0, 5.0)` usually removes it. |
+| `exposure(stops)` | Film exposure in stops for later renders, -10..10, default 0; each stop doubles (+1) or halves (-1) brightness without changing lighting ratios. After each PNG, lmblender prints a stderr warning when the frame is mostly clipped to white or nearly black, with a suggested `scene.exposure(...)` value (absolute, not relative) and the equivalent light-power factor; prefer fixing light powers, use exposure for a quick global correction. |
 | `transparent_background(enabled)` | Render the world as transparent alpha in PNG/EXR output while still lighting the scene. |
 | `render_timeout(seconds)` | Per-render limit 1..3600 s (fails with `RENDER_TIMEOUT`). This is separate from lmscript's own `system(...)` timeout described above. |
 | `expect_int(actual,expected)` | Test helper: fails the program with a clear message when the integers differ. |
