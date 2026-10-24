@@ -91,12 +91,54 @@ Other fixes:
 - The baseline brief 06 asset folder lacked the glTF's external `checker.png`. That was an evaluation setup error,
   fixed for round 2.
 
+## Round 3: host fixes (guide and binary at 22f7aac)
+
+Round 3 repeated the round-2 setup after the host fixes for the round-2 follow-ups.
+
+Differences from round 2:
+- The binary was the local build at 22f7aac, not the v0.3.6 release.
+- The prompt pointed the agents at the guide's complete-program skeleton.
+- `lmscript help` was not allowed.
+
+Host fixes, each with a numeric test in `test.sh`:
+- tileable `hair_patch` (adjacent-tile correlation 0.96 -> 0.00);
+- checker anti-aliasing at distance (near-floor aliasing 32.6 -> 6.3);
+- `depth_range(near, far)` (subject depth spread 31 -> 179 grey levels);
+- box-projected primitive UVs (cube image coverage 3% -> 50%);
+- `exposure(stops)` plus stderr blowout/black-frame warnings (90% -> 0% clipped).
+
+| Brief | Round 2 | Round 3 | Round-3 review |
+|---|---|---|---|
+| 01 product shot | pass, 1 (4/5) | pass, 1 | 4/5 gold sphere, soft key/fill, contact shadow; floor edge visible as a band at the top |
+| 02 glass on checker | pass, 1 (4/5) | pass, 1 | 4/5 sharp refraction; distant checks free of moiré; slightly over-exposed, and the new warning flagged 33% clipped |
+| 03 turntable APNG | pass, 1 (4/5) | pass, 1 | 4/5 clean 24-frame orbit around an upright torus; hard horizon line, a few fireflies |
+| 04 dark diagram | pass, 3 (3/5) | **pass, 1** | **4/5** centred, readable labels and saturated nodes; oversized wedge arrowheads |
+| 05 grass | pass, 1 (3/5) | pass, 1 | **4/5** 16 tiled patches with **no visible seams**; soil reads grey, rock bluish |
+| 06 imported assets | pass, 2 (4/5) | pass, 2 | 4/5 textured cube now shows the image **on every face**; a black strip exposed the glTF node bug below |
+| 07 volumetric light | pass, 1 (5/5) | pass, 1 | 5/5 crisp beam in haze, lit floor ellipse and shadow; some grain |
+| 08 text label | pass, 1 (3/5) | pass, 1 | **4/5** large, readable HELLO WORLD on a plinth; **no blowout**; blocky pixel glyphs |
+| 09 render passes | pass, 1 (4/5) | pass, 1 | 4/5 agent used `depth_range`, so cube/sphere/cone separate clearly in depth; cube cut by the frame edge |
+| 10 camera move | pass, 1 (3/5) | pass, 1 | **4/5** clear dolly-in; the distant checker fades smoothly **without moiré** |
+| **Total** | 10/10, median 1 attempt, mean 3.7/5 | **10/10, median 1 attempt, mean 4.1/5** | |
+
+Round 3 found one further host bug. `import_gltf` created one object per glTF node but returned only the
+first. In brief 06, `translate`/`scale` on the returned handle therefore left the second panel of
+`gallery.glb` behind, where it overlapped the moved panel and rendered black. The importer now merges all
+nodes into one Mesh with per-triangle material slots. `tests/gltf_transform_quality.py` covers this: 12% of
+the frame was left behind before the fix, 0% after.
+
+Remaining recurring nits:
+- the hard horizon where a finite `ground_plane` meets `world_color`;
+- 64-sample fireflies;
+- `arrow_between` heads;
+- the blocky `label` font.
+
 ## Product follow-ups (not documentation)
 
-- `Scene.cube` + `image_material`: only the top face shows the image, and the side faces render a flat average.
-  The cube primitive's side UVs appear degenerate.
-- `hair_patch` blade positions depend only on the blade index, so equal patches tiled side by side repeat exactly.
-  Seeding the pattern from the patch centre would allow seamless lawns. The guide now warns about this.
+- Fixed after round 2: cube side UVs, `hair_patch` tiling, checker moiré, depth contrast (`depth_range`),
+  exposure diagnostics (`exposure`). Fixed after round 3: `import_gltf` multi-node transforms.
+- A horizon option: an infinite floor or a floor-to-world fade, because a finite `ground_plane` leaves a hard
+  line in most wide shots.
 - `arrow_between` produces a single tapered wedge. A shaft-plus-head arrow is the common diagram need. The guide
   shows a workaround with `tube_between` + `cone`.
 - `glow_orb` has no halo/bloom option.
