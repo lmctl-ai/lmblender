@@ -12,7 +12,10 @@
   pbr-spheres, material-sandbox, model-viewer, text (lmmagnum/lmfilament). They were ported by swapping the scene API calls
   (Z-up here, Y-up there: (x,y,z) -> (x,-z,y)); test.sh compiles and runs each, no image-quality gate.
   Added from magnum-examples: shadows, multidraw, cubemap (sky + mirror spheres), bullet (closed-form ballistics), fluidsimulation3d/2d
-  (analytic flows drawn as tubes). multidraw is rendered at 700x500 to stay under the 300 KiB image budget.
+  (analytic flows drawn as tubes).
+- Homepage clips: level-1-sessions ... level-4-automation are the lmctl.com storyboards (lmctl-ai/lmctl scripts/homepage/video/lmblender)
+  without the lmdraw overlay, 240 frames at 640x360 with the draft preset (~1.5-2 min each); render-all.sh also copies the GIF and
+  docs/videos/*.mp4. test.sh only compiles them. multidraw is rendered at 700x500 to stay under the 300 KiB image budget.
 - test.sh: compile_dsl truncates at the first savedsl and rewrites `"images/` to `"$build/`, so regression
   checks still read `$build/<file>`; story renders get tests/story_quality.py gates; README autorun URLs and
   docs/images magic bytes/size limits are checked. gear-pair-render runs only when lmcad is on PATH (SKIP printed).

@@ -63,6 +63,20 @@ Every picture below is made by one example program. Each one runs from a raw URL
 | <img src="docs/images/fluidsimulation2d.png" width="290" alt="2D vortex pair"> |   |   |
 | 40 emissive streamlines of two opposite vortices (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation2d.lms` |   |   |
 
+### Homepage clips from lmctl.com
+
+The four 10 s clips on the [lmctl.com](https://lmctl.com) homepage, one per level of the agent-automation ladder. Their scene scripts live in [lmctl-ai/lmctl](https://github.com/lmctl-ai/lmctl/tree/main/scripts/homepage/video); the published videos add lmdraw title and label overlays on top of the 3D scenes shown here. Each example writes 240 frames, then ffmpeg encodes `images/<name>.mp4` and `.gif`; the lmblender version is the published Cycles storyboard at 640x360 with the draft preset.
+
+| Level 1: names and teams | Level 2: agents talk through a Lead |
+| --- | --- |
+| <img src="docs/images/level-1-sessions.gif" width="440" alt="Level 1: names and teams"> | <img src="docs/images/level-2-orchestration.gif" width="440" alt="Level 2: agents talk through a Lead"> |
+| Sessions gather into Lead, Coder and Review rows; a lens inspects one and a usage gauge rises<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-1-sessions.lms`<br>[MP4](docs/videos/level-1-sessions.mp4) | Provider-coloured agents orbit the Lead; message packets travel through it<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-2-orchestration.lms`<br>[MP4](docs/videos/level-2-orchestration.mp4) |
+
+| Level 3: a hands-off Lead | Level 4: automation |
+| --- | --- |
+| <img src="docs/images/level-3-hands-off-lead.gif" width="440" alt="Level 3: a hands-off Lead"> | <img src="docs/images/level-4-automation.gif" width="440" alt="Level 4: automation"> |
+| A requirement and its checklist enter; a reviewed result returns<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-3-hands-off-lead.lms`<br>[MP4](docs/videos/level-3-hands-off-lead.mp4) | A brainstorm becomes a Work, Review, QA and Acceptance pipeline<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-4-automation.lms`<br>[MP4](docs/videos/level-4-automation.mp4) |
+
 ## Quick start (one minute)
 
 ```sh

@@ -1,0 +1,97 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Level 2: orchestration: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
+// Provider-coloured agents orbit the Lead; message packets travel member to Lead and onward.
+// Writes images/level-2-orchestration.png (frame 150), images/level-2-orchestration.mp4 and images/level-2-orchestration.gif (the last two need ffmpeg) and build/level-2-orchestration/frame-N.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/level-2-orchestration.dslb";
+mkdir("images");
+mkdir("build");
+mkdir("build/level-2-orchestration");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+
+# lmblender 0.3.1. No aspect compensation (fixed in 0.2.2). Named preset for
+# the render profile; samples raised to 64 spp per the quality-first note.
+scene.use_preset("diagram-dark-16x9-draft");
+
+let teal = scene.material(0.04, 0.62, 0.53, 0.24, 0.23, 0.0, 0.02, 0.22, 0.18, 0.65);
+let gold = scene.material(0.83, 0.48, 0.10, 0.28, 0.20, 0.0, 0.30, 0.12, 0.01, 1.2);
+let blue = scene.material(0.04, 0.28, 0.74, 0.22, 0.25, 0.0, 0.01, 0.08, 0.30, 0.55);
+let violet = scene.material(0.34, 0.18, 0.72, 0.24, 0.22, 0.0, 0.11, 0.03, 0.30, 0.55);
+let coral = scene.material(0.75, 0.16, 0.10, 0.25, 0.24, 0.0, 0.24, 0.035, 0.01, 0.7);
+
+# Shared look: dark navy world, gold key, blue fill, glossy provider colors.
+scene.world_color(0.008, 0.016, 0.040, 0.55);
+scene.set_view_transform("AgX");
+scene.render_settings(6, 17, true);
+scene.render_timeout(3600);
+scene.area_light(-8.0, -10.0, 12.0, 0.0, 0.0, 0.0, 1.0, 0.78, 0.48, 1400.0, 8.0);
+scene.area_light(8.0, -6.0, 5.0, 0.0, 0.0, 0.0, 0.20, 0.52, 1.0, 500.0, 10.0);
+
+# Six provider-colored agents surround a larger golden Lead. Tube spokes run
+# from each agent through the Lead's center (they visibly pass through it).
+let lead = scene.uv_sphere(0.9, 48, 28, true); lead.set_material(gold);
+let a0 = scene.uv_sphere(0.58, 36, 20, true); a0.set_material(blue); a0.translate(-5.6, 0.0, 0.0);
+let a1 = scene.uv_sphere(0.58, 36, 20, true); a1.set_material(teal); a1.translate(-3.4, 0.0, 3.0);
+let a2 = scene.uv_sphere(0.58, 36, 20, true); a2.set_material(violet); a2.translate(3.4, 0.0, 3.0);
+let a3 = scene.uv_sphere(0.58, 36, 20, true); a3.set_material(coral); a3.translate(5.6, 0.0, 0.0);
+let a4 = scene.uv_sphere(0.58, 36, 20, true); a4.set_material(blue); a4.translate(3.4, 0.0, -3.0);
+let a5 = scene.uv_sphere(0.58, 36, 20, true); a5.set_material(teal); a5.translate(-3.4, 0.0, -3.0);
+let r0 = scene.tube_between(-5.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.10); r0.set_material(blue);
+let r1 = scene.tube_between(-3.4, 0.0, 3.0, 0.0, 0.0, 0.0, 0.10); r1.set_material(teal);
+let r2 = scene.tube_between(3.4, 0.0, 3.0, 0.0, 0.0, 0.0, 0.10); r2.set_material(violet);
+let r3 = scene.tube_between(5.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.10); r3.set_material(coral);
+let r4 = scene.tube_between(3.4, 0.0, -3.0, 0.0, 0.0, 0.0, 0.10); r4.set_material(blue);
+let r5 = scene.tube_between(-3.4, 0.0, -3.0, 0.0, 0.0, 0.0, 0.10); r5.set_material(teal);
+
+# Routed message glow-orbs make the Lead visibly relay, rather than copy,
+# turns. Meshes are created at the origin and only keyframed (no translate),
+# so the absolute track is predictable and nothing embeds in the spheres.
+let m0 = scene.glow_orb(0.0, 0.0, 0.0, 0.24, 0.95, 0.86, 0.58, 3.0);
+let m1 = scene.glow_orb(0.0, 0.0, 0.0, 0.22, 0.95, 0.86, 0.58, 3.0);
+let m2 = scene.glow_orb(0.0, 0.0, 0.0, 0.22, 0.95, 0.86, 0.58, 3.0);
+m0.keyframe_transform(0, -4.9, -0.4, 0.0, "linear"); m0.keyframe_transform(26, 0.0, -0.4, 0.0, "ease"); m0.keyframe_transform(53, 4.9, -0.4, 0.0, "ease"); m0.keyframe_transform(78, 4.9, -0.4, 0.0, "linear"); m0.keyframe_transform(105, 0.0, -0.4, 0.0, "ease"); m0.keyframe_transform(132, -3.4, -0.4, 2.2, "ease"); m0.keyframe_transform(158, -3.4, -0.4, 2.2, "linear"); m0.keyframe_transform(185, 0.0, -0.4, 0.0, "ease"); m0.keyframe_transform(212, 3.4, -0.4, -2.2, "ease"); m0.keyframe_transform(239, 3.4, -0.4, -2.2, "linear");
+m1.keyframe_transform(0, 3.4, -0.5, 2.2, "linear"); m1.keyframe_transform(26, 0.0, -0.5, 0.0, "ease"); m1.keyframe_transform(53, -4.9, -0.5, 0.0, "ease"); m1.keyframe_transform(78, -4.9, -0.5, 0.0, "linear"); m1.keyframe_transform(105, 0.0, -0.5, 0.0, "ease"); m1.keyframe_transform(132, 4.9, -0.5, 0.0, "ease"); m1.keyframe_transform(158, 4.9, -0.5, 0.0, "linear"); m1.keyframe_transform(185, 0.0, -0.5, 0.0, "ease"); m1.keyframe_transform(212, -3.4, -0.5, -2.2, "ease"); m1.keyframe_transform(239, -3.4, -0.5, -2.2, "linear");
+m2.keyframe_transform(0, -3.4, -0.6, -2.2, "linear"); m2.keyframe_transform(40, 0.0, -0.6, 0.0, "ease"); m2.keyframe_transform(80, 3.4, -0.6, 2.2, "ease"); m2.keyframe_transform(120, 3.4, -0.6, 2.2, "linear"); m2.keyframe_transform(160, 0.0, -0.6, 0.0, "ease"); m2.keyframe_transform(200, -4.9, -0.6, 0.0, "ease"); m2.keyframe_transform(239, -4.9, -0.6, 0.0, "linear");
+gold.keyframe_color(0, 0.83, 0.48, 0.10, "linear");
+gold.keyframe_color(25, 1.0, 0.76, 0.24, "ease");
+gold.keyframe_color(53, 0.83, 0.48, 0.10, "ease");
+gold.keyframe_color(104, 1.0, 0.76, 0.24, "ease");
+gold.keyframe_color(132, 0.83, 0.48, 0.10, "ease");
+gold.keyframe_color(184, 1.0, 0.76, 0.24, "ease");
+gold.keyframe_color(212, 0.83, 0.48, 0.10, "ease");
+gold.keyframe_color(239, 0.83, 0.48, 0.10, "linear");
+
+scene.camera_look_at(0.0, -15.0, 5.4, 0.0, 0.0, 1.5, 44.0);
+scene.camera_keyframe(0, 0.0, -15.0, 5.4, -0.3, 0.0, 1.5, "linear");
+scene.camera_keyframe(60, -1.0, -14.3, 5.0, 0.0, 0.0, 1.5, "ease");
+scene.camera_keyframe(120, 1.0, -14.3, 5.0, 0.0, 0.0, 1.5, "ease");
+scene.camera_keyframe(180, 0.0, -15.0, 5.4, 0.3, 0.0, 1.5, "ease");
+scene.camera_keyframe(239, 0.0, -15.0, 5.4, -0.3, 0.0, 1.5, "linear");
+scene.camera_optics_keyframe(0, 44.0, 10.0, "linear");
+scene.camera_optics_keyframe(45, 44.0, 10.0, "linear");
+scene.camera_optics_keyframe(78, 41.0, 10.0, "ease");
+scene.camera_optics_keyframe(160, 41.0, 10.0, "linear");
+scene.camera_optics_keyframe(200, 44.0, 10.0, "ease");
+scene.camera_optics_keyframe(239, 44.0, 10.0, "linear");
+
+scene.render_sequence("build/level-2-orchestration/frame-{frame}.png", 0, 59, 0, 640, 360);
+scene.render_sequence("build/level-2-orchestration/frame-{frame}.png", 60, 119, 0, 640, 360);
+scene.render_sequence("build/level-2-orchestration/frame-{frame}.png", 120, 179, 0, 640, 360);
+scene.render_sequence("build/level-2-orchestration/frame-{frame}.png", 180, 239, 0, 640, 360);
+end _dsl_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+if (which("ffmpeg") != null) {
+  a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-2-orchestration/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-2-orchestration.mp4;
+  assert(a.code == 0);
+  c = system ffmpeg -y -loglevel error -i build/level-2-orchestration/frame-150.png images/level-2-orchestration.png;
+  assert(c.code == 0);
+  b = system ffmpeg -y -loglevel error -framerate 24 -i build/level-2-orchestration/frame-%d.png -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/level-2-orchestration.gif;
+  assert(b.code == 0);
+  println("wrote images/level-2-orchestration.png, images/level-2-orchestration.mp4 and images/level-2-orchestration.gif");
+} else {
+  println("ffmpeg not found: skipped the MP4 and GIF (build/level-2-orchestration/frame-*.png are the 240 frames)");
+}

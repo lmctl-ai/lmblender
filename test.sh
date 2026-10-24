@@ -469,6 +469,10 @@ for name in ball-stick buckyball truss-bridge pbr-spheres material-sandbox model
   "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
   test -s "$build/$name.png"
 done
+# The four lmctl.com homepage storyboards (240 Cycles frames each) are compile-checked only; examples/render-all.sh renders them.
+for name in level-1-sessions level-2-orchestration level-3-hands-off-lead level-4-automation; do
+  compile_dsl "examples/$name.lms" "$build/$name.dslb"
+done
 test -s build/kepler-orbit/frame-35.png
 python3 tests/story_quality.py kepler-frame build/kepler-orbit/frame-35.png 560 350
 # The gear story is an lmcad + lmblender pipeline; it needs the lmcad host as well.

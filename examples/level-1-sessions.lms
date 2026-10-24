@@ -1,0 +1,99 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Level 1: session management: one of the four 10 s clips (240 frames at 24 fps) on https://lmctl.com, from lmctl-ai/lmctl scripts/homepage/video.
+// Anonymous sessions gather into named Lead, Coder and Review team rows; a lens peeks at one session and a usage gauge rises.
+// Writes images/level-1-sessions.png (frame 150), images/level-1-sessions.mp4 and images/level-1-sessions.gif (the last two need ffmpeg) and build/level-1-sessions/frame-N.png.
+out = ARGV.len() > 0 ? ARGV[0] : "build/level-1-sessions.dslb";
+mkdir("images");
+mkdir("build");
+mkdir("build/level-1-sessions");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+
+# lmblender 0.3.1. The 16:9 camera aspect bug was fixed in 0.2.2: no screen_z
+# compensation anywhere. The named preset carries the render profile; the
+# operator's quality-first note raises samples to 64 spp (fast OIDN stays).
+scene.use_preset("diagram-dark-16x9-draft");
+
+let teal = scene.material(0.04, 0.62, 0.53, 0.24, 0.23, 0.0, 0.02, 0.22, 0.18, 0.65);
+let gold = scene.material(0.83, 0.48, 0.10, 0.28, 0.20, 0.0, 0.30, 0.12, 0.01, 1.2);
+let blue = scene.material(0.04, 0.28, 0.74, 0.22, 0.25, 0.0, 0.01, 0.08, 0.30, 0.55);
+let violet = scene.material(0.34, 0.18, 0.72, 0.24, 0.22, 0.0, 0.11, 0.03, 0.30, 0.55);
+
+# Shared look: dark navy world, gold key, blue fill, glossy provider colors.
+scene.world_color(0.008, 0.016, 0.040, 0.55);
+scene.set_view_transform("AgX");
+scene.render_settings(6, 17, true);
+scene.render_timeout(3600);
+scene.area_light(-8.0, -10.0, 12.0, 0.0, 0.0, 0.0, 1.0, 0.78, 0.48, 1400.0, 8.0);
+scene.area_light(8.0, -6.0, 5.0, 0.0, 0.0, 0.0, 0.20, 0.52, 1.0, 500.0, 10.0);
+
+# Anonymous provider-colored sessions gather into three named team bands.
+let s0 = scene.uv_sphere(0.48, 40, 24, true); s0.set_material(teal);
+let s1 = scene.uv_sphere(0.48, 40, 24, true); s1.set_material(teal);
+let s2 = scene.uv_sphere(0.48, 40, 24, true); s2.set_material(gold);
+let s3 = scene.uv_sphere(0.48, 40, 24, true); s3.set_material(gold);
+let s4 = scene.uv_sphere(0.48, 40, 24, true); s4.set_material(violet);
+let s5 = scene.uv_sphere(0.48, 40, 24, true); s5.set_material(violet);
+let band0 = scene.cube(1.0); band0.scale(5.0, 0.16, 0.12); band0.set_material(teal); band0.translate(-4.5, 0.0, 2.0);
+let band1 = scene.cube(1.0); band1.scale(5.0, 0.16, 0.12); band1.set_material(gold); band1.translate(-4.5, 0.0, 0.0);
+let band2 = scene.cube(1.0); band2.scale(5.0, 0.16, 0.12); band2.set_material(violet); band2.translate(-4.5, 0.0, -2.0);
+s0.keyframe_transform(0, -10.0, 0.0, 4.0, "ease"); s0.keyframe_transform(100, -5.8, 0.0, 2.0, "ease"); s0.keyframe_transform(239, -5.8, 0.0, 2.0, "linear");
+s1.keyframe_transform(0, -2.0, 0.0, 3.8, "ease"); s1.keyframe_transform(100, -3.2, 0.0, 2.0, "ease"); s1.keyframe_transform(239, -3.2, 0.0, 2.0, "linear");
+s2.keyframe_transform(0, -9.0, 0.0, 0.2, "ease"); s2.keyframe_transform(100, -5.8, 0.0, 0.0, "ease"); s2.keyframe_transform(239, -5.8, 0.0, 0.0, "linear");
+s3.keyframe_transform(0, -1.4, 0.0, -1.2, "ease"); s3.keyframe_transform(100, -3.2, 0.0, 0.0, "ease"); s3.keyframe_transform(239, -3.2, 0.0, 0.0, "linear");
+s4.keyframe_transform(0, -10.0, 0.0, -4.0, "ease"); s4.keyframe_transform(100, -5.8, 0.0, -2.0, "ease"); s4.keyframe_transform(239, -5.8, 0.0, -2.0, "linear");
+s5.keyframe_transform(0, -1.5, 0.0, -3.4, "ease"); s5.keyframe_transform(100, -3.2, 0.0, -2.0, "ease"); s5.keyframe_transform(239, -3.2, 0.0, -2.0, "linear");
+
+# A torus inspection lens frames the teal band's first sphere; the camera
+# retargets and zooms onto it (the optics track is the magnifier beat).
+let lens = scene.torus(0.86, 0.11, 48, 16, true);
+lens.set_material(gold);
+lens.rotate_x(90.0);
+lens.keyframe_visible(0, false, "linear");
+lens.keyframe_transform(0, 0.0, 0.0, -40.0, "linear");
+lens.keyframe_visible(104, true, "linear");
+lens.keyframe_transform(110, -5.8, 0.0, 2.0, "ease");
+lens.keyframe_transform(170, -5.8, 0.0, 2.0, "ease");
+lens.keyframe_transform(180, 0.0, 0.0, -40.0, "ease");
+lens.keyframe_visible(181, false, "linear");
+lens.keyframe_transform(239, 0.0, 0.0, -40.0, "linear");
+
+# Camera stays wide enough for all three teams, then tightens slightly for the
+# session peek before returning to the full team view.
+scene.camera_look_at(-4.5, -8.5, 3.0, -4.5, 0.0, 1.2, 40.0);
+scene.camera_keyframe(0, -4.5, -8.5, 3.0, -4.5, 0.0, 1.2, "linear");
+scene.camera_keyframe(110, -4.5, -8.5, 3.0, -5.8, 0.0, 1.2, "ease");
+scene.camera_keyframe(170, -4.5, -8.5, 3.0, -5.8, 0.0, 1.2, "ease");
+scene.camera_keyframe(190, -4.5, -8.5, 3.0, -4.5, 0.0, 1.2, "ease");
+scene.camera_keyframe(239, -4.5, -8.5, 3.0, -4.5, 0.0, 1.2, "linear");
+scene.camera_optics_keyframe(0, 72.0, 10.0, "linear");
+scene.camera_optics_keyframe(55, 62.0, 10.0, "ease");
+scene.camera_optics_keyframe(110, 48.0, 10.0, "ease");
+scene.camera_optics_keyframe(132, 46.0, 10.0, "ease");
+scene.camera_optics_keyframe(170, 46.0, 10.0, "linear");
+scene.camera_optics_keyframe(190, 48.0, 10.0, "ease");
+scene.camera_optics_keyframe(239, 48.0, 10.0, "linear");
+
+# Usage progress is shown in the lmdraw overlay; keep the 3D scene focused on teams.
+
+scene.render_sequence("build/level-1-sessions/frame-{frame}.png", 0, 59, 0, 640, 360);
+scene.render_sequence("build/level-1-sessions/frame-{frame}.png", 60, 119, 0, 640, 360);
+scene.render_sequence("build/level-1-sessions/frame-{frame}.png", 120, 179, 0, 640, 360);
+scene.render_sequence("build/level-1-sessions/frame-{frame}.png", 180, 239, 0, 640, 360);
+end _dsl_
+savedsl(p, out);
+# run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
+r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);
+if (r.code != 0) { println(r.stderr + r.stdout); }
+assert(r.code == 0);
+if (which("ffmpeg") != null) {
+  a = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -c:v libx264 -pix_fmt yuv420p -crf 22 images/level-1-sessions.mp4;
+  assert(a.code == 0);
+  c = system ffmpeg -y -loglevel error -i build/level-1-sessions/frame-150.png images/level-1-sessions.png;
+  assert(c.code == 0);
+  b = system ffmpeg -y -loglevel error -framerate 24 -i build/level-1-sessions/frame-%d.png -vf "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=64[p];[b][p]paletteuse=dither=none" -loop 0 images/level-1-sessions.gif;
+  assert(b.code == 0);
+  println("wrote images/level-1-sessions.png, images/level-1-sessions.mp4 and images/level-1-sessions.gif");
+} else {
+  println("ffmpeg not found: skipped the MP4 and GIF (build/level-1-sessions/frame-*.png are the 240 frames)");
+}

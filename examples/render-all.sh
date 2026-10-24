@@ -16,12 +16,14 @@ stories="${*:-caustic-ball-lens sunset-long-shadows god-rays-window cornell-box 
   caffeine-molecule dna-double-helix salt-crystal saturn-rings kepler-orbit
   bouncing-ball-strobe gear-pair-render
   ball-stick buckyball truss-bridge pbr-spheres material-sandbox model-viewer text
-  shadows multidraw cubemap bullet fluidsimulation3d fluidsimulation2d}"
+  shadows multidraw cubemap bullet fluidsimulation3d fluidsimulation2d
+  level-1-sessions level-2-orchestration level-3-hands-off-lead level-4-automation}"
 for name in $stories; do
   start=$(date +%s)
   (cd "$work" && "$LMSCRIPT" "$root/examples/$name.lms" >"$work/$name.log" 2>&1) || {
     cat "$work/$name.log" >&2; echo "render-all: $name failed" >&2; exit 1; }
   [ "$name" = kepler-orbit ] || cp "$work/images/$name.png" "$root/docs/images/$name.png"
+  case "$name" in level-*) cp "$work/images/$name.gif" "$root/docs/images/$name.gif"; mkdir -p "$root/docs/videos"; cp "$work/images/$name.mp4" "$root/docs/videos/$name.mp4";; esac
   echo "$name: $(( $(date +%s) - start )) s"
 done
 if [ -f "$work/images/kepler-orbit.gif" ]; then
