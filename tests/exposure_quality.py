@@ -20,6 +20,8 @@ hot, fixed, stderr = sys.argv[1], sys.argv[2], Path(sys.argv[3]).read_text()
 warn = re.search(r"exposure-hot\.png: (\d+)% of pixels are clipped.*scene\.exposure\((-?[\d.]+)\)", stderr)
 assert warn, f"no blowout warning for the over-lit frame:\n{stderr}"
 assert -5.5 <= float(warn.group(2)) <= -3.5, f"suggested exposure drifted from the -4.5 used by tests/exposure.lms: {warn.group(2)}"
+dark = re.search(r"exposure-dark\.png: image is nearly black.*scene\.exposure\((-?[\d.]+)\)", stderr)
+assert dark and -5.5 <= float(dark.group(1)) <= -3.5, f"no usable black-frame warning at exposure(-10):\n{stderr}"
 assert "exposure-fixed.png" not in stderr, f"corrected frame still warns:\n{stderr}"
 before, after = clipped(hot), clipped(fixed)
 print(f"exposure: clipped {before:.0%} -> {after:.0%} with scene.exposure({warn.group(2)})")

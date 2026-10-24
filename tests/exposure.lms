@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
-// An over-lit label scene warns on stderr; the suggested exposure(-4.5) recovers it
+// An over-lit label scene warns on stderr; so does the same scene at exposure(-10);
+// the suggested exposure(-4.5) recovers it
 // (tests/exposure_quality.py).
 out = ARGV.len() > 0 ? ARGV[0] : "build/exposure.dslb";
 mkdir("build");
@@ -11,6 +12,8 @@ scene.ground_plane(0.0, 20.0, 0.8, 0.8, 0.8);
 scene.camera_look_at(0.0, -5.0, 4.0, 0.0, 0.5, 0.0, 40.0);
 scene.area_light(-2.0, -3.0, 5.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 4000.0, 3.0);
 scene.render_png("build/exposure-hot.png", 8, 320, 200);
+scene.exposure(-10.0);
+scene.render_png("build/exposure-dark.png", 8, 320, 200);
 scene.exposure(-4.5);
 scene.render_png("build/exposure-fixed.png", 8, 320, 200);
 end _dsl_

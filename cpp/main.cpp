@@ -608,7 +608,7 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
       pixels[dst + 3] = std::clamp(source[src + 3], 0.0f, 1.0f);
       if (pixels[dst + 3] > 0.0f) {
         ++covered_;
-        if (std::max({pixels[dst], pixels[dst + 1], pixels[dst + 2]}) >= 0.996f) ++clipped_;
+        if (std::min({pixels[dst], pixels[dst + 1], pixels[dst + 2]}) >= 0.996f) ++clipped_;  // white, not merely saturated
         luminance_sum_ += 0.2126 * pixels[dst] + 0.7152 * pixels[dst + 1] + 0.0722 * pixels[dst + 2];
         linear_.push_back(0.2126f * source[src] + 0.7152f * source[src + 1] + 0.0722f * source[src + 2]);
       }
@@ -634,6 +634,15 @@ class ViewTransformOutputDriver final : public ccl::OutputDriver {
     auto mid = linear_.begin() + linear_.size() / 2;
     std::nth_element(linear_.begin(), mid, linear_.end());
     return std::clamp(std::log2(0.18 / std::max(double(*mid), 1e-6)), -10.0, 10.0);
+  }
+  /* Scene-linear luminance of the brightest 1% of pixels; a dark backdrop
+   * with lit subjects keeps this high, a genuinely under-exposed frame does not. */
+  double highlight_luminance()
+  {
+    if (linear_.empty()) return 0.0;
+    auto top = linear_.begin() + (linear_.size() * 99) / 100;
+    std::nth_element(linear_.begin(), top, linear_.end());
+    return double(*top);
   }
 
  private:
@@ -1583,7 +1592,7 @@ void render_direct(const Scene &source, const std::string &output, int samples, 
       std::snprintf(line, sizeof line, "lmblender: warning: %s: %.0f%% of pixels are clipped to white (mean brightness %.2f); divide light powers by about %.0f or call scene.exposure(%.1f) before rendering\n",
                     output.c_str(), clipped * 100.0, mean, std::exp2(-delta), stops);
       exposure_warning = line;
-    } else if (mean < 0.04 && delta > 0.5) {
+    } else if (delta > 3.0 && png_driver->highlight_luminance() < 0.05) {
       std::snprintf(line, sizeof line, "lmblender: warning: %s: image is nearly black (mean brightness %.3f); multiply light powers by about %.0f or call scene.exposure(%.1f) before rendering\n",
                     output.c_str(), mean, std::exp2(delta), stops);
       exposure_warning = line;
