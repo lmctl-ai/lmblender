@@ -1,0 +1,38 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "Multi Draw" (https://magnum.graphics/doc/magnum/examples-multidraw.html), reproduced headless: 180 meshes of four kinds (box, sphere, cylinder, cone) in six rings, coloured by angle. The original issues them in one GPU multi-draw call; here each is its own shape.
+out = ARGV.len() > 0 ? ARGV[0] : "build/multidraw.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+for (i in range(0, 180)) {
+  let ring = i / 30;
+  let k = i - ring * 30;
+  let a = float(k) * 6.2831853 / 30.0 + float(ring) * 0.35;
+  let rad = 2.0 + 1.25 * float(ring);
+  let x = rad * cos(a);
+  let z = rad * sin(a);
+  let y = 0.45 * sin(3.0 * a + float(ring));
+  let kind = i - (i / 4) * 4;
+  let cr = 0.5 + 0.5 * sin(a);
+  let cg = 0.5 + 0.5 * sin(a + 2.094);
+  let cb = 0.5 + 0.5 * sin(a + 4.189);
+  let m = scene.material(cr, cg, cb, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
+  if (kind == 0) { let o = scene.cube(0.6); o.rotate_z(a * 57.2958); o.translate(x, 0.0 - z, y + 1.0); o.set_material(m); }
+  if (kind == 1) { let o = scene.uv_sphere(0.36, 24, 16, true); o.translate(x, 0.0 - z, y + 1.0); o.set_material(m); }
+  if (kind == 2) { let o = scene.cylinder(0.3, 0.7, 24, true); o.translate(x, 0.0 - z, y + 1.0); o.set_material(m); }
+  if (kind == 3) { let o = scene.cone(0.36, 0.7, 24, true); o.translate(x, 0.0 - z, y + 1.0); o.set_material(m); }
+}
+scene.ground_plane(0.0, 80.0, 0.30, 0.32, 0.36);
+scene.world_color(0.45, 0.55, 0.75, 0.5);
+scene.area_light(-6.0, -7.0, 10.0, 0.0, 0.0, 1.0, 1.0, 0.92, 0.82, 1500.0, 6.0);
+scene.area_light(8.0, -2.0, 6.0, 0.0, 0.0, 1.0, 0.6, 0.75, 1.0, 700.0, 5.0);
+scene.camera_look_at(0.0, -16.0, 13.0, 0.0, 0.0, 0.5, 42.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/multidraw.png", 32, 700, 500);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/multidraw.png");

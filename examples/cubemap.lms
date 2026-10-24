@@ -1,0 +1,23 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "Cube Map" (https://magnum.graphics/doc/magnum/examples-cubemap.html), reproduced with a real environment: lmblender's procedural sky is the "cube map" and three mirror spheres reflect it (path-traced).
+out = ARGV.len() > 0 ? ARGV[0] : "build/cubemap.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let chrome = scene.material(0.95, 0.95, 0.97, 1.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0);
+let floor = scene.material(0.30, 0.32, 0.36, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
+scene.ground_plane(-1.0, 80.0, 0.30, 0.32, 0.36);
+scene.sky_texture(0.0, 0.5, 2.0);
+let big = scene.uv_sphere(1.6, 96, 64, true); big.translate(0.0, 0.0, 0.6); big.set_material(chrome);
+let s1 = scene.uv_sphere(0.9, 64, 48, true); s1.translate(-3.5, -2.0, -0.1); s1.set_material(chrome);
+let s2 = scene.uv_sphere(0.9, 64, 48, true); s2.translate(3.5, -2.0, -0.1); s2.set_material(chrome);
+scene.camera_look_at(0.0, -9.0, 1.2, 0.0, 0.0, 0.6, 50.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/cubemap.png", 32, 800, 600);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/cubemap.png");

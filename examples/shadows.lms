@@ -1,0 +1,27 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "Shadows" (https://magnum.graphics/doc/magnum/examples-shadows.html), reproduced headless: a floor and four solids under one directional light with a shadow map. lmblender gets the shadows from Cycles, from a sun lamp and a sky.
+out = ARGV.len() > 0 ? ARGV[0] : "build/shadows.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let a = scene.material(0.85, 0.3, 0.25, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+let b = scene.material(0.25, 0.6, 0.85, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+let c = scene.material(0.9, 0.75, 0.25, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+let e = scene.material(0.4, 0.8, 0.45, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+scene.ground_plane(-1.0, 80.0, 0.75, 0.75, 0.72);
+let o1 = scene.uv_sphere(1.0, 64, 48, true); o1.translate(-2.8, 0.0, 0.0); o1.set_material(a);
+let o2 = scene.cube(1.8); o2.rotate_z(25.0); o2.translate(-0.4, -0.8, -0.1); o2.set_material(b);
+let o3 = scene.cylinder(0.7, 2.6, 48, true); o3.translate(1.9, 0.6, 0.3); o3.set_material(c);
+let o4 = scene.cone(0.9, 2.2, 48, true); o4.translate(3.6, -1.0, 0.1); o4.set_material(e);
+scene.sun_light(0.6, 0.45, -0.55, 1.0, 1.0, 0.95, 2.6, 0.5);
+scene.world_color(0.55, 0.7, 0.9, 0.25);
+scene.camera_look_at(0.0, -9.5, 3.5, 0.0, 0.0, -0.3, 38.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/shadows.png", 32, 900, 560);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/shadows.png");

@@ -1,0 +1,56 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "3D Fluid Simulation" (https://magnum.graphics/doc/magnum/examples-fluidsimulation3d.html), reproduced headless as flow visualisation: Magnum's example runs a particle fluid on the GPU; there is no simulator or arrays here, so this integrates 32 streamlines of the ABC (Arnold-Beltrami-Childress) flow with midpoint steps, drawn as tube chains coloured by speed (blue slow, orange fast).
+out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation3d.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let aa = 1.0;
+let bb = 0.8165;
+let cc = 0.5774;
+let dt = 0.14;
+for (si in range(0, 32)) {
+  let ix = si - (si / 4) * 4;
+  let iy = (si / 4) - (si / 16) * 4;
+  let iz = si / 16;
+  let x = (float(ix) + 0.5) * 1.5708 + 0.3 * float(iz);
+  let y = (float(iy) + 0.5) * 1.5708;
+  let z = 1.2 + 3.0 * float(iz);
+  for (step in range(0, 34)) {
+    let u1 = aa * sin(z) + cc * cos(y);
+    let v1 = bb * sin(x) + aa * cos(z);
+    let w1 = cc * sin(y) + bb * cos(x);
+    let xm = x + 0.5 * dt * u1;
+    let ym = y + 0.5 * dt * v1;
+    let zm = z + 0.5 * dt * w1;
+    let u2 = aa * sin(zm) + cc * cos(ym);
+    let v2 = bb * sin(xm) + aa * cos(zm);
+    let w2 = cc * sin(ym) + bb * cos(xm);
+    let nx = x + dt * u2;
+    let ny = y + dt * v2;
+    let nz = z + dt * w2;
+    let speed = sqrt(u2 * u2 + v2 * v2 + w2 * w2);
+    let t = clamp(speed / 2.2, 0.0, 1.0);
+    let cr = lerp(0.2, 1.0, t);
+    let cg = lerp(0.4, 0.55, t);
+    let cb = lerp(1.0, 0.15, t);
+    let px = x - 3.14159;  let py = 0.0 - (z - 3.14159);  let pz = y - 3.14159 + 4.0;
+    let qx = nx - 3.14159; let qy = 0.0 - (nz - 3.14159); let qz = ny - 3.14159 + 4.0;
+    let m = scene.material(cr, cg, cb, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
+    scene.tube_between(px, py, pz, qx, qy, qz, 0.05).set_material(m);
+    x = nx; y = ny; z = nz;
+  }
+}
+scene.ground_plane(0.0, 80.0, 0.10, 0.11, 0.14);
+scene.world_color(0.12, 0.14, 0.2, 0.4);
+scene.area_light(-6.0, -8.0, 12.0, 0.0, 0.0, 4.0, 1.0, 0.95, 0.9, 1800.0, 6.0);
+scene.area_light(8.0, 4.0, 8.0, 0.0, 0.0, 4.0, 0.6, 0.75, 1.0, 900.0, 5.0);
+scene.camera_look_at(10.0, -13.0, 13.0, 0.0, 0.0, 4.0, 34.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/fluidsimulation3d.png", 32, 800, 600);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/fluidsimulation3d.png");

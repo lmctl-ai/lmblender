@@ -1,0 +1,50 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "2D Fluid Simulation" (https://magnum.graphics/doc/magnum/examples-fluidsimulation2d.html), reproduced headless as flow visualisation: 40 streamlines of a pair of opposite point vortices (Rankine-style, core 0.22) integrated with midpoint steps in the plane, coloured by speed. The original is an interactive GPU fluid solver.
+out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation2d.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let dt = 0.08;
+for (si in range(0, 40)) {
+  let x = -3.5 + float(si - (si / 8) * 8);
+  let y = -2.2 + 1.1 * float(si / 8);
+  for (step in range(0, 90)) {
+    let ax = x - 1.2; let bx = x + 1.2;
+    let r1 = ax * ax + y * y + 0.05;
+    let r2 = bx * bx + y * y + 0.05;
+    let u1 = 2.2 * ((0.0 - y) / r1 + y / r2);
+    let v1 = 2.2 * (ax / r1 - bx / r2);
+    let xm = x + 0.5 * dt * u1; let ym = y + 0.5 * dt * v1;
+    let am = xm - 1.2; let bm = xm + 1.2;
+    let s1 = am * am + ym * ym + 0.05;
+    let s2 = bm * bm + ym * ym + 0.05;
+    let u2 = 2.2 * ((0.0 - ym) / s1 + ym / s2);
+    let v2 = 2.2 * (am / s1 - bm / s2);
+    let nx = x + dt * u2; let ny = y + dt * v2;
+    let speed = sqrt(u2 * u2 + v2 * v2);
+    let t = clamp(speed / 3.0, 0.0, 1.0);
+    let cr = lerp(0.2, 1.0, t);
+    let cg = lerp(0.45, 0.6, t);
+    let cb = lerp(1.0, 0.2, t);
+    if (abs(nx) < 5.0) {
+      if (abs(ny) < 3.2) {
+        let m = scene.material(cr, cg, cb, 0.0, 0.4, 0.0, cr, cg, cb, 0.6);
+        scene.tube_between(x, 0.0, y + 3.5, nx, 0.0, ny + 3.5, 0.03).set_material(m);
+      }
+    }
+    x = nx; y = ny;
+  }
+}
+scene.ground_plane(0.0, 80.0, 0.08, 0.09, 0.12);
+scene.world_color(0.08, 0.09, 0.14, 0.3);
+scene.area_light(0.0, -9.0, 9.0, 0.0, 0.0, 3.5, 1.0, 0.95, 0.9, 1500.0, 8.0);
+scene.camera_look_at(0.0, -9.0, 3.5, 0.0, 0.0, 3.5, 36.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/fluidsimulation2d.png", 32, 640, 400);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/fluidsimulation2d.png");

@@ -11,6 +11,8 @@
 - A second README table, "Scenes shared with lmcad, lmmagnum and lmfilament", holds ball-stick, buckyball, truss-bridge (lmcad),
   pbr-spheres, material-sandbox, model-viewer, text (lmmagnum/lmfilament). They were ported by swapping the scene API calls
   (Z-up here, Y-up there: (x,y,z) -> (x,-z,y)); test.sh compiles and runs each, no image-quality gate.
+  Added from magnum-examples: shadows, multidraw, cubemap (sky + mirror spheres), bullet (closed-form ballistics), fluidsimulation3d/2d
+  (analytic flows drawn as tubes). multidraw is rendered at 700x500 to stay under the 300 KiB image budget.
 - test.sh: compile_dsl truncates at the first savedsl and rewrites `"images/` to `"$build/`, so regression
   checks still read `$build/<file>`; story renders get tests/story_quality.py gates; README autorun URLs and
   docs/images magic bytes/size limits are checked. gear-pair-render runs only when lmcad is on PATH (SKIP printed).

@@ -1,0 +1,67 @@
+// SPDX-FileCopyrightText: 2025-2026 lmblender contributors
+// SPDX-License-Identifier: MIT
+// Magnum example "Bullet Physics" (https://magnum.graphics/doc/magnum/examples-bullet.html), reproduced headless as ballistics: 64 boxes released at staggered heights, each following its own closed-form free fall with inelastic bounces (restitution 0.5) and a spin that stops after landing. There is no rigid-body engine here, so boxes do not collide; the grid keeps them apart on the floor.
+out = ARGV.len() > 0 ? ARGV[0] : "build/bullet.dslb";
+mkdir("images");
+mkdir("build");
+p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+let g = 9.81;
+let e = 0.5;
+let seed = 4242;
+for (i in range(0, 64)) {
+  seed = (seed * 1103515245 + 12345) - ((seed * 1103515245 + 12345) / 2147483648) * 2147483648;
+  let u1 = float(seed) / 2147483648.0;
+  seed = (seed * 1103515245 + 12345) - ((seed * 1103515245 + 12345) / 2147483648) * 2147483648;
+  let u2 = float(seed) / 2147483648.0;
+  seed = (seed * 1103515245 + 12345) - ((seed * 1103515245 + 12345) / 2147483648) * 2147483648;
+  let u3 = float(seed) / 2147483648.0;
+  let gx = i - (i / 8) * 8;
+  let gz = i / 8;
+  let x = (float(gx) - 3.5) * 1.25 + (u1 - 0.5) * 0.3;
+  let z = (float(gz) - 3.5) * 1.25 + (u2 - 0.5) * 0.3;
+  let size = 0.5 + 0.25 * u3;
+  let h = 2.0 + 6.0 * u1;
+  let tau = 1.2 - 0.5 * u2;
+  let tf = sqrt(2.0 * h / g);
+  let y = h - 0.5 * g * tau * tau;
+  let spin = (u3 - 0.5) * 540.0;
+  let t_spin = tau;
+  if (tau > tf) {
+    let v = e * g * tf;
+    let rem = tau - tf;
+    y = 0.0;
+    let airborne = 1;
+    for (k in range(0, 6)) {
+      let flight = 2.0 * v / g;
+      if (airborne == 1) {
+        if (rem > flight) { rem = rem - flight; v = v * e; }
+        else { y = v * rem - 0.5 * g * rem * rem; airborne = 0; }
+      }
+    }
+    t_spin = tf + 0.25;
+  }
+  let ay = spin * t_spin;
+  let ax = spin * 0.6 * t_spin;
+  y = y + size * 0.5;
+  let cr = 0.45 + 0.5 * u1;
+  let cg = 0.45 + 0.5 * u2;
+  let cb = 0.45 + 0.5 * u3;
+  let m = scene.material(cr, cg, cb, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
+  let o = scene.cube(size);
+  o.rotate_x(ax);
+  o.rotate_z(ay);
+  o.translate(x, 0.0 - z, y);
+  o.set_material(m);
+}
+scene.ground_plane(0.0, 80.0, 0.35, 0.37, 0.4);
+scene.world_color(0.45, 0.6, 0.85, 0.6);
+scene.area_light(-6.0, -7.0, 12.0, 0.0, 0.0, 1.0, 1.0, 0.95, 0.85, 1800.0, 6.0);
+scene.camera_look_at(0.0, -12.0, 7.5, 0.0, 0.0, 2.0, 38.0);
+scene.render_settings(8, 1, true);
+scene.render_png("images/bullet.png", 32, 900, 600);
+end _dsl_
+savedsl(p, out);
+r = system ${dsl_cli(p)} --dsl ${out};
+if (r.code != 0) { println(trim(r.stdout)); println(trim(r.stderr)); }
+assert(r.code == 0);
+println("wrote images/bullet.png");

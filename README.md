@@ -48,10 +48,20 @@ Every picture below is made by one example program. Each one runs from a raw URL
 | <img src="docs/images/pbr-spheres.png" width="290" alt="Metal roughness sweep"> | <img src="docs/images/material-sandbox.png" width="290" alt="Material sandbox"> | <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> |
 | Five gold spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/material-sandbox.lms` | A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/model-viewer.lms` |
 
-| 3D text |   |   |
+| 3D text | Shadows | Multi draw |
 | --- | --- | --- |
-| <img src="docs/images/text.png" width="290" alt="3D text"> |   |   |
-| Two lines with scene.label (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/text.lms` |   |   |
+| <img src="docs/images/text.png" width="290" alt="3D text"> | <img src="docs/images/shadows.png" width="290" alt="Shadows"> | <img src="docs/images/multidraw.png" width="290" alt="Multi draw"> |
+| Two lines with scene.label (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/text.lms` | Floor and four solids lit by a sun (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/shadows.lms` | 180 meshes in six rings (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/multidraw.lms` |
+
+| Sky in mirror spheres | Falling boxes | 3D flow streamlines |
+| --- | --- | --- |
+| <img src="docs/images/cubemap.png" width="290" alt="Sky in mirror spheres"> | <img src="docs/images/bullet.png" width="290" alt="Falling boxes"> | <img src="docs/images/fluidsimulation3d.png" width="290" alt="3D flow streamlines"> |
+| A procedural sky as the cube map, reflected by three mirror spheres (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cubemap.lms` | 64 boxes with closed-form fall and bounce, no engine (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bullet.lms` | 32 ABC-flow streamlines coloured by speed (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation3d.lms` |
+
+| 2D vortex pair |   |   |
+| --- | --- | --- |
+| <img src="docs/images/fluidsimulation2d.png" width="290" alt="2D vortex pair"> |   |   |
+| 40 emissive streamlines of two opposite vortices (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation2d.lms` |   |   |
 
 ## Quick start (one minute)
 

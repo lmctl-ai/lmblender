@@ -15,7 +15,8 @@ mkdir -p "$root/docs/images"
 stories="${*:-caustic-ball-lens sunset-long-shadows god-rays-window cornell-box backlit-skin
   caffeine-molecule dna-double-helix salt-crystal saturn-rings kepler-orbit
   bouncing-ball-strobe gear-pair-render
-  ball-stick buckyball truss-bridge pbr-spheres material-sandbox model-viewer text}"
+  ball-stick buckyball truss-bridge pbr-spheres material-sandbox model-viewer text
+  shadows multidraw cubemap bullet fluidsimulation3d fluidsimulation2d}"
 for name in $stories; do
   start=$(date +%s)
   (cd "$work" && "$LMSCRIPT" "$root/examples/$name.lms" >"$work/$name.log" 2>&1) || {
