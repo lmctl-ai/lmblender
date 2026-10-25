@@ -57,6 +57,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
 if(MSVC)
+  target_sources(lmblender PRIVATE cpp/lmblender.manifest)
   target_compile_options(lmblender PRIVATE /W4)
 else()
   target_compile_options(lmblender PRIVATE -Wall -Wextra -Wpedantic)

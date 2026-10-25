@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #if defined(_WIN32)
+#include <windows.h>
 #include <process.h>
 #include <fcntl.h>
 #include <io.h>
@@ -23,6 +24,8 @@ namespace lmblender::platform {
 inline void binary_stdout()
 {
 #if defined(_WIN32)
+  // The manifest selects UTF-8 for paths/argv; the console has its own code page.
+  SetConsoleOutputCP(CP_UTF8);
   _setmode(_fileno(stdout), _O_BINARY);
 #endif
 }

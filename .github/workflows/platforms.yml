@@ -338,6 +338,8 @@ jobs:
           CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
           LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/portable-deps/prefix
         run: ./test.sh
+      - name: render with Unicode and long Windows paths
+        run: python3 tests/windows_paths.py build/lmblender.exe
       - name: assert only OS DLLs are imported
         run: scripts/check-static.sh build/lmblender.exe | tee build/lmblender.ldd
       - name: render smoke test
