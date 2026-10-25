@@ -83,7 +83,11 @@ diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
 
 "$LMSCRIPT" --dsl-signatures schema/lmblender.dsl.json --without-std >"$build/compiler-host-signatures.txt"
 python3 scripts/merge-std.py --host-only schema/lmblender.dsl.json "$build/host-only-schema.json"
-cmp schema/lmblender.dsl.json "$build/host-only-schema.json"
+python3 - schema/lmblender.dsl.json "$build/host-only-schema.json" <<'PYJSON'
+import json,sys
+from pathlib import Path
+assert json.loads(Path(sys.argv[1]).read_bytes()) == json.loads(Path(sys.argv[2]).read_bytes()), "host schema declares standard members"
+PYJSON
 python3 - "$build" <<'PYHOST'
 import json,runpy,sys
 from pathlib import Path
