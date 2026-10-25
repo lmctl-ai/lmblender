@@ -10,7 +10,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/salt-crystal.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let a = 5.64;
 let step = a * 0.5;
 let chlorine = scene.uv_sphere(1.81, 48, 32, true);
@@ -55,7 +55,7 @@ scene.camera_look_at(19.0, -27.0, 22.0, 0.0, 0.0, 6.8, 37.0);
 scene.render_settings(8, 58, true);
 scene.denoise_quality("high");
 scene.render_png("images/salt-crystal.png", 32, 800, 570);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

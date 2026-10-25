@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/rotation-instance-reject.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let source = scene.cube(1.0);
 let copy = scene.instance_mesh(source, 2.0, 0.0, 0.0, 1.0, 1.0, 1.0);
 copy.rotate_z(20.0);
-end _dsl_
+end _lmcode_
 savedsl(p, out);

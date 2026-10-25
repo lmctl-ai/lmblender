@@ -3,11 +3,11 @@
 // Output policy: build/linked-out is a symlink test.sh creates; a symlinked parent
 // directory is refused with OUTPUT_PATH even without LMBLENDER_OUTPUT_ROOT.
 out = ARGV.len() > 0 ? ARGV[0] : "build/output-symlink.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.0);
 scene.camera_look_at(3.0, -4.0, 2.5, 0.0, 0.0, 0.0, 40.0);
 scene.render_png("build/linked-out/output-symlink.png", 1, 16, 16);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

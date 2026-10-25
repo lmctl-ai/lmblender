@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/import-mesh.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.expect_int(mesh.vertex_count(), 4);
 scene.expect_int(mesh.triangle_count(), 4);
@@ -14,7 +14,7 @@ scene.expect_int(stl.triangle_count(), 1);
 let binary_stl = scene.import_stl("tests/fixtures/one-triangle-binary.stl");
 scene.expect_int(binary_stl.vertex_count(), 3);
 scene.expect_int(binary_stl.triangle_count(), 1);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

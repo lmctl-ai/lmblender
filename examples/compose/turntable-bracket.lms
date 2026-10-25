@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/turntable-bracket.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let bracket = scene.import_stl("build/compose-input/build/bracket.stl");
 let steel = scene.material(0.42, 0.48, 0.56, 0.32, 0.42, 0.0, 0.0, 0.0, 0.0, 0.0);
 bracket.set_material(steel);
@@ -22,7 +22,7 @@ for (i in range(0, 8)) {
   scene.camera_look_at(px, py, 13.0, 0.0, 0.0, 2.3, 45.0);
   scene.render_png("build/compose-bracket-angle-" + str(i) + ".png", 128, 128, 96);
 }
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // system() stops a program after 60 s by default; renders can take longer.
 argv = dsl_cli(p);

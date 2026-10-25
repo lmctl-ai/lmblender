@@ -5,7 +5,7 @@
 // (tests/exposure_quality.py).
 out = ARGV.len() > 0 ? ARGV[0] : "build/exposure.dslb";
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let title = scene.label("HELLO", -2.4, 0.0, 0.3, 0.16);
 title.set_material(scene.material(1.0, 0.75, 0.3, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.ground_plane(0.0, 20.0, 0.8, 0.8, 0.8);
@@ -16,5 +16,5 @@ scene.exposure(-10.0);
 scene.render_png("build/exposure-dark.png", 8, 320, 200);
 scene.exposure(-4.5);
 scene.render_png("build/exposure-fixed.png", 8, 320, 200);
-end _dsl_
+end _lmcode_
 savedsl(p, out);

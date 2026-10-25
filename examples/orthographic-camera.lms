@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/orthographic-camera.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let clay = scene.material(0.55, 0.24, 0.08, 0.0, 0.62, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(clay);
@@ -15,7 +15,7 @@ scene.camera_look_at(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 55.0);
 scene.render_png("images/perspective-reference.png", 64, 512, 384);
 scene.camera_orthographic(2.2, -12.0, 6.0, 0.0, 0.0, 2.0, 7.0);
 scene.render_png("images/orthographic-camera.png", 64, 512, 384);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

@@ -5,7 +5,7 @@ out = ARGV.len() > 0 ? ARGV[0] : "build/level3.dslb";
 mkdir("images");
 mkdir("images/video");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.world_color(0.018,0.026,0.055,0.8); scene.ground_plane(-1.4,40.0,0.035,0.05,0.09);
 scene.area_light(0.0,-8.0,8.0,0.0,0.0,0.0,0.72,0.82,1.0,1100.0,6.0);
 let human=scene.cube(1.0);human.scale(2.4,0.18,1.55);human.translate(-13.0,0.0,0.0);let hm=scene.material(0.10,0.35,0.85,0.12,0.38,0.0,0.0,0.0,0.0,0.2);human.set_material(hm);
@@ -21,7 +21,7 @@ let ar1=scene.arrow_between(-11.7,-0.3,0.0,-5.7,-0.3,0.0,0.11);let ar2=scene.arr
 let msg=scene.glow_orb(-13.0,-0.7,0.0,0.24,1.0,0.07,0.015,5.0);msg.keyframe_transform(0,-13.0,-0.7,0.0,"linear");msg.keyframe_transform(23,13.0,-0.7,0.0,"linear");
 scene.camera_look_at(0.0,-26.0,3.3,0.0,0.0,0.0,39.0);scene.render_preset("draft");scene.render_settings(4,0,true);
 scene.render_sequence("images/video/level3-{frame}.png",0,23,0,640,360);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

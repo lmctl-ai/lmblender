@@ -4,11 +4,11 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-look-at.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.camera_look_at(1.0, -8.0, 2.0, 1.0, 1.5, 2.0, 45.0);
 scene.render_png("images/camera-look-at.png", 32, 256, 192);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

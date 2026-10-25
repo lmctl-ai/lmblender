@@ -5,14 +5,14 @@
 // stay black; the old host added a 550-strength point light whenever there was no *point*
 // light and lit the sphere anyway. tests/pixel_bounds_quality.py checks the maximum.
 out = ARGV.len() > 0 ? ARGV[0] : "build/no-default-light.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 32, 16, true);
 ball.set_material(scene.material(0.9, 0.9, 0.9, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.world_color(0.0, 0.0, 0.0, 0.0);
 scene.area_light(-3.0, -4.0, 4.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 2.0);
 scene.camera_look_at(0.0, -5.0, 1.5, 0.0, 0.0, 0.0, 40.0);
 scene.render_png("build/no-default-light.png", 4, 64, 64);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/primitives-gallery.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(8.0, 3.0);
 let cube = scene.cube(1.7); cube.translate(-5.0,0.0,0.9); cube.set_material(scene.material(0.9,0.12,0.06,0.0,0.3,0.0,0.0,0.0,0.0,0.0));
 let sphere = scene.uv_sphere(0.9,32,20,true); sphere.translate(-2.5,0.0,0.9); sphere.set_material(scene.material(0.05,0.28,0.92,0.0,0.24,0.0,0.0,0.0,0.0,0.0));
@@ -17,7 +17,7 @@ scene.area_light(4.0,-2.0,5.0,0.0,0.0,0.0,0.55,0.7,1.0,700.0,3.0);
 scene.camera_look_at(0.0,-16.0,6.0,0.0,0.0,0.75,38.0);
 scene.render_settings(12,814,true);
 scene.render_png("images/primitives-gallery.png",96,640,480);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

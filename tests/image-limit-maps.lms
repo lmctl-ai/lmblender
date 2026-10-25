@@ -3,13 +3,13 @@
 // Decoded-dimension guard for Material.texture_maps: the roughness slot receives the
 // 400-megapixel build/image-bomb.png and must be refused with IMAGE_LIMIT.
 out = ARGV.len() > 0 ? ARGV[0] : "build/image-limit-maps.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.0);
 let shiny = scene.material(0.8, 0.8, 0.8, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0);
 shiny.texture_maps("", "build/image-bomb.png", "", "");
 cube.set_material(shiny);
 scene.render_png("build/image-limit-maps.png", 1, 16, 16);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

@@ -26,7 +26,7 @@ f 3 4 5
 f 4 1 5
 """;
 write_file("pyramid.obj", obj);
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 ball.translate(0.0, 0.0, 1.0);
 let box = scene.cube(1.6);
@@ -47,7 +47,7 @@ scene.world_color(0.6, 0.7, 0.9, 0.3);
 scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 1.0, 1.0, 0.92, 0.82, 600.0, 3.0);
 scene.camera_look_at(0.0, -9.0, 3.5, 0.0, 0.0, 0.8, 40.0);
 scene.render_png("import-a-mesh.png", 32, 640, 480);
-end _dsl_
+end _lmcode_
 file = "import-a-mesh.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);

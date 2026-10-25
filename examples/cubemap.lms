@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/cubemap.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let chrome = scene.material(0.95, 0.95, 0.97, 1.0, 0.03, 0.0, 0.0, 0.0, 0.0, 0.0);
 let floor = scene.material(0.30, 0.32, 0.36, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
 scene.ground_plane(-1.0, 80.0, 0.30, 0.32, 0.36);
@@ -15,7 +15,7 @@ let s2 = scene.uv_sphere(0.9, 64, 48, true); s2.translate(3.5, -2.0, -0.1); s2.s
 scene.camera_look_at(0.0, -9.0, 1.2, 0.0, 0.0, 0.6, 50.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/cubemap.png", 32, 800, 600);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

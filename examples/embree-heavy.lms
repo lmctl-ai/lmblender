@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/embree-heavy.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(12.0, 3.0);
 let blue = scene.material(0.08,0.28,0.86,0.0,0.3,0.0,0.0,0.0,0.0,0.0);
 let gold = scene.material(0.75,0.34,0.05,0.4,0.22,0.0,0.0,0.0,0.0,0.0);
@@ -19,7 +19,7 @@ scene.point_light(-3.0,-4.0,6.0,1.0,1.0,1.0,550.0);
 scene.camera_look_at(0.0,-16.0,6.0,0.0,0.0,1.0,42.0);
 scene.render_settings(8,2026,false);
 scene.render_png("images/embree-heavy.png",16,640,480);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

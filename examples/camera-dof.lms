@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-dof.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let near = scene.uv_sphere(0.8,48,32,true);
 near.translate(-2.6,-4.0,0.8);
 let red = scene.material(0.9,0.06,0.03,0.0,0.45,0.0,0.0,0.0,0.0,0.0);
@@ -25,7 +25,7 @@ scene.camera_look_at(0.0,-16.0,5.0,0.0,0.0,0.8,42.0);
 scene.camera_dof(3.0,16.5);
 scene.render_settings(12,314159,true);
 scene.render_png("images/camera-dof.png",96,640,480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

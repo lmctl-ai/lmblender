@@ -5,7 +5,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/ball-stick.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let oxygen = scene.material(0.88, 0.08, 0.06, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0);
 let hydrogen = scene.material(0.86, 0.9, 0.96, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0);
 let stick = scene.material(0.48, 0.52, 0.6, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -21,7 +21,7 @@ scene.area_light(5.0, -2.0, 4.0, 0.0, 0.0, 1.5, 0.6, 0.75, 1.0, 300.0, 3.0);
 scene.camera_look_at(0.0, -6.0, 4.0, 0.0, 0.0, 1.9, 38.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/ball-stick.png", 32, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

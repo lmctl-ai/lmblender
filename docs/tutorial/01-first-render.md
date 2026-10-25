@@ -18,11 +18,11 @@ curl -O https://raw.githubusercontent.com/lmctl-ai/lmblender/main/docs/tutorial/
 
 <!-- code: code/01-first-render.lms -->
 ```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 scene.studio_setup();
 scene.render_png("first-render.png", 16, 640, 480);
-end _dsl_
+end _lmcode_
 file = "first-render.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);

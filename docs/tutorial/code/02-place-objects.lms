@@ -1,4 +1,4 @@
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 ball.translate(0.0, 0.0, 1.0);
 let box = scene.cube(1.6);
@@ -7,7 +7,7 @@ let ring = scene.torus(0.8, 0.25, 48, 16, true);
 ring.translate(2.8, 0.0, 0.25);
 scene.studio_setup();
 scene.render_png("place-objects.png", 16, 640, 480);
-end _dsl_
+end _lmcode_
 file = "place-objects.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);

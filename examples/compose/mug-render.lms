@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/compose-mug.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_stl("build/compose-input/build/mug.stl");
 mesh.set_smooth(true);
 # lmcad's revolve_y geometry uses +Y as its upright axis; map that axis to renderer +Z.
@@ -21,7 +21,7 @@ scene.sun_light(0.25, -0.35, -1.0, 0.82, 0.88, 1.0, 0.35, 0.16);
 scene.fit_camera(38.0);
 scene.render_settings(12, 17, true);
 scene.render_png("build/compose-mug.png", 256, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // system() stops a program after 60 s by default; renders can take longer.
 argv = dsl_cli(p);

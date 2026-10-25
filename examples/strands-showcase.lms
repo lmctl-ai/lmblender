@@ -2,7 +2,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/strands-showcase.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(12.0, 3.0);
 scene.world_color(0.12, 0.15, 0.19, 0.38);
 let green = scene.material(0.045,0.38,0.075,0.0,0.52,0.0,0.0,0.0,0.0,0.0);
@@ -19,7 +19,7 @@ scene.area_light(3.0,-4.0,6.0,1.0,0.0,1.0,0.72,0.82,1.0,700.0,4.0);
 scene.camera_look_at(0.0,-11.0,5.0,-0.6,0.0,0.8,42.0);
 scene.render_settings(20,731,true);
 scene.render_png("images/strands-showcase.png",64,960,720);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

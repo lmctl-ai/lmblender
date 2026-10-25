@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/multidraw.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 for (i in range(0, 180)) {
   let ring = i / 30;
   let k = i - ring * 30;
@@ -30,7 +30,7 @@ scene.area_light(8.0, -2.0, 6.0, 0.0, 0.0, 1.0, 0.6, 0.75, 1.0, 700.0, 5.0);
 scene.camera_look_at(0.0, -16.0, 13.0, 0.0, 0.0, 0.5, 42.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/multidraw.png", 32, 700, 500);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

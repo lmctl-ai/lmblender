@@ -4,11 +4,11 @@
 // scene-radius units around the geometry center) must place the camera and render a lit
 // subject; tests/pixel_bounds_quality.py checks the frame is not blank.
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-no-autoframe-position.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 32, 16, true);
 scene.load_preset("tests/presets/no-autoframe-position.json");
 scene.render_png("build/preset-no-autoframe-position.png", 4, 64, 64);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

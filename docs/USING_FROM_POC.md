@@ -7,12 +7,12 @@ Use `@latest` to follow the newest non-draft release; use an exact tag such as
 `PATH` takes precedence. Run the exact host selected by lmscript with `dsl_cli(p)`:
 
 ```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mug = scene.import_stl("assets/mug.stl");
 mug.set_material(scene.material(0.68, 0.31, 0.12, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.studio_setup();
 scene.render_png("mug.png", 0, 1280, 720);
-end _dsl_
+end _lmcode_
 
 file = "mug.dslb";
 savedsl(p, file);

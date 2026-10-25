@@ -4,12 +4,12 @@
 // asset (tests/gltf_transform_quality.py). gallery.glb has two panel nodes.
 out = ARGV.len() > 0 ? ARGV[0] : "build/gltf-transform.dslb";
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let kept = scene.import_gltf("tests/fixtures/gltf/gallery.glb");
 scene.world_color(0.6, 0.6, 0.6, 1.0);
 scene.camera_orthographic(0.0, -10.0, 0.5, 0.0, 0.0, 0.5, 4.0);
 scene.render_png("build/gltf-transform-kept.png", 4, 240, 120);
 kept.translate(30.0, 0.0, 0.0);
 scene.render_png("build/gltf-transform-moved.png", 4, 240, 120);
-end _dsl_
+end _lmcode_
 savedsl(p, out);

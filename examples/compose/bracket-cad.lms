@@ -3,7 +3,7 @@
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/bracket.dslb";
 // examples/compose/run.sh rewrites this schema path to $LMCAD_SOURCE/schema/lmcad.dsl.json.
-p = _dsl_ schema="../lmcad/schema/lmcad.dsl.json";
+p = _lmcode_ schema="../lmcad/schema/lmcad.dsl.json";
 let metal = material().color(0.58, 0.62, 0.68).roughness(0.32);
 let base = scene.box(8.0, 5.0, 0.8, metal).position(0.0, 0.0, 0.4).name("bracket base");
 let back = scene.box(8.0, 0.8, 5.0, metal).position(0.0, 2.1, 2.9).name("bracket back");
@@ -13,5 +13,5 @@ base.union(back); back.visible(false);
 base.union(left); left.visible(false);
 base.union(right); right.visible(false);
 scene.export_stl("build/bracket.stl");
-end _dsl_
+end _lmcode_
 savedsl(p, out);

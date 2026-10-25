@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-maps.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let textured = scene.uv_sphere(0.88, 48, 24, true);
 textured.translate(-1.15, 0.0, 0.90);
 let mapped = scene.material(0.72, 0.22, 0.055, 0.28, 0.46, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -28,7 +28,7 @@ mapped.texture_maps("", "", "", "");
 scene.render_png("images/material-maps-control.png", 48, 640, 480);
 gold.mix_with(blue, 0.5);
 scene.render_png("images/material-mix-factor.png", 48, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

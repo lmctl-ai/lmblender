@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/material-nodes.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let bump_mesh = scene.uv_sphere(1.05, 48, 24, true);
 bump_mesh.translate(-1.45, 0.0, 1.08);
 let bump_mat = scene.material(0.68, 0.18, 0.055, 0.08, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -21,7 +21,7 @@ scene.area_light(4.0, -3.0, 4.0, 0.0, 0.0, 1.0, 0.65, 0.78, 1.0, 220.0, 4.0);
 scene.camera_look_at(0.0, -9.5, 4.0, 0.0, 0.0, 1.0, 45.0);
 scene.render_settings(12, 91, true);
 scene.render_png("images/material-nodes.png", 48, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

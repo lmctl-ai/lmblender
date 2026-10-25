@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/turntable-mug.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mug = scene.import_stl("build/compose-input/build/mug.stl");
 mug.rotate_x(90.0);
 mug.translate(0.0, 0.0, 7.0);
@@ -26,7 +26,7 @@ for (i in range(0, 8)) {
   scene.camera_look_at(px, py, 12.0, 0.0, 0.0, 7.0, 45.0);
   scene.render_png("build/compose-mug-angle-" + str(i) + ".png", 128, 128, 96);
 }
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // system() stops a program after 60 s by default; renders can take longer.
 argv = dsl_cli(p);

@@ -1,5 +1,5 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-explicit-overrides.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.8);
 cube.set_material(scene.material(0.82, 0.035, 0.025, 0.0, 0.72, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.use_preset("product-studio");
@@ -14,7 +14,7 @@ cube.set_material(scene.material(0.82, 0.82, 0.82, 0.0, 0.72, 0.0, 0.0, 0.0, 0.0
 scene.world_color(0.0, 0.0, 0.0, 0.0);
 scene.area_light(-3.0, -4.0, 4.5, 0.0, 0.0, 0.0, 0.02, 1.0, 0.025, 1800.0, 2.0);
 scene.render_png("build/preset-override-light.png", 12, 320, 240);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

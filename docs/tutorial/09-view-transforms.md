@@ -26,7 +26,7 @@ f 3 4 5
 f 4 1 5
 """;
 write_file("pyramid.obj", obj);
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 ball.translate(0.0, 0.0, 1.0);
 let box = scene.cube(1.6);
@@ -53,7 +53,7 @@ scene.set_view_transform("Standard");
 scene.render_png("view-standard.png", 32, 320, 240);
 scene.set_view_transform("AgX");
 scene.render_png("view-agx.png", 32, 320, 240);
-end _dsl_
+end _lmcode_
 file = "view-transforms.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);

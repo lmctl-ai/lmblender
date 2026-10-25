@@ -7,7 +7,7 @@ out = ARGV.len() > 0 ? ARGV[0] : "build/level-4-automation.dslb";
 mkdir("images");
 mkdir("build");
 mkdir("build/level-4-automation");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 
 # lmblender 0.3.1. No aspect compensation (fixed in 0.2.2). Named preset for
 # the render profile; samples raised to 64 spp per the quality-first note.
@@ -154,7 +154,7 @@ scene.render_sequence("build/level-4-automation/frame-{frame}.png", 0, 59, 0, 64
 scene.render_sequence("build/level-4-automation/frame-{frame}.png", 60, 119, 0, 640, 360);
 scene.render_sequence("build/level-4-automation/frame-{frame}.png", 120, 179, 0, 640, 360);
 scene.render_sequence("build/level-4-automation/frame-{frame}.png", 180, 239, 0, 640, 360);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
 argv = dsl_cli(p);

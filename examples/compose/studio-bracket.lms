@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/studio-bracket.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let bracket = scene.import_stl("build/compose-input/build/bracket.stl");
 let steel = scene.material(0.48, 0.55, 0.64, 0.62, 0.28, 0.0, 0.0, 0.0, 0.0, 0.0);
 bracket.set_material(steel);
 scene.studio_setup();
 scene.render_settings(12, 23, true);
 scene.render_png("build/studio-bracket.png", 96, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // system() stops a program after 60 s by default; renders can take longer.
 argv = dsl_cli(p);

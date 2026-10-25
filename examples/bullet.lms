@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/bullet.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let g = 9.81;
 let e = 0.5;
 let seed = 4242;
@@ -59,7 +59,7 @@ scene.area_light(-6.0, -7.0, 12.0, 0.0, 0.0, 1.0, 1.0, 0.95, 0.85, 1800.0, 6.0);
 scene.camera_look_at(0.0, -12.0, 7.5, 0.0, 0.0, 2.0, 38.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/bullet.png", 32, 900, 600);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

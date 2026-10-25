@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/display-transforms.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let panel = scene.import_obj("tests/fixtures/emission-panel.obj");
 let emitter = scene.material(0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.18, 0.18, 0.18, 1.0);
 panel.set_material(emitter);
@@ -16,7 +16,7 @@ scene.set_view_transform("Filmic");
 scene.render_png("images/display-filmic.png", 8, 64, 64);
 scene.set_view_transform("AgX");
 scene.render_png("images/display-agx.png", 8, 64, 64);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/camera-aspect-cube.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.0);
 cube.set_material(scene.material(0.025, 0.8, 0.04, 0.0, 0.65, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.area_light(-3.0, -4.0, 4.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.8, 700.0, 4.0);
@@ -15,7 +15,7 @@ scene.render_png("build/camera-aspect-ortho-cube-16x9.png", 12, 320, 180);
 scene.render_png("build/camera-aspect-ortho-cube-4x3.png", 12, 240, 180);
 scene.render_png("build/camera-aspect-ortho-cube-1x1.png", 12, 200, 200);
 scene.render_png("build/camera-aspect-ortho-cube-9x16.png", 12, 180, 320);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

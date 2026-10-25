@@ -3,14 +3,14 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-external.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.5);
 scene.load_preset("examples/presets/technical-clean.external.json");
 cube.set_material(scene.material_from_palette("body"));
 scene.preset_param("samples",16.0);
 scene.render_settings(2,17,true);
 scene.render_png("images/preset-external.png",8,320,240);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

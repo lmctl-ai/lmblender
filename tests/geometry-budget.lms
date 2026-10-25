@@ -4,12 +4,12 @@
 // per-mesh and object-count caps but must be refused with GEOMETRY_BUDGET once the
 // scene holds 10 million vertices, before any render allocates them in Cycles.
 out = ARGV.len() > 0 ? ARGV[0] : "build/geometry-budget.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 for (i in range(0, 200)) {
   scene.uv_sphere(1.0, 256, 256, true);
 }
 scene.render_png("build/geometry-budget.png", 1, 16, 16);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

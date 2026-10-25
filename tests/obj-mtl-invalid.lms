@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/obj-mtl-invalid.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let pair = scene.import_obj("tests/fixtures/obj-mtl/study-bad.obj");
 scene.render_png("build/obj-mtl-invalid.png", 8, 64, 64);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

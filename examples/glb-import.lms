@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/glb-import.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let asset = scene.import_gltf("tests/fixtures/gltf/gallery.glb");
 scene.expect_int(asset.vertex_count(), 8);
 scene.expect_int(asset.triangle_count(), 4);
@@ -13,7 +13,7 @@ scene.area_light(0.0, -4.5, 4.5, 0.0, 0.0, 1.0, 1.0, 0.95, 0.85, 180.0, 4.0);
 scene.camera_look_at(0.0, -9.0, 2.8, 0.0, 0.0, 1.0, 42.0);
 scene.render_settings(8, 31, false);
 scene.render_png("images/import-gltf-glb.png", 20, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

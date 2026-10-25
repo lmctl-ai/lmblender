@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 out = ARGV.len() > 0 ? ARGV[0] : "build/studio-plate.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let plate = scene.import_stl("build/compose-input/build/plate-with-holes.stl");
 plate.rotate_x(90.0); plate.translate(0.0, 0.0, 0.6);
 let alloy = scene.material(0.72, 0.34, 0.12, 0.68, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0);
@@ -10,7 +10,7 @@ plate.set_material(alloy);
 scene.studio_setup();
 scene.render_settings(12, 23, true);
 scene.render_png("build/studio-plate.png", 96, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // system() stops a program after 60 s by default; renders can take longer.
 argv = dsl_cli(p);

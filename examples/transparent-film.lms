@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/transparent-film.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.uv_sphere(1.0,48,32,true); mesh.translate(0.0,0.0,1.0);
 mesh.set_material(scene.material(0.06,0.42,0.92,0.0,0.3,0.0,0.0,0.0,0.0,0.0));
 scene.checker_ground(2.5,4.0);
@@ -12,7 +12,7 @@ scene.fit_camera(46.0);
 scene.transparent_background(true);
 scene.render_settings(12,23,true);
 scene.render_png("images/transparent-film.png", 64, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

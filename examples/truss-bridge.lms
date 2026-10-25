@@ -7,7 +7,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/truss-bridge.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let steel = scene.material(0.30, 0.33, 0.38, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0);
 let deck_mat = scene.material(0.74, 0.72, 0.68, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
 let n = 6;
@@ -89,7 +89,7 @@ scene.area_light(30.0, -8.0, 10.0, 0.0, 0.0, 0.0, 0.6, 0.75, 1.0, 1500.0, 8.0);
 scene.camera_look_at(1.0, -27.0, 9.5, 12.0, 0.0, 1.3, 28.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/truss-bridge.png", 32, 900, 400);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

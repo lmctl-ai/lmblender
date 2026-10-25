@@ -4,11 +4,11 @@
 // faces, not a smeared average (tests/primitive_uv_quality.py).
 out = ARGV.len() > 0 ? ARGV[0] : "build/primitive-uv.dslb";
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(2.0);
 cube.set_material(scene.image_material("tests/fixtures/checker-texture.png", 0.5));
 scene.world_color(1.0, 1.0, 1.0, 1.0);
 scene.camera_orthographic(0.0, -6.0, 0.0, 0.0, 0.0, 0.0, 1.6);
 scene.render_png("build/primitive-uv.png", 16, 160, 160);
-end _dsl_
+end _lmcode_
 savedsl(p, out);

@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/image-texture.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/texture-cube.obj");
 let image = scene.image_material("tests/fixtures/checker-texture.png", 0.42);
 mesh.set_material(image);
@@ -13,7 +13,7 @@ scene.world_color(0.12, 0.14, 0.18, 0.35);
 scene.area_light(-4.0, -6.0, 8.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.8, 1000.0, 4.0);
 scene.camera_look_at(2.4, -4.6, 2.8, 0.0, 0.0, 0.0, 50.0);
 scene.render_png("images/image-texture.png", 64, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

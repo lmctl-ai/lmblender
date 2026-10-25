@@ -6,11 +6,11 @@
 // ceiling disabled (expects RUN_TIMEOUT); both must exit non-zero with the standard JSON
 // result line instead of running to completion.
 out = ARGV.len() > 0 ? ARGV[0] : "build/run-budget.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 for (i in range(0, 4000000000)) {
   scene.expect_int(i, i);
 }
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

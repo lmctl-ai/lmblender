@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/strand-geometry.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let path = scene.strand("0,0,0; 0,0,1; 0.3,0,2; 0.7,0,3", 0.1, 0.0, 12);
 scene.expect_int(path.vertex_count(), 48);
 scene.expect_int(path.triangle_count(), 92);
@@ -11,7 +11,7 @@ scene.expect_int(hair.triangle_count(), 10800);
 let grass = scene.hair_patch(0.0,0.0,0.0,2.0,24,1.0,0.02);
 scene.expect_int(grass.vertex_count(), 576);
 scene.expect_int(grass.triangle_count(), 1056);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

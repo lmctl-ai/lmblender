@@ -2,7 +2,7 @@
 // the pinned Linux host release; with lmblender on PATH, it uses that binary.
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.4);
 cube.set_material(scene.material(0.12, 0.38, 0.82, 0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.world_color(0.12, 0.15, 0.2, 0.4);
@@ -10,7 +10,7 @@ scene.area_light(-3.0, -4.0, 5.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.75, 450.0, 3.0);
 scene.camera_look_at(0.0, -6.0, 2.2, 0.0, 0.0, 0.0, 42.0);
 scene.render_settings(3, 17, false);
 scene.render_png("images/install-and-run.png", 8, 320, 240);
-end _dsl_
+end _lmcode_
 
 file = "build/install-and-run.dslb";
 savedsl(p, file);

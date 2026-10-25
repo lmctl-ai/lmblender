@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/model-viewer.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let body = scene.material(0.7, 0.72, 0.78, 0.3, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0);
 let eye = scene.material(0.1, 0.8, 0.9, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0);
 let torso = scene.cube(1.0); torso.scale(1.4, 1.0, 1.8); torso.translate(0.0, 0.0, 2.05); torso.set_material(body);
@@ -22,7 +22,7 @@ scene.area_light(8.0, -2.0, 6.0, 0.0, 0.0, 1.0, 0.6, 0.75, 1.0, 700.0, 5.0);
 scene.camera_look_at(4.0, -7.0, 4.5, 0.0, 0.0, 2.2, 35.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/model-viewer.png", 32, 640, 640);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

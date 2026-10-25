@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/fluidsimulation3d.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let aa = 1.0;
 let bb = 0.8165;
 let cc = 0.5774;
@@ -48,7 +48,7 @@ scene.area_light(8.0, 4.0, 8.0, 0.0, 0.0, 4.0, 0.6, 0.75, 1.0, 900.0, 5.0);
 scene.camera_look_at(10.0, -13.0, 13.0, 0.0, 0.0, 4.0, 34.0);
 scene.render_settings(8, 1, true);
 scene.render_png("images/fluidsimulation3d.png", 32, 800, 600);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

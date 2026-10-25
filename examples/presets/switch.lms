@@ -3,7 +3,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-switch.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.cube(1.2);
 scene.use_preset("product-studio");
 let accent = scene.material_from_palette("accent");
@@ -13,7 +13,7 @@ let cube = scene.cube(0.8); cube.translate(-1.5,0.0,0.0); cube.set_material(acce
 scene.preset_param("samples",16.0);
 scene.render_settings(2,17,true);
 scene.render_png("images/preset-switch.png",16,320,240);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

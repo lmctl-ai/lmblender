@@ -4,11 +4,11 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/render-timeout.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 scene.render_timeout(1);
 scene.render_png("images/render-timeout.png", 65536, 1024, 1024);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

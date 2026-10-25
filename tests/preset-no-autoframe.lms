@@ -4,11 +4,11 @@
 // the camera at the world origin (a NaN basis when geometry is centered there). It must
 // now be refused with PRESET_INVALID at load time.
 out = ARGV.len() > 0 ? ARGV[0] : "build/preset-no-autoframe.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 32, 16, true);
 scene.load_preset("tests/presets/no-autoframe-missing.json");
 scene.render_png("build/preset-no-autoframe.png", 1, 16, 16);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

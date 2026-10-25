@@ -10,14 +10,14 @@ Copy this skeleton; everything between the `_dsl_` line and `end _dsl_` is lmble
 
 ```text
 mkdir("out", true);
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 ball.set_material(scene.material(0.1, 0.3, 0.8, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0));
 scene.ground_plane(-1.0, 20.0, 0.8, 0.8, 0.8);
 scene.area_light(-4.0, -5.0, 6.0, 0.0, 0.0, 0.0, 1.0, 0.9, 0.8, 500.0, 4.0);
 scene.camera_look_at(0.0, -6.0, 2.5, 0.0, 0.0, 0.0, 45.0);
 scene.render_png("out/ball.png", 64, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, "out/scene.dslb");
 let exe = dsl_cli(p).get(0, "lmblender");
 let run = system([exe, "--dsl", "out/scene.dslb"], 3600000);

@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/procedural-materials.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let checker_mesh = scene.import_obj("tests/fixtures/tetra.obj");
 checker_mesh.translate(-2.4, 0.0, 0.0);
 let checker = scene.checker_material(0.9, 0.12, 0.035, 0.95, 0.78, 0.34, 4.0, 0.36);
@@ -20,7 +20,7 @@ scene.area_light(3.0, -5.0, 7.0, 2.4, 0.0, 1.0, 0.65, 0.82, 1.0, 1900.0, 5.0);
 scene.camera_look_at(0.0, -15.0, 2.0, 0.0, 0.0, 2.0, 35.0);
 scene.render_settings(8, 31, false);
 scene.render_png("images/procedural-materials.png", 96, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

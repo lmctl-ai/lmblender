@@ -3,11 +3,11 @@
 // Output policy: with LMBLENDER_OUTPUT_ROOT=build a render outside the root must be
 // refused with OUTPUT_PATH before anything is written.
 out = ARGV.len() > 0 ? ARGV[0] : "build/output-escape.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let cube = scene.cube(1.0);
 scene.camera_look_at(3.0, -4.0, 2.5, 0.0, 0.0, 0.0, 40.0);
 scene.render_png("/tmp/lmblender-output-escape.png", 1, 16, 16);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

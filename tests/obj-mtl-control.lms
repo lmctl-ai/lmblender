@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 // SPDX-License-Identifier: MIT
 out = ARGV.len() > 0 ? ARGV[0] : "build/obj-mtl-control.dslb";
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let pair = scene.import_obj("tests/fixtures/obj-mtl/study-flat.obj");
 scene.expect_int(pair.material_count(), 2);
 scene.checker_ground(8.0, 4.0);
@@ -11,7 +11,7 @@ scene.area_light(1.3, -4.0, 0.3, 1.3, 0.0, 0.8, 1.0, 1.0, 1.0, 100.0, 0.35);
 scene.camera_look_at(0.0, -7.5, 4.0, 0.0, 0.0, 0.85, 42.0);
 scene.render_settings(8, 1928, true);
 scene.render_png("build/obj-mtl-control.png", 64, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
 push(argv, "--dsl");

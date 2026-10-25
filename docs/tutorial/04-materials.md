@@ -12,7 +12,7 @@ curl -O https://raw.githubusercontent.com/lmctl-ai/lmblender/main/docs/tutorial/
 
 <!-- code: code/04-materials.lms -->
 ```lmscript
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ball = scene.uv_sphere(1.0, 48, 24, true);
 ball.translate(0.0, 0.0, 1.0);
 let box = scene.cube(1.6);
@@ -25,7 +25,7 @@ ring.set_material(scene.material(0.95, 0.7, 0.2, 1.0, 0.25, 0.0, 0.0, 0.0, 0.0, 
 scene.studio_setup();
 scene.camera_look_at(0.0, -9.0, 3.5, 0.0, 0.0, 0.8, 40.0);
 scene.render_png("materials.png", 32, 640, 480);
-end _dsl_
+end _lmcode_
 file = "materials.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);

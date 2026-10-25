@@ -16,7 +16,7 @@ Dependency sources live under `build/blender-deps-environment/build` and harvest
 ## Build Cycles and lmblender
 
 ```sh
-npm install --global @lmctl-ai/lmctl@0.2.347
+npm install --global @lmctl-ai/lmctl@0.2.419
 scripts/sync-sdk.sh --verify
 BLENDER_SOURCE_TREE="$PWD/build/blender-src-upstream-v5.2.2" scripts/fetch-cycles-source.sh
 BLENDER_SOURCE_TREE="$PWD/build/blender-src-upstream-v5.2.2" \

@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/denoise-quality.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let mesh = scene.import_obj("tests/fixtures/tetra.obj");
 let blue = scene.material(0.04, 0.12, 0.8, 0.0, 0.28, 0.0, 0.0, 0.0, 0.0, 0.0);
 mesh.set_material(blue);
@@ -18,7 +18,7 @@ scene.render_settings(8, 314159, true);
 scene.render_png("images/denoise-filtered.png", 4, 192, 144);
 scene.render_settings(8, 314159, false);
 scene.render_png("images/denoise-reference.png", 64, 192, 144);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

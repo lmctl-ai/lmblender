@@ -4,14 +4,14 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/video-throughput.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let orb = scene.uv_sphere(1.0, 32, 16, true);
 let gold = scene.material(0.8, 0.36, 0.07, 0.15, 0.24, 0.0, 0.0, 0.0, 0.0, 0.0);
 orb.set_material(gold);
 scene.studio_setup();
 scene.render_preset("final");
 scene.render_png("images/video-throughput.png", 0, 1280, 720);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

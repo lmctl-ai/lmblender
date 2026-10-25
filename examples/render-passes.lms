@@ -4,14 +4,14 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/render-passes.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let ramp = scene.import_obj("tests/fixtures/depth-ramp.obj");
 let matte = scene.material(0.45, 0.52, 0.63, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0);
 ramp.set_material(matte);
 scene.world_color(0.04, 0.04, 0.04, 0.3);
 scene.camera_look_at(0.0, -5.0, 4.0, 0.0, 2.0, 0.0, 48.0);
 scene.render_passes("images/passes-ramp", 16, 128, 128);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

@@ -4,7 +4,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/obj-mtl-gallery.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let pair = scene.import_obj("tests/fixtures/obj-mtl/study.obj");
 scene.expect_int(pair.vertex_count(), 16);
 scene.expect_int(pair.triangle_count(), 24);
@@ -16,7 +16,7 @@ scene.area_light(1.3, -4.0, 0.3, 1.3, 0.0, 0.8, 1.0, 1.0, 1.0, 100.0, 0.35);
 scene.camera_look_at(0.0, -7.5, 4.0, 0.0, 0.0, 0.85, 42.0);
 scene.render_settings(8, 1928, true);
 scene.render_png("images/obj-mtl-gallery.png", 64, 640, 480);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

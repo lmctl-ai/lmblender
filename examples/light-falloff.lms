@@ -2,7 +2,7 @@
 out = ARGV.len() > 0 ? ARGV[0] : "build/light-falloff.dslb";
 mkdir("images");
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 scene.checker_ground(14.0,3.0);
 let red = scene.material(0.78,0.045,0.025,0.0,0.62,0.0,0.0,0.0,0.0,0.0);
 let blue = scene.material(0.025,0.15,0.82,0.0,0.62,0.0,0.0,0.0,0.0,0.0);
@@ -16,7 +16,7 @@ scene.area_light_shape(2.0,-1.5,2.5,2.0,0.0,0.7,0.0,0.0,1.0,500.0,1.5,1.5,"disk"
 scene.camera_look_at(0.7,-17.0,5.4,0.7,0.0,0.7,30.0);
 scene.render_settings(24,427,true);
 scene.render_png("images/light-falloff.png",64,640,480);
-end _dsl_
+end _lmcode_
 savedsl(p,out);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);

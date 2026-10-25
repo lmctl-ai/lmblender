@@ -3,7 +3,7 @@
 // Two adjacent hair patches must not repeat the same blade layout (tests/hair_tiling_quality.py).
 out = ARGV.len() > 0 ? ARGV[0] : "build/hair-tiling.dslb";
 mkdir("build");
-p = _dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
+p = _lmcode_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";
 let left = scene.hair_patch(-1.0, 0.0, 0.0, 2.0, 600, 0.3, 0.02);
 let right = scene.hair_patch(1.0, 0.0, 0.0, 2.0, 600, 0.3, 0.02);
 let grass = scene.material(0.9, 0.9, 0.9, 0.0, 0.6, 0.0, 0.9, 0.9, 0.9, 1.0);
@@ -12,5 +12,5 @@ right.set_material(grass);
 scene.world_color(0.0, 0.0, 0.0, 1.0);
 scene.camera_orthographic(0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 2.0);
 scene.render_png("build/hair-tiling.png", 8, 400, 200);
-end _dsl_
+end _lmcode_
 savedsl(p, out);
