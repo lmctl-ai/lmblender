@@ -2,6 +2,7 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
+LMSCRIPT="$(LMSCRIPT_BIN="${LMSCRIPT:-${LMSCRIPT_BIN:-}}" scripts/select-compiler.sh)"
 build=${LMBLENDER_BUILD_DIR:-$root/build}
 exe_suffix=
 build_path=$build
@@ -79,6 +80,21 @@ cmp schema/lmblender.dsl.json <("$exe" --schema --json)
 "$exe" --dsl-signatures >"$build/host-signatures.txt"
 "${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
 diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
+
+"$LMSCRIPT" --dsl-signatures schema/lmblender.dsl.json --without-std >"$build/compiler-host-signatures.txt"
+python3 scripts/merge-std.py --host-only schema/lmblender.dsl.json "$build/host-only-schema.json"
+cmp schema/lmblender.dsl.json "$build/host-only-schema.json"
+python3 - "$build" <<'PYHOST'
+import json,runpy,sys
+from pathlib import Path
+build=Path(sys.argv[1])
+bridge=runpy.run_path('scripts/merge-std.py')
+standard=bridge['canonical_signatures'](json.loads(Path('cpp/std/lmcode-std.schema.json').read_text()))
+registry=set((build/'host-signatures.txt').read_text().splitlines())
+(build/'host-only-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
+PYHOST
+diff -u "$build/compiler-host-signatures.txt" "$build/host-only-signatures.txt"
+
 # docs/LLM_GUIDE.md carries the same list for DSL authors; it must not drift from the binary.
 python3 scripts/update-llm-guide.py --binary "$exe" --check
 python3 tests/schema_host_protocol.py "$build/schema-summary.txt" "$build/host-signatures.txt"

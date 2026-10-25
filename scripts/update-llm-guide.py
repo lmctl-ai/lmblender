@@ -10,6 +10,8 @@ The block is the fenced ```text section that follows the "## Host API signatures
 heading; everything else in the guide is left untouched.
 """
 import argparse
+import json
+import runpy
 import re
 import subprocess
 import sys
@@ -49,7 +51,11 @@ def main():
     parser.add_argument("--binary", required=True, help="lmblender executable to query")
     parser.add_argument("--check", action="store_true", help="exit 1 instead of rewriting when the block is stale")
     args = parser.parse_args()
-    signatures = subprocess.run([args.binary, "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.strip()
+    effective = subprocess.run([args.binary, "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
+    root = GUIDE.parent.parent
+    bridge = runpy.run_path(str(root / "scripts/merge-std.py"))
+    standard = bridge["canonical_signatures"](json.loads((root / "cpp/std/lmcode-std.schema.json").read_text()))
+    signatures = "\n".join(line for line in effective if line not in standard)
     text = GUIDE.read_text(encoding="utf-8")
     span = locate_block(text)
     if not span:

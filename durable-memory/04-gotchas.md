@@ -17,3 +17,5 @@
 - View LUTs: a log1p(v) shaper put the first LUT step at 0.093 linear and crushed dark tones by up to 20/255.
   The shaper is now log1p(64 v); Standard is evaluated analytically. Re-bake with tools/generate_view_luts.py.
 - The fallback camera (no camera call) needs the same pixel-aspect correction as explicit cameras.
+
+Compiler pins/minimum are 0.2.420; the complete pinned SDK registers std by default, the embedded renderer schema stays host-only, and API-guide checks filter canonical std signatures from the effective registry.

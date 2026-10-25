@@ -230,9 +230,10 @@ def vendored_entries():
             "blender_mirror_uri": None,
             "file": None,
             "hash_type": "sha256 (of cpp/dslvm.hpp)",
-            "hash": lock["sha256"],
+            "hash": lock.get("sha256.cpp/dslvm.hpp", lock.get("sha256")),
+            "pinned_files": {key[7:]: value for key, value in lock.items() if key.startswith("sha256.")},
             "license": "SPDX:MIT",
-            "role": "linked (header-only DSL VM); source is inside lmblender/",
+            "role": "linked (header-only DSL VM and std); per-file hashes in sdk.lock; source is inside lmblender/",
             "shipped": "lmblender/cpp/dslvm.hpp",
         },
         {

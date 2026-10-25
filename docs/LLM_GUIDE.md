@@ -40,7 +40,7 @@ Coordinates are right-handed, Z-up, with +X right and +Y away from the default v
 
 ## Host API signatures
 
-This list is generated from `lmblender --dsl-signatures` by `scripts/update-llm-guide.py`; `test.sh` fails when it drifts:
+This host-only list is generated from `lmblender --dsl-signatures` by `scripts/update-llm-guide.py`; the SDK standard signatures are filtered out and `test.sh` fails when host declarations drift. String, math, collection and byte-file functions are built in through lmcode std and need no host schema declarations:
 
 ```text
 context scene: Scene
