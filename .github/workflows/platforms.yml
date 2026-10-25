@@ -338,6 +338,10 @@ jobs:
           CYCLES_BUILD_DIR: ${{ github.workspace }}/build/cycles-static
           LMBLENDER_STATIC_PREFIX: ${{ github.workspace }}/build/portable-deps/prefix
         run: ./test.sh
+      - name: assert baseline Windows host and Cycles compile flags
+        run: |
+          python3 tests/windows_isa_test.py
+          python3 scripts/check-windows-isa.py build/host build/cycles-static
       - name: render with Unicode and long Windows paths
         run: python3 tests/windows_paths.py build/lmblender.exe
       - name: assert only OS DLLs are imported

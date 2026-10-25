@@ -1,5 +1,14 @@
 ## Unreleased
 
+Windows binaries now embed UTF-8 and long-path manifest settings and select
+UTF-8 console output. CI checks rendering from a Unicode directory to a PNG
+path longer than 260 characters, and guards host/Cycles CPU compile flags.
+Windows x64 retains an SSE4.2 baseline; AVX2/AVX-512 kernels use runtime dispatch.
+For unsigned downloads, verify SHA256 before using PowerShell `Unblock-File`
+or **Properties → Unblock**; SmartScreen may offer **More info → Run anyway**.
+See [Windows download verification](../README.md#windows-download-verification)
+for the checksum commands and long-path OS policy requirement.
+
 `import_gltf` now returns a single Mesh holding every node and primitive, with glTF materials as
 per-triangle slots. Before, each node became a separate object and only the first was returned, so
 `translate`/`scale` on a multi-node asset left the other nodes behind (overlapping panels rendered

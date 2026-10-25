@@ -77,6 +77,33 @@ The four 10 s clips on the [lmctl.com](https://lmctl.com) homepage, one per leve
 | <img src="docs/images/level-3-hands-off-lead.gif" width="440" alt="Level 3: a hands-off Lead"> | <img src="docs/images/level-4-automation.gif" width="440" alt="Level 4: automation"> |
 | A requirement and its checklist enter; a reviewed result returns<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-3-hands-off-lead.lms`<br>[MP4](docs/videos/level-3-hands-off-lead.mp4) | A brainstorm becomes a Work, Review, QA and Acceptance pipeline<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-4-automation.lms`<br>[MP4](docs/videos/level-4-automation.mp4) |
 
+## Windows download verification
+
+Download `lmblender-windows-x64.exe` and `lmblender-windows-x64.exe.sha256` from
+**the same release** on the [release page](https://github.com/lmctl-ai/lmblender/releases).
+In PowerShell, verify the file before running or unblocking it:
+
+```powershell
+$expected = ((Get-Content .\lmblender-windows-x64.exe.sha256 -Raw).Trim() -split '\s+')[0]
+$actual = (Get-FileHash .\lmblender-windows-x64.exe -Algorithm SHA256).Hash
+if ($expected -notmatch '^[0-9a-fA-F]{64}$' -or $actual -ne $expected) {
+    throw 'SHA256 mismatch; do not run this download'
+}
+Unblock-File .\lmblender-windows-x64.exe
+.\lmblender-windows-x64.exe --version
+```
+
+The executable is unsigned, so Windows SmartScreen may show **Windows protected
+your PC**. After verifying the download and its source, choose **More info → Run
+anyway** if offered. Alternatively, right-click the verified file, choose
+**Properties → Unblock → Apply** (the PowerShell command above does this too).
+Managed devices may prohibit running unsigned programs; use your administrator's
+approved process rather than disabling SmartScreen.
+
+Windows UTF-8 paths require Windows 10 version 1903 or newer. Paths beyond 260
+characters also require Windows' **Enable Win32 long paths** policy
+(`LongPathsEnabled=1`); the executable opts in with its embedded manifest.
+
 ## Quick start (one minute)
 
 ```sh

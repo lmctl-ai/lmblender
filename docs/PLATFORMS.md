@@ -119,3 +119,27 @@ Linux prefix is a few hundred MB, so five platforms fit.
 
 The release job `needs:` every required platform. Experimental platforms don't block it, and the
 job publishes whichever binaries were built.
+
+### Windows x64 CPU baseline audit
+
+Windows targets x64 with SSE4.2, not AVX2/AVX-512 as a universal requirement.
+The MSVC host uses no `/arch:AVX*` flag. The pinned [standalone Cycles build
+system](https://github.com/blender/cycles/blob/3b97e190c5ff1a2ed2160d879ad5bf95bea7b8ba/src/CMakeLists.txt)
+keeps general code at its SSE4.2 baseline; Blender's CPU kernel CMake applies
+`/arch:AVX2` only to `kernel_avx2.cpp`. `CPUKernelFunction` selects that variant
+only after `system_cpu_support_avx2()` succeeds. Native-only compilation is off.
+`build-deps-portable.sh` explicitly builds Windows Embree with SSE4.2 only and
+its AVX/AVX2/AVX-512 targets disabled.
+
+Pinned [OIDN 2.5 CPU configuration](https://github.com/RenderKit/oidn/blob/v2.5.0/devices/cpu/CMakeLists.txt)
+compiles ISPC targets `sse4.1-i32x8`, `avx2-i32x8`, and AVX-512 variants together;
+ISPC emits runtime dispatch. Its [MSVC platform flags](https://github.com/RenderKit/oidn/blob/v2.5.0/cmake/oidn_platform.cmake)
+do not globally request AVX. OIDN's oneDNN backend also dispatches/JITs for the
+CPU. The build does not set ISPC `--cpu=native` or a host-specific CPU target.
+
+CI runs `scripts/check-windows-isa.py` on the actual host and cached Cycles Ninja
+compile commands. It rejects native-only compilation and elevated ISA flags
+outside the specific dispatched Cycles translation unit. This checks compiler
+flags, not every instruction or third-party intrinsic. A whole-executable
+"no AVX" scan would incorrectly reject OIDN/Cycles dispatch kernels. Running on
+physical SSE4.2-only hardware remains a useful independent compatibility test.
