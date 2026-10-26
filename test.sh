@@ -19,6 +19,18 @@ esac
 blender_source=${BLENDER_SOURCE_TREE:-$build/blender-src-upstream-v5.2.2}
 deps_install=${BLENDER_DEPS_INSTALL:-$build/blender-deps-harvest}
 [ -d "$blender_source" ] || { echo "pinned Blender source missing at $blender_source: run scripts/fetch-cycles-source.sh or set BLENDER_SOURCE_TREE" >&2; exit 2; }
+cycles_build=${CYCLES_BUILD_DIR:-$build/cycles-static}
+static_prefix=${LMBLENDER_STATIC_PREFIX:-$build/static-prefix-gcc14}
+missing_inputs=()
+[ -f "$blender_source/intern/atomic/atomic_ops.h" ] || missing_inputs+=("$blender_source/intern/atomic/atomic_ops.h")
+[ -f "$cycles_build/lib/libcycles_session.a" ] || missing_inputs+=("$cycles_build/lib/libcycles_session.a")
+[ -f "$static_prefix/include/OpenImageIO/paramlist.h" ] || missing_inputs+=("$static_prefix/include/OpenImageIO/paramlist.h")
+if [ "${#missing_inputs[@]}" -ne 0 ]; then
+  printf 'missing lmblender native build inputs:\n' >&2
+  printf '  %s\n' "${missing_inputs[@]}" >&2
+  printf 'run scripts/bootstrap-static-deps.sh, scripts/build-deps.sh, scripts/build-oidn-static.sh, and scripts/configure-cycles-static.sh first (or set their documented path overrides).\n' >&2
+  exit 2
+fi
 mkdir -p "$build"
 find "$build" -maxdepth 1 -type f \
   \( -name '*.png' -o -name '*.exr' -o -name '*.apng' -o -name '*.dslb' \

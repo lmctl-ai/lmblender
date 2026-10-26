@@ -56,6 +56,16 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cycles_config.h"
   "#pragma once\n#include <cstring>\n#if defined(__aarch64__)\n#include <arm_neon.h>\n#endif\n#define CCL_NAMESPACE_BEGIN namespace ccl {\n#define CCL_NAMESPACE_END }\n${LMBLENDER_CYCLES_DEFINES}")
 add_executable(lmblender cpp/main.cpp)
 target_include_directories(lmblender PRIVATE cpp third_party "${CMAKE_CURRENT_BINARY_DIR}/generated")
+if(EXISTS "${BLENDER_SOURCE_TREE}/intern/atomic/atomic_ops.h")
+  # The host includes Blender's atomic shim even in the host-only build used
+  # before the optional static Cycles archive is available.
+  target_include_directories(lmblender PRIVATE "${BLENDER_SOURCE_TREE}/intern/atomic")
+endif()
+if(EXISTS "${BLENDER_SOURCE_TREE}/intern/cycles/device/device.h")
+  # Host-only compilation still parses Cycles headers before a static Cycles
+  # archive is configured.
+  target_include_directories(lmblender PRIVATE "${BLENDER_SOURCE_TREE}/intern/cycles")
+endif()
 if(MSVC)
   target_compile_options(lmblender PRIVATE /W4)
 else()
