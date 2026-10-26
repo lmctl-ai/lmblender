@@ -6,62 +6,62 @@
 [![Latest release](https://img.shields.io/github/v/release/lmctl-ai/lmblender?label=release)](https://github.com/lmctl-ai/lmblender/releases)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-Every picture below is made by one example program. Each one runs from a raw URL with `lmctl autorun`, installs lmblender for your platform on first use, and writes `images/<name>.png` in the current directory in well under a minute on a four-core CPU.
+Every picture below is made by one example program. Each one runs from a raw URL with `lmctl`, installs lmblender for your platform on first use, and writes `images/<name>.png` in the current directory in well under a minute on a four-core CPU.
 
 ### Light and optics
 
 | Ball-lens caustic | Sunset and long shadows | Sunbeams in a dusty room |
 | --- | --- | --- |
 | <img src="docs/images/caustic-ball-lens.png" width="290" alt="Two glass spheres over a floor: the low one focuses the lamp to a tight bright spot, the high one spreads it into a dim disc"> | <img src="docs/images/sunset-long-shadows.png" width="290" alt="Five posts at sunset casting shadows 9.5 times their height toward the camera"> | <img src="docs/images/god-rays-window.png" width="290" alt="Light shafts from a six-pane window crossing a hazy room onto the floor"> |
-| A glass ball focuses at f = nR / (2(n-1)) = 1.5 R: at focus vs past it<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caustic-ball-lens.lms` | Sun at 6°: 8.9 air masses redden it; shadows are h/tan 6° = 9.5 h<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/sunset-long-shadows.lms` | Haze scatters 6%/m of each beam; parallel shafts, sharp floor patches<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/god-rays-window.lms` |
+| A glass ball focuses at f = nR / (2(n-1)) = 1.5 R: at focus vs past it<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caustic-ball-lens.lms` | Sun at 6°: 8.9 air masses redden it; shadows are h/tan 6° = 9.5 h<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/sunset-long-shadows.lms` | Haze scatters 6%/m of each beam; parallel shafts, sharp floor patches<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/god-rays-window.lms` |
 
 ### Global illumination and materials
 
 | Cornell box | Why a backlit hand glows red | CAD to product shot |
 | --- | --- | --- |
 | <img src="docs/images/cornell-box.png" width="290" alt="The Cornell box: red and green walls, two white blocks, ceiling lamp"> | <img src="docs/images/backlit-skin.png" width="290" alt="Four skin slabs of 2, 4, 8 and 16 mm in front of a lamp, turning from peach to deep red"> | <img src="docs/images/gear-pair-render.png" width="290" alt="A steel 18-tooth pinion meshing with a brass 36-tooth gear on a slate desk"> |
-| The classic GI test: white blocks pick up red and green bounce light<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms` | Measured skin mean free paths (red 3.7 mm, blue 0.7 mm) vs thickness<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/backlit-skin.lms` | lmcad builds involute gears (2:1, a = 54 mm), lmblender renders them<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/gear-pair-render.lms` |
+| The classic GI test: white blocks pick up red and green bounce light<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms` | Measured skin mean free paths (red 3.7 mm, blue 0.7 mm) vs thickness<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/backlit-skin.lms` | lmcad builds involute gears (2:1, a = 54 mm), lmblender renders them<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/gear-pair-render.lms` |
 
 ### Molecules and crystals
 
 | Caffeine molecule | B-DNA double helix | Rock salt at true ionic size |
 | --- | --- | --- |
 | <img src="docs/images/caffeine-molecule.png" width="290" alt="Ball-and-stick caffeine molecule in CPK colours"> | <img src="docs/images/dna-double-helix.png" width="290" alt="28 base pairs (2.7 turns) of B-DNA with coloured base pairs and major and minor grooves"> | <img src="docs/images/salt-crystal.png" width="290" alt="A block of green chloride and violet sodium ions in the rock-salt lattice"> |
-| C8H10N4O2: purine core, two C=O, three N-methyls, CPK colours<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caffeine-molecule.lms` | 10.5 bp per turn, 0.34 nm rise; 144° backbone offset makes the grooves<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/dna-double-helix.lms` | Na+ 1.02 Å + Cl- 1.81 Å = a/2: ions touch along every cube edge<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/salt-crystal.lms` |
+| C8H10N4O2: purine core, two C=O, three N-methyls, CPK colours<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/caffeine-molecule.lms` | 10.5 bp per turn, 0.34 nm rise; 144° backbone offset makes the grooves<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/dna-double-helix.lms` | Na+ 1.02 Å + Cl- 1.81 Å = a/2: ions touch along every cube edge<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/salt-crystal.lms` |
 
 ### Space and motion
 
 | Saturn and its rings to scale | Kepler's second law | Strobe photo of a bouncing ball |
 | --- | --- | --- |
 | <img src="docs/images/saturn-rings.png" width="290" alt="Saturn with its C, B and A rings, the Cassini Division and the planet shadow on the rings"> | <img src="docs/images/kepler-orbit.gif" width="290" alt="A planet on an eccentric orbit speeding up near the Sun, with equal-time beads and spokes"> | <img src="docs/images/bouncing-ball-strobe.png" width="290" alt="A white ball photographed every 1/25 s while bouncing; red bars mark predicted peak heights"> |
-| Ring radii from 1.24 to 2.27 planet radii, Cassini Division at 1.95<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/saturn-rings.lms` | Kepler equation solved per frame; equal areas in equal times (GIF)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/kepler-orbit.lms` | Restitution 0.8: each peak is 0.64 of the last; spacing shows speed<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bouncing-ball-strobe.lms` |
+| Ring radii from 1.24 to 2.27 planet radii, Cassini Division at 1.95<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/saturn-rings.lms` | Kepler equation solved per frame; equal areas in equal times (GIF)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/kepler-orbit.lms` | Restitution 0.8: each peak is 0.64 of the last; spacing shows speed<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bouncing-ball-strobe.lms` |
 
 ### Scenes shared with lmcad, lmmagnum and lmfilament
 
 | Water molecule | Buckminsterfullerene C60 | Pratt truss footbridge |
 | --- | --- | --- |
 | <img src="docs/images/ball-stick.png" width="290" alt="Water molecule"> | <img src="docs/images/buckyball.png" width="290" alt="Buckminsterfullerene C60"> | <img src="docs/images/truss-bridge.png" width="290" alt="Pratt truss footbridge"> |
-| 104.5 degree H-O-H angle (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/ball-stick.lms` | 60 atoms from icosahedral symmetry, 90 bonds (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/buckyball.lms` | Red tension, blue compression, closed-form member forces (from lmcad)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/truss-bridge.lms` |
+| 104.5 degree H-O-H angle (from lmcad)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/ball-stick.lms` | 60 atoms from icosahedral symmetry, 90 bonds (from lmcad)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/buckyball.lms` | Red tension, blue compression, closed-form member forces (from lmcad)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/truss-bridge.lms` |
 
 | Metal roughness sweep | Material sandbox | Model viewer |
 | --- | --- | --- |
 | <img src="docs/images/pbr-spheres.png" width="290" alt="Metal roughness sweep"> | <img src="docs/images/material-sandbox.png" width="290" alt="Material sandbox"> | <img src="docs/images/model-viewer.png" width="290" alt="Model viewer"> |
-| Five gold spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/material-sandbox.lms` | A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/model-viewer.lms` |
+| Five gold spheres, roughness 0.05 to 0.95 (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/pbr-spheres.lms` | Colour by gloss grid (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/material-sandbox.lms` | A posed toy robot from primitives (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/model-viewer.lms` |
 
 | 3D text | Shadows | Multi draw |
 | --- | --- | --- |
 | <img src="docs/images/text.png" width="290" alt="3D text"> | <img src="docs/images/shadows.png" width="290" alt="Shadows"> | <img src="docs/images/multidraw.png" width="290" alt="Multi draw"> |
-| Two lines with scene.label (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/text.lms` | Floor and four solids lit by a sun (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/shadows.lms` | 180 meshes in six rings (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/multidraw.lms` |
+| Two lines with scene.label (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/text.lms` | Floor and four solids lit by a sun (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/shadows.lms` | 180 meshes in six rings (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/multidraw.lms` |
 
 | Sky in mirror spheres | Falling boxes | 3D flow streamlines |
 | --- | --- | --- |
 | <img src="docs/images/cubemap.png" width="290" alt="Sky in mirror spheres"> | <img src="docs/images/bullet.png" width="290" alt="Falling boxes"> | <img src="docs/images/fluidsimulation3d.png" width="290" alt="3D flow streamlines"> |
-| A procedural sky as the cube map, reflected by three mirror spheres (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cubemap.lms` | 64 boxes with closed-form fall and bounce, no engine (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bullet.lms` | 32 ABC-flow streamlines coloured by speed (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation3d.lms` |
+| A procedural sky as the cube map, reflected by three mirror spheres (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cubemap.lms` | 64 boxes with closed-form fall and bounce, no engine (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/bullet.lms` | 32 ABC-flow streamlines coloured by speed (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation3d.lms` |
 
 | 2D vortex pair |   |   |
 | --- | --- | --- |
 | <img src="docs/images/fluidsimulation2d.png" width="290" alt="2D vortex pair"> |   |   |
-| 40 emissive streamlines of two opposite vortices (from lmmagnum and lmfilament)<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation2d.lms` |   |   |
+| 40 emissive streamlines of two opposite vortices (from lmmagnum and lmfilament)<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/fluidsimulation2d.lms` |   |   |
 
 ### Homepage clips from lmctl.com
 
@@ -70,18 +70,18 @@ The four 10 s clips on the [lmctl.com](https://lmctl.com) homepage, one per leve
 | Level 1: names and teams | Level 2: agents talk through a Lead |
 | --- | --- |
 | <img src="docs/images/level-1-sessions.gif" width="440" alt="Level 1: names and teams"> | <img src="docs/images/level-2-orchestration.gif" width="440" alt="Level 2: agents talk through a Lead"> |
-| Sessions gather into Lead, Coder and Review rows; a lens inspects one and a usage gauge rises<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-1-sessions.lms`<br>[MP4](docs/videos/level-1-sessions.mp4) | Provider-coloured agents orbit the Lead; message packets travel through it<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-2-orchestration.lms`<br>[MP4](docs/videos/level-2-orchestration.mp4) |
+| Sessions gather into Lead, Coder and Review rows; a lens inspects one and a usage gauge rises<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-1-sessions.lms`<br>[MP4](docs/videos/level-1-sessions.mp4) | Provider-coloured agents orbit the Lead; message packets travel through it<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-2-orchestration.lms`<br>[MP4](docs/videos/level-2-orchestration.mp4) |
 
 | Level 3: a hands-off Lead | Level 4: automation |
 | --- | --- |
 | <img src="docs/images/level-3-hands-off-lead.gif" width="440" alt="Level 3: a hands-off Lead"> | <img src="docs/images/level-4-automation.gif" width="440" alt="Level 4: automation"> |
-| A requirement and its checklist enter; a reviewed result returns<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-3-hands-off-lead.lms`<br>[MP4](docs/videos/level-3-hands-off-lead.mp4) | A brainstorm becomes a Work, Review, QA and Acceptance pipeline<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-4-automation.lms`<br>[MP4](docs/videos/level-4-automation.mp4) |
+| A requirement and its checklist enter; a reviewed result returns<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-3-hands-off-lead.lms`<br>[MP4](docs/videos/level-3-hands-off-lead.mp4) | A brainstorm becomes a Work, Review, QA and Acceptance pipeline<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/level-4-automation.lms`<br>[MP4](docs/videos/level-4-automation.mp4) |
 
 ## Quick start (one minute)
 
 ```sh
 npm install -g @lmctl-ai/lmctl
-lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms
+lmctl https://raw.githubusercontent.com/lmctl-ai/lmblender/main/examples/cornell-box.lms
 ```
 
 That downloads the example, compiles its scene to DSL bytecode, fetches the lmblender release for your OS (Linux x64/arm64, macOS x64/arm64, Windows x64) and writes `images/cornell-box.png`. To write your own scene, save this as `hello.lms` and run `lmscript hello.lms`:

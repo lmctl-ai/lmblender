@@ -528,7 +528,7 @@ python3 - <<'PYGAL'
 import pathlib, re
 readme = pathlib.Path("README.md").read_text()
 prefix = "https://raw.githubusercontent.com/lmctl-ai/lmblender/main/"
-urls = re.findall(r"lmctl autorun (https://\S+?\.lms)", readme)
+urls = re.findall(r"lmctl(?: autorun)? (https://\S+?\.lms)", readme)
 assert len(urls) >= 12, f"expected >= 12 autorun captions, found {len(urls)}"
 for url in urls:
     assert url.startswith(prefix + "examples/") and url.endswith(".lms"), url

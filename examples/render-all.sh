@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 # SPDX-License-Identifier: MIT
 # Regenerate every README gallery image in docs/images/ by running each story
-# example exactly as `lmctl autorun` would: in an empty scratch directory, writing
+# example exactly as `lmctl` would: in an empty scratch directory, writing
 # images/<name>.png (and images/kepler-orbit.gif). lmblender (and lmcad for the
 # gear story) come from PATH or are installed by lmscript; ffmpeg makes the GIF.
 set -euo pipefail

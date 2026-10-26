@@ -2,7 +2,7 @@
 
 - Every example self-executes: it creates the output directories, compiles the `_dsl_` block with `savedsl`,
   calls `system(argv, 3600000)`, prints stdout, and exits on a nonzero result. It writes `images/<name>.png` in
-  the current directory, so `lmctl autorun <raw URL>` from an empty directory produces the picture. The explicit
+  the current directory, so `lmctl <raw URL>` from an empty directory produces the picture. The explicit
   one-hour timeout covers slow renders; lmscript's default is 60 seconds.
 - README gallery = 12 story examples (caustic-ball-lens, sunset-long-shadows, god-rays-window, cornell-box,
   backlit-skin, gear-pair-render [lmcad + lmblender], caffeine-molecule, dna-double-helix, salt-crystal,

@@ -30,7 +30,7 @@ lmscript /path/to/lmblender/examples/cornell-box.lms
 1. Create `examples/<name>.lms` using `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest"`.
 2. Generate its rendered output: `lmscript examples/<name>.lms` (writes `images/<name>.png`).
 3. Add the example to `test.sh` test list.
-4. Add the image to `README.md` gallery with `<img src="images/<name>.png" ...>` and `lmctl autorun <raw .lms URL>` caption.
+4. Add the image to `README.md` gallery with `<img src="images/<name>.png" ...>` and `lmctl <raw .lms URL>` caption.
 
 ### Adding a host function/method
 1. Declare the method/function in the DSL schema (`schema/lmblender.dsl.json`).
