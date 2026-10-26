@@ -1,8 +1,8 @@
 # lmblender tool book feedback
 
-Session: lmblender book stages 2 to 7, 2026-10-22 and 2026-10-23, one Claude Opus 5.5 Lead on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host. Feedback for the publish-tool-book recipe at https://lmctl.com/skills/publish-tool-book-skill.html, for lmblender, for lmscript, and for lmctl.
+Session: lmblender book stages 2 to 7, 2026-10-22 and 2026-10-23, one Claude Opus 5.5 Lead on a four-core Neoverse-N1 (AWS Graviton2) Linux arm64 host. Feedback for the publish-tool-book recipe at https://lmctl.com/skills/publish-tool-book-skill.html, for lmblender, for lmscript, and for lmctl autorun.
 
-Scope actually done: read the recipe and tool docs; ported all 44 top-level examples to Blender 5.2 Python and compared the renders; wrote an eleven-page tutorial with a checklist; fixed the lmblender bugs the comparison found; added README art with light and dark variants; checked the README in a browser. Not done yet: book.json, get_started.html, the solo and trio quickrun scripts, the lmctl.com build and deploy, and the provider autorun runs (recipe steps 4, 5, 7, 8, and 9). The lmctl feedback below is therefore from reading the recipe and from how stage prompts arrived, not from running quickruns.
+Scope actually done: read the recipe and tool docs; ported all 44 top-level examples to Blender 5.2 Python and compared the renders; wrote an eleven-page tutorial with a checklist; fixed the lmblender bugs the comparison found; added README art with light and dark variants; checked the README in a browser. Not done yet: book.json, get_started.html, the solo and trio quickrun scripts, the lmctl.com build and deploy, and the provider autorun runs (recipe steps 4, 5, 7, 8, and 9). The lmctl autorun feedback below is therefore from reading the recipe and from how stage prompts arrived, not from running quickruns.
 
 ## What worked
 
@@ -88,7 +88,7 @@ Scope actually done: read the recipe and tool docs; ported all 44 top-level exam
 
 6. List reserved identifiers (cmd was a surprise) in lmscript help.
 
-## Enhancement requests: lmctl
+## Enhancement requests: lmctl autorun
 
 These come from the recipe and from how stage prompts reached this session; no quickrun was run in this book yet, so treat them as untested.
 
