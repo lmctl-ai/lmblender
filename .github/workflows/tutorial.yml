@@ -8,16 +8,6 @@ on:
   workflow_dispatch:
   # Tutorials install @latest, so verify again after main CI publishes a release.
   # A docs push alone may run before that release and exercise the previous one.
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
-  push:
-    branches: [main]
-    paths:
-      - docs/tutorial/**
-      - scripts/tutorial-run.py
-      - .github/workflows/tutorial.yml
 
 permissions:
   contents: read

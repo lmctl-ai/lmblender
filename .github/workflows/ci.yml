@@ -11,12 +11,6 @@ on:
         description: Validate the complete automatic-release platform set in a dry run
         type: boolean
         default: false
-  push:
-    branches: [main]
-    tags: ["v*"]
-    paths-ignore: ["durable-memory/**", "**.md"]
-  pull_request:
-    paths-ignore: ["durable-memory/**", "**.md"]
 
 # Build jobs compile third-party source; they only need read access. The
 # tag-only release job owns the write token.
