@@ -21,6 +21,7 @@ deps_install=${BLENDER_DEPS_INSTALL:-$build/blender-deps-harvest}
 [ -d "$blender_source" ] || { echo "pinned Blender source missing at $blender_source: run scripts/fetch-cycles-source.sh or set BLENDER_SOURCE_TREE" >&2; exit 2; }
 cycles_build=${CYCLES_BUILD_DIR:-$build/cycles-static}
 static_prefix=${LMBLENDER_STATIC_PREFIX:-$build/static-prefix-gcc14}
+bash tests/native-input-preflight.sh
 scripts/check-native-inputs.sh "$blender_source" "$cycles_build" "$static_prefix"
 mkdir -p "$build"
 find "$build" -maxdepth 1 -type f \
