@@ -58,7 +58,7 @@ scene.render_sequence("build/kepler-orbit/frame-{frame}.png", 0, frames - 1, 6, 
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

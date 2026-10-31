@@ -1,8 +1,8 @@
 # lmblender guide for DSL authors
 
-`lmblender` executes lmscript DSL v5 bytecode and constructs a Cycles CPU scene directly in C++. It does not launch Blender or execute Python. For zero-setup use, declare `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";`, save the block with `savedsl`, then invoke `system(argv, 3600000)` and check its result as shown below. `@latest` resolves to the newest non-draft release and updates a cached executable when its version differs; use an exact tag such as `@v0.3.4` for reproducibility or a fixed offline cache. A matching executable already on `PATH` takes precedence. For local development, put the build binary first on `PATH`. The source schema is at `schema/lmblender.dsl.json`. `lmblender --dsl-schema` prints the compact human summary, while `lmblender --dsl-schema --json` prints the exact embedded schema bytes; `--schema` remains a legacy JSON alias. `lmblender --version` prints the host, Cycles, and OpenImageDenoise versions. `lmblender --dsl-signatures` prints the host API; `lmscript --dsl-signatures schema/lmblender.dsl.json` prints the schema API. `test.sh` checks byte identity and signature parity.
+`lmblender` executes lmscript DSL v5 bytecode and constructs a Cycles CPU scene directly in C++. It does not launch Blender or execute Python. For zero-setup use, declare `_dsl_ cli="lmblender" install="github:lmctl-ai/lmblender@latest";`, save the block with `savedsl`, then invoke `system(argv, 3600000)` and check its result as shown below. `@latest` resolves to the newest non-draft release and updates a cached executable when its version differs; use an exact tag such as `@v0.3.4` for reproducibility or a fixed offline cache. A matching executable already on `PATH` takes precedence. For local development, put the build binary first on `PATH`. The source schema is at `schema/lmblender.dsl.json`. `lmblender --lmcode-schema` prints the compact human summary, while `lmblender --lmcode-schema --json` prints the exact embedded schema bytes; `--schema` remains a legacy JSON alias. `lmblender --version` prints the host, Cycles, and OpenImageDenoise versions. `lmblender --lmcode-signatures` prints the host API; `lmscript --lmcode-signatures schema/lmblender.dsl.json` prints the schema API. `test.sh` checks byte identity and signature parity.
 
-Use the `_dsl_ cli= install=` form above to bind to lmblender. The R44 `import "github:OWNER/REPO@TAG PROGRAM"` form applies to hosts that provide an `lmapi` `--cli-schema`. lmblender exposes an lmscript DSL schema through `--dsl-schema`, not an `lmapi` CLI schema, so that import form does not apply.
+Use the `_dsl_ cli= install=` form above to bind to lmblender. The R44 `import "github:OWNER/REPO@TAG PROGRAM"` form applies to hosts that provide an `lmapi` `--cli-schema`. lmblender exposes an lmscript DSL schema through `--lmcode-schema`, not an `lmapi` CLI schema, so that import form does not apply.
 
 ## A complete program
 
@@ -20,7 +20,7 @@ scene.render_png("out/ball.png", 64, 640, 480);
 end _lmcode_
 savedsl(p, "out/scene.dslb");
 let exe = dsl_cli(p).get(0, "lmblender");
-let run = system([exe, "--dsl", "out/scene.dslb"], 3600000);
+let run = system([exe, "--lmcode", "out/scene.dslb"], 3600000);
 println(run.stdout);
 println(run.stderr);  // exposure warnings, e.g. "... clipped to white ... call scene.exposure(-2.5)"
 if (run.code != 0) { println(f"lmblender failed ({run.code}): {run.stdout} {run.stderr}"); exit(1); }
@@ -40,7 +40,7 @@ Coordinates are right-handed, Z-up, with +X right and +Y away from the default v
 
 ## Host API signatures
 
-This host-only list is generated from `lmblender --dsl-signatures` by `scripts/update-llm-guide.py`; the SDK standard signatures are filtered out and `test.sh` fails when host declarations drift. String, math, collection and byte-file functions are built in through lmcode std and need no host schema declarations:
+This host-only list is generated from `lmblender --lmcode-signatures` by `scripts/update-llm-guide.py`; the SDK standard signatures are filtered out and `test.sh` fails when host declarations drift. String, math, collection and byte-file functions are built in through lmcode std and need no host schema declarations:
 
 ```text
 context scene: Scene
@@ -227,7 +227,7 @@ For an animated loop, add mesh and camera keys at the first, middle, and final f
 
 ## Errors and recovery
 
-The host prints one JSON line with `ok`, `code`, and a human-readable `message` (plus `line`/`column` when a DSL statement is to blame); direct `--version`, `--schema`, and `--dsl-signatures` commands print plain text or JSON to stdout. Codes:
+The host prints one JSON line with `ok`, `code`, and a human-readable `message` (plus `line`/`column` when a DSL statement is to blame); direct `--version`, `--schema`, and `--lmcode-signatures` commands print plain text or JSON to stdout. Codes:
 
 - `LOAD_BAD_BYTECODE`, `LOAD_SCHEMA_MISMATCH`, `LOAD_UNBOUND`: recompile the `.lms` against the current schema (exit 3, phase `load`).
 - `RUN_HOST`: a host validation failure (range, non-finite value, missing file, wrong extension, unsupported combination); the message names the method and the accepted bounds. `RUN_ERROR` is a VM fault such as division by zero.

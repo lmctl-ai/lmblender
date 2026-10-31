@@ -25,7 +25,7 @@ scene.render_png("images/text.png", 32, 800, 400);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

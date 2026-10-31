@@ -23,7 +23,7 @@ For comparison, the earlier 64 spp + OIDN end-to-end measurements were 19.93 s a
 
 ## Reproducing the phase profile
 
-Build with `cmake --build build --parallel 2`. Compile `tests/throughput-bench.lms` with `lmscript`, then run the resulting bytecode as `LMBLENDER_PROFILE=1 build/lmblender --dsl <bytecode>`. Cycles emits `Average path tracing time` and `Average denoising time` in its debug log; lmblender reports scene build, BVH/session reset, output-driver encode time, and render wall time to stderr.
+Build with `cmake --build build --parallel 2`. Compile `tests/throughput-bench.lms` with `lmscript`, then run the resulting bytecode as `LMBLENDER_PROFILE=1 build/lmblender --lmcode <bytecode>`. Cycles emits `Average path tracing time` and `Average denoising time` in its debug log; lmblender reports scene build, BVH/session reset, output-driver encode time, and render wall time to stderr.
 
 `scene.set_threads(n)` selects 1–64 CPU threads. Adaptive sampling is controlled by Cycles and currently starts at its automatic minimum; the requested sample count remains the maximum. See the preset profiles in `presets/presets.json` for output size and quality settings.
 

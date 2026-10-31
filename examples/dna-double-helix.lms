@@ -72,7 +72,7 @@ scene.render_png("images/dna-double-helix.png", 32, 900, 500);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

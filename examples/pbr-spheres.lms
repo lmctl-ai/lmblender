@@ -22,7 +22,7 @@ scene.render_png("images/pbr-spheres.png", 32, 800, 300);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

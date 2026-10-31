@@ -82,7 +82,7 @@ end _lmcode_
 savedsl(p, out);
 # run the bytecode with the host it was compiled against (the 240 frames take a while: 10 min limit)
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

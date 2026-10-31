@@ -59,7 +59,7 @@ def variants(data):
 
 
 def run_case(label, bytecode):
-    result = subprocess.run([str(binary), "--dsl", str(bytecode)], env=environment,
+    result = subprocess.run([str(binary), "--lmcode", str(bytecode)], env=environment,
                             text=True, capture_output=True, timeout=8)
     if result.returncode < 0 or result.returncode in (134, 139) or \
        "AddressSanitizer" in result.stderr or "runtime error:" in result.stderr:
@@ -109,7 +109,7 @@ for variant, payload in [("valid", mtl_base), *variants(mtl_base),
     run_case("mtl/" + variant, mtl_program)
     total += 1
 
-# Corrupt compiled DSL v5 bytes, not just the source text. The host must reject
+# Corrupt compiled lmcode v6 bytes, not just the source text. The host must reject
 # bad opcodes and truncation with structured errors before dispatching a method.
 base_bytecode = mtl_program.read_bytes()
 for variant, payload in variants(base_bytecode):

@@ -25,7 +25,7 @@ scene.render_png("build/rigid-body-rotations.png", 8, 320, 180);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 run = system(argv, 3600000);
 println(trim(run.stdout));

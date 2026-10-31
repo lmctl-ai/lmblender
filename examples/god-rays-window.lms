@@ -64,7 +64,7 @@ scene.render_png("images/god-rays-window.png", 32, 800, 500);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

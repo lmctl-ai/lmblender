@@ -108,7 +108,7 @@ end _lmcode_
 cad_out = "build/gear-pair-cad.dslb";
 savedsl(cad, cad_out);
 cad_argv = dsl_cli(cad);
-push(cad_argv, "--dsl");
+push(cad_argv, "--lmcode");
 push(cad_argv, cad_out);
 c = system(cad_argv, 3600000);
 println(trim(c.stdout));
@@ -138,7 +138,7 @@ scene.render_png("images/gear-pair-render.png", 32, 900, 560);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

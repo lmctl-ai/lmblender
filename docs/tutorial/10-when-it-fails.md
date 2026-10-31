@@ -55,7 +55,7 @@ end _lmcode_
 file = "when-it-fails.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, file);
 r = system(argv, 3600000);
 println(trim(r.stdout));
@@ -98,7 +98,7 @@ Every script on these pages prints `r.stdout` on failure because the JSON error 
 |---|---|---|
 | `RUN_HOST` with a range in the message | A value is outside its allowed range | Use a value inside the range in the message |
 | `_dsl_: install github:lmctl-ai/lmblender@latest: GitHub API HTTP 403 rate limit exceeded` | lmscript asks GitHub for the latest release on each run, and unauthenticated requests are limited per hour | Wait an hour, or set a token for the run: `GITHUB_TOKEN=$(gh auth token) lmscript FILE.lms` |
-| `r.code` is null and nothing is printed after about 60 seconds | lmscript's shell-style `system` call stops a program after 60 s by default, and a large render took longer | Lower the samples or size, or run the host with a longer limit: `argv = dsl_cli(p); push(argv, "--dsl"); push(argv, file); r = system(argv, 3600000);` as the repository examples do |
+| `r.code` is null and nothing is printed after about 60 seconds | lmscript's shell-style `system` call stops a program after 60 s by default, and a large render took longer | Lower the samples or size, or run the host with a longer limit: `argv = dsl_cli(p); push(argv, "--lmcode"); push(argv, file); r = system(argv, 3600000);` as the repository examples do |
 | `LOAD_SCHEMA_MISMATCH` or `LOAD_BAD_BYTECODE`, exit 3 | The bytecode was compiled for a different lmblender version | Run the `.lms` again so lmscript recompiles it; do not reuse old `.dslb` files |
 | `OUTPUT_PATH` | The output directory does not exist, or is a symlink | Create the directory first, for example `mkdir("renders");` in lmscript before the block |
 | `OBJ_INVALID`, `GLTF_INVALID`, `IMAGE_INVALID` | The input file is broken, or a path is wrong | Check that the path is relative to where you run lmscript, and open the file in another tool |

@@ -20,7 +20,7 @@ The measured lmblender path uses HDR input, denoising albedo and normal guides, 
 Build the project as documented in `BUILD.md`, compile a DSL scene with `lmscript`, then run:
 
 ```sh
-OIDN_VERBOSE=2 LMBLENDER_PROFILE=1 build/lmblender --dsl build/oidn-profile.dslb
+OIDN_VERBOSE=2 LMBLENDER_PROFILE=1 build/lmblender --lmcode build/oidn-profile.dslb
 ```
 
 Check for the OIDN version, `ISA: NEON`, thread count, Cycles' `Average denoising time`, and the final `LMBLENDER_PROFILE` line. Set `OIDN_NUM_THREADS=4` to compare with an explicit thread count; on this host it gives no measurable gain over OIDN's four-thread default.

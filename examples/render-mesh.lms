@@ -14,7 +14,7 @@ end _lmcode_
 savedsl(p, bytecode);
 // The long system() timeout lets slow regression renders finish (default is 60 s).
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, bytecode);
 run = system(argv, 3600000);
 println(trim(run.stdout));

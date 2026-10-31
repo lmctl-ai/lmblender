@@ -1,0 +1,9 @@
+{
+  "reason": "Exact lmblender 0.3.2 release history; current usage is in README and guides.",
+  "lines": {
+    "docs/RELEASE_NOTES.md": [
+      "afe9bc57233a6bf5cab30e26a1c7ccef6f478ee815b5de8064683a9cc34dcbf0",
+      "d2c6ca9a25dc8caa843ee7ad22548c7a1b45e2a6d79333162c28bc6d142387f9"
+    ]
+  }
+}

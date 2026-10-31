@@ -7,5 +7,5 @@ signatures = Path(sys.argv[2]).read_text(encoding="utf-8").splitlines()
 missing = [signature for signature in signatures
            if (signature[7:] if signature.startswith("method ") else signature) not in summary]
 if missing:
-    raise SystemExit("--dsl-schema summary omits registry signatures: " + "; ".join(missing[:8]))
+    raise SystemExit("--lmcode-schema summary omits registry signatures: " + "; ".join(missing[:8]))
 print(f"schema summary contains all {len(signatures)} canonical signatures")

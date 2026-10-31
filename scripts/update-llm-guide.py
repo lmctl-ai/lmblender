@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2025-2026 lmblender contributors
 # SPDX-License-Identifier: MIT
-"""Keep the host API block in docs/LLM_GUIDE.md identical to `lmblender --dsl-signatures`.
+"""Keep the host API block in docs/LLM_GUIDE.md identical to `lmblender --lmcode-signatures`.
 
     scripts/update-llm-guide.py --binary build/lmblender          # rewrite the block
     scripts/update-llm-guide.py --binary build/lmblender --check  # fail if it drifted
@@ -51,7 +51,7 @@ def main():
     parser.add_argument("--binary", required=True, help="lmblender executable to query")
     parser.add_argument("--check", action="store_true", help="exit 1 instead of rewriting when the block is stale")
     args = parser.parse_args()
-    effective = subprocess.run([args.binary, "--dsl-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
+    effective = subprocess.run([args.binary, "--lmcode-signatures"], check=True, capture_output=True, text=True).stdout.splitlines()
     root = GUIDE.parent.parent
     bridge = runpy.run_path(str(root / "scripts/merge-std.py"))
     standard = bridge["canonical_signatures"](json.loads((root / "cpp/std/lmcode-std.schema.json").read_text()))
@@ -70,7 +70,7 @@ def main():
             print(f"  undocumented: {name}", file=sys.stderr)
         return 1
     if current == signatures:
-        print("docs/LLM_GUIDE.md host API block matches --dsl-signatures")
+        print("docs/LLM_GUIDE.md host API block matches --lmcode-signatures")
         return 0
     if args.check:
         missing = sorted(set(signatures.splitlines()) - set(current.splitlines()))

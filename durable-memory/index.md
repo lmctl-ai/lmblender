@@ -35,7 +35,7 @@ lmscript /path/to/lmblender/examples/cornell-box.lms
 ### Adding a host function/method
 1. Declare the method/function in the DSL schema (`schema/lmblender.dsl.json`).
 2. Implement and register the method in `src/registry.cpp` using the typed `dslvm::Registry` API.
-3. Verify that `./test.sh` passes and signatures match `lmscript --dsl-signatures`.
+3. Verify that `./test.sh` passes and signatures match `lmscript --lmcode-signatures`.
 
 ## Releases
 Releases are built and published automatically on every push to `main` when CI workflows succeed.

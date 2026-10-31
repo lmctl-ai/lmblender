@@ -3221,7 +3221,7 @@ dslvm::Registry make_registry() {
     return dslvm::Value::none();
   });
   registry.method("Scene", "version", {}, "string", [](void *, dslvm::Args &) {
-    return dslvm::Value::string("lmblender " LMBLENDER_VERSION " (DSL bytecode v5; Cycles " CYCLES_VERSION_STRING ")");
+    return dslvm::Value::string("lmblender " LMBLENDER_VERSION " (DSL bytecode v6; Cycles " CYCLES_VERSION_STRING ")");
   });
   return registry;
 }
@@ -3230,7 +3230,7 @@ dslvm::Registry make_registry() {
 int main(int argc, char **argv) {
   lmblender::platform::binary_stdout();
   if (argc == 2 && std::string(argv[1]) == "--version") {
-    std::cout << "lmblender " LMBLENDER_VERSION " (DSL bytecode v5)\nCycles " << CYCLES_VERSION_STRING << '\n';
+    std::cout << "lmblender " LMBLENDER_VERSION " (DSL bytecode v6)\nCycles " << CYCLES_VERSION_STRING << '\n';
 #ifdef WITH_OPENIMAGEDENOISE
     std::cout << "OpenImageDenoise " << OIDN_VERSION_STRING << '\n';
 #else
@@ -3273,8 +3273,8 @@ int main(int argc, char **argv) {
     }
     return std::cout ? 0 : 4;
   };
-  if (argc == 2 && std::string(argv[1]) == "--dsl-schema") return print_schema_summary();
-  if (argc == 3 && std::string(argv[1]) == "--dsl-schema" && std::string(argv[2]) == "--json")
+  if (argc == 2 && std::string(argv[1]) == "--lmcode-schema") return print_schema_summary();
+  if (argc == 3 && std::string(argv[1]) == "--lmcode-schema" && std::string(argv[2]) == "--json")
     return print_embedded_schema();
   if (argc == 3 && std::string(argv[1]) == "--schema" && std::string(argv[2]) == "--json")
     return print_embedded_schema();
@@ -3283,12 +3283,12 @@ int main(int argc, char **argv) {
     std::cout << '\n'; // Preserve the pre-R42 compatibility behavior.
     return result;
   }
-  if (argc == 2 && std::string(argv[1]) == "--dsl-signatures") {
+  if (argc == 2 && std::string(argv[1]) == "--lmcode-signatures") {
     for (const auto &signature : registry.signatures()) std::cout << signature << '\n';
     return 0;
   }
-  if (argc != 3 || std::string(argv[1]) != "--dsl") {
-    std::cerr << "usage: lmblender --version | --schema | --presets | --preset-show NAME | --dsl-signatures | --dsl BYTECODE.dslb\n";
+  if (argc != 3 || std::string(argv[1]) != "--lmcode") {
+    std::cerr << "usage: lmblender --version | --schema | --presets | --preset-show NAME | --lmcode-signatures | --lmcode BYTECODE.dslb\n";
     return 2;
   }
   try {

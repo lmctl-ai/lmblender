@@ -56,6 +56,9 @@ grep -q '^WITH_CYCLES_EMBREE:BOOL=ON$' "${CYCLES_BUILD_DIR:-$build/cycles-static
   echo "static Cycles was not configured with Embree CPU BVH" >&2; exit 1;
 }
 exe="$build/lmblender$exe_suffix"
+python3 tests/check-host-flags.py schema/lmblender.dsl.json "$exe"
+python3 tests/lmcode-host-flags.test.py
+python3 tools/check-lmcode-host-flags.py
 export PATH="$build_path:$PATH"
 compile_dsl() {
   local source="$1" bytecode="$2" stem temporary log
@@ -78,14 +81,14 @@ compile_dsl() {
   rm -f "$temporary" "$log"
 }
 cmp schema/lmblender.dsl.json <("$exe" --schema | head -c -1)
-cmp schema/lmblender.dsl.json <("$exe" --dsl-schema --json)
+cmp schema/lmblender.dsl.json <("$exe" --lmcode-schema --json)
 cmp schema/lmblender.dsl.json <("$exe" --schema --json)
-"$exe" --dsl-schema >"$build/schema-summary.txt"
-"$exe" --dsl-signatures >"$build/host-signatures.txt"
-"${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
+"$exe" --lmcode-schema >"$build/schema-summary.txt"
+"$exe" --lmcode-signatures >"$build/host-signatures.txt"
+"${LMSCRIPT:-lmscript}" --lmcode-signatures schema/lmblender.dsl.json >"$build/compiler-signatures.txt"
 diff -u "$build/compiler-signatures.txt" "$build/host-signatures.txt"
 
-"$LMSCRIPT" --dsl-signatures schema/lmblender.dsl.json --without-std >"$build/compiler-host-signatures.txt"
+"$LMSCRIPT" --lmcode-signatures schema/lmblender.dsl.json --without-std >"$build/compiler-host-signatures.txt"
 python3 scripts/merge-std.py --host-only schema/lmblender.dsl.json "$build/host-only-schema.json"
 python3 - schema/lmblender.dsl.json "$build/host-only-schema.json" <<'PYJSON'
 import json,sys
@@ -223,18 +226,18 @@ python3 tests/png_metrics.py images/install-and-run.png
 rm -f images/install-and-run.png
 compile_dsl examples/presets/external-load.lms "$build/preset-external.dslb"
 compile_dsl examples/presets/switch.lms "$build/preset-switch.dslb"
-"$exe" --dsl "$build/version.dslb" >"$build/version-result.json"
-"$exe" --dsl "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
-"$exe" --dsl "$build/obj-mtl-gallery.dslb" >"$build/obj-mtl-gallery-result.json"
-"$exe" --dsl "$build/obj-mtl-control.dslb" >"$build/obj-mtl-control-result.json"
-"$exe" --dsl "$build/obj-mtl-no-bump.dslb" >"$build/obj-mtl-no-bump-result.json"
+"$exe" --lmcode "$build/version.dslb" >"$build/version-result.json"
+"$exe" --lmcode "$build/import-mesh.dslb" >"$build/import-mesh-result.json"
+"$exe" --lmcode "$build/obj-mtl-gallery.dslb" >"$build/obj-mtl-gallery-result.json"
+"$exe" --lmcode "$build/obj-mtl-control.dslb" >"$build/obj-mtl-control-result.json"
+"$exe" --lmcode "$build/obj-mtl-no-bump.dslb" >"$build/obj-mtl-no-bump-result.json"
 python3 tests/obj_mtl_quality.py "$build/obj-mtl-gallery.png" "$build/obj-mtl-control.png" "$build/obj-mtl-no-bump.png"
-"$exe" --dsl "$build/import-ply.dslb" >"$build/import-ply-result.json"
-"$exe" --dsl "$build/gltf-import.dslb" >"$build/gltf-import-result.json"
-"$exe" --dsl "$build/gltf-emission.dslb" >"$build/gltf-emission-result.json"
+"$exe" --lmcode "$build/import-ply.dslb" >"$build/import-ply-result.json"
+"$exe" --lmcode "$build/gltf-import.dslb" >"$build/gltf-import-result.json"
+"$exe" --lmcode "$build/gltf-emission.dslb" >"$build/gltf-emission-result.json"
 python3 tests/gltf_emission_quality.py "$build/import-gltf-emission.png"
-"$exe" --dsl "$build/glb-import.dslb" >"$build/glb-import-result.json"
-if "$exe" --dsl "$build/gltf-invalid.dslb" >"$build/gltf-invalid-result.json"; then
+"$exe" --lmcode "$build/glb-import.dslb" >"$build/glb-import-result.json"
+if "$exe" --lmcode "$build/gltf-invalid.dslb" >"$build/gltf-invalid-result.json"; then
   echo "malformed GLB unexpectedly imported" >&2; exit 1
 fi
 python3 - "$build/gltf-invalid-result.json" <<'PYERR'
@@ -248,7 +251,7 @@ PYERR
 expect_dsl_error() {
   local stem=$1 code=$2
   shift 2
-  if env "$@" "$exe" --dsl "$build/$stem.dslb" >"$build/$stem-result.json"; then
+  if env "$@" "$exe" --lmcode "$build/$stem.dslb" >"$build/$stem-result.json"; then
     echo "$stem unexpectedly succeeded (expected $code)" >&2
     return 1
   fi
@@ -260,7 +263,7 @@ print(f"{sys.argv[1].rsplit('/', 1)[-1]}: refused with {sys.argv[2]}: {r.get('me
 PY
 }
 # Authored glTF TEXCOORD_0 drives the base-color texture (no projection override).
-"$exe" --dsl "$build/gltf-uv.dslb" >"$build/gltf-uv-result.json"
+"$exe" --lmcode "$build/gltf-uv.dslb" >"$build/gltf-uv-result.json"
 python3 tests/gltf_uv_quality.py "$build/gltf-uv.png"
 # Scene-wide geometry budget stops accumulation at creation time, before any render.
 expect_dsl_error obj-mtl-invalid OBJ_MTL_INVALID
@@ -280,7 +283,7 @@ expect_dsl_error run-budget RUN_BUDGET LMBLENDER_MAX_INSTRUCTIONS=1000000
 expect_dsl_error run-budget RUN_TIMEOUT LMBLENDER_RUN_TIMEOUT_SECONDS=1 LMBLENDER_MAX_INSTRUCTIONS=0
 # Output path policy: a confinement root keeps renders inside it, and a symlinked parent
 # directory is refused even without a root.
-LMBLENDER_OUTPUT_ROOT="$build" "$exe" --dsl "$build/output-inside.dslb" >"$build/output-inside-result.json"
+LMBLENDER_OUTPUT_ROOT="$build" "$exe" --lmcode "$build/output-inside.dslb" >"$build/output-inside-result.json"
 test -s "$build/output-inside.png"
 rm -f /tmp/lmblender-output-escape.png
 expect_dsl_error output-escape OUTPUT_PATH LMBLENDER_OUTPUT_ROOT="$build"
@@ -297,85 +300,85 @@ expect_dsl_error output-symlink OUTPUT_PATH
 rm -f "$build/linked-out"
 # The fallback key light exists only for scenes without any light: a black world with a
 # zero-power area light must render black.
-"$exe" --dsl "$build/no-default-light.dslb" >"$build/no-default-light-result.json"
+"$exe" --lmcode "$build/no-default-light.dslb" >"$build/no-default-light-result.json"
 python3 tests/pixel_bounds_quality.py "$build/no-default-light.png" 0 2
 # Presets that switch auto-framing off must place the camera explicitly.
 expect_dsl_error preset-no-autoframe PRESET_INVALID
-"$exe" --dsl "$build/preset-no-autoframe-position.dslb" >"$build/preset-no-autoframe-position-result.json"
+"$exe" --lmcode "$build/preset-no-autoframe-position.dslb" >"$build/preset-no-autoframe-position-result.json"
 python3 tests/pixel_bounds_quality.py "$build/preset-no-autoframe-position.png" 20 255
-"$exe" --dsl "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
-"$exe" --dsl "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
-"$exe" --dsl "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
-"$exe" --dsl "$build/camera-dof.dslb" >"$build/camera-dof-result.json"
-"$exe" --dsl "$build/primitives-gallery.dslb" >"$build/primitives-gallery-result.json"
-"$exe" --dsl "$build/strands-showcase.dslb" >"$build/strands-showcase-result.json"
-"$exe" --dsl "$build/strand-geometry.dslb" >"$build/strand-geometry-result.json"
+"$exe" --lmcode "$build/sky-texture.dslb" >"$build/sky-texture-result.json"
+"$exe" --lmcode "$build/environment-texture.dslb" >"$build/environment-texture-result.json"
+"$exe" --lmcode "$build/transparent-film.dslb" >"$build/transparent-film-result.json"
+"$exe" --lmcode "$build/camera-dof.dslb" >"$build/camera-dof-result.json"
+"$exe" --lmcode "$build/primitives-gallery.dslb" >"$build/primitives-gallery-result.json"
+"$exe" --lmcode "$build/strands-showcase.dslb" >"$build/strands-showcase-result.json"
+"$exe" --lmcode "$build/strand-geometry.dslb" >"$build/strand-geometry-result.json"
 python3 tests/strands_quality.py "$build/strands-showcase.png"
-"$exe" --dsl "$build/hair-tiling.dslb" >"$build/hair-tiling-result.json"
+"$exe" --lmcode "$build/hair-tiling.dslb" >"$build/hair-tiling-result.json"
 python3 tests/hair_tiling_quality.py "$build/hair-tiling.png"
-"$exe" --dsl "$build/loft-outline.dslb" >"$build/loft-outline-result.json"
-"$exe" --dsl "$build/loft-outline-control.dslb" >"$build/loft-outline-control-result.json"
+"$exe" --lmcode "$build/loft-outline.dslb" >"$build/loft-outline-result.json"
+"$exe" --lmcode "$build/loft-outline-control.dslb" >"$build/loft-outline-control-result.json"
 python3 tests/loft_outline_quality.py "$build/loft-outline.png" "$build/loft-outline-control.png"
-"$exe" --dsl "$build/spot-falloff.dslb" >"$build/spot-falloff-result.json"
+"$exe" --lmcode "$build/spot-falloff.dslb" >"$build/spot-falloff-result.json"
 python3 tests/spot_falloff_quality.py "$build/spot-falloff.png"
-"$exe" --dsl "$build/light-falloff.dslb" >"$build/light-falloff-result.json"
+"$exe" --lmcode "$build/light-falloff.dslb" >"$build/light-falloff-result.json"
 python3 tests/light_falloff_quality.py "$build/light-falloff.png"
-"$exe" --dsl "$build/bridge-render.dslb" >"$build/bridge-render-result.json"
+"$exe" --lmcode "$build/bridge-render.dslb" >"$build/bridge-render-result.json"
 # Matched rig: the same scene rendered by Blender 5.2 through tests/bridge_matched_reference.py.
 python3 tests/bridge_parity.py tests/fixtures/bridge/blender-matched-reference.png "$build/bridge-from-blendercli.png" 0.98 4 "Blender-matched-rig"
 # BlenderCLI's own render uses a different rig and view transform, so only the geometry is compared.
 python3 tests/bridge_parity.py tests/fixtures/bridge/blendercli-reference.png "$build/bridge-from-blendercli.png" 0.92 256 "BlenderCLI-to-lmblender"
 for effect in volume-fog volume-control subsurface subsurface-control glass-transmission glass-opaque-control; do
-  "$exe" --dsl "$build/$effect.dslb" >"$build/$effect-result.json"
+  "$exe" --lmcode "$build/$effect.dslb" >"$build/$effect-result.json"
 done
-"$exe" --dsl "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
-LMBLENDER_TEST_XML_ORACLE=1 "$exe" --dsl "$build/render-mesh-xml.dslb" >"$build/render-mesh-xml-result.json"
-"$exe" --dsl "$build/material-principled.dslb" >"$build/material-principled-result.json"
-"$exe" --dsl "$build/camera-look-at.dslb" >"$build/camera-look-at-result.json"
-"$exe" --dsl "$build/render-exr.dslb" >"$build/render-exr-result.json"
-"$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-result.json"
+"$exe" --lmcode "$build/render-mesh.dslb" >"$build/render-mesh-result.json"
+LMBLENDER_TEST_XML_ORACLE=1 "$exe" --lmcode "$build/render-mesh-xml.dslb" >"$build/render-mesh-xml-result.json"
+"$exe" --lmcode "$build/material-principled.dslb" >"$build/material-principled-result.json"
+"$exe" --lmcode "$build/camera-look-at.dslb" >"$build/camera-look-at-result.json"
+"$exe" --lmcode "$build/render-exr.dslb" >"$build/render-exr-result.json"
+"$exe" --lmcode "$build/mesh-instances.dslb" >"$build/mesh-instances-result.json"
 cp "$build/mesh-instances.png" "$build/mesh-instances-first.png"
-"$exe" --dsl "$build/mesh-instances.dslb" >"$build/mesh-instances-repeat-result.json"
+"$exe" --lmcode "$build/mesh-instances.dslb" >"$build/mesh-instances-repeat-result.json"
 cmp "$build/mesh-instances-first.png" "$build/mesh-instances.png"
-"$exe" --dsl "$build/rigid-body-rotations.dslb" >"$build/rigid-body-rotations-result.json"
+"$exe" --lmcode "$build/rigid-body-rotations.dslb" >"$build/rigid-body-rotations-result.json"
 test -s "$build/rigid-body-rotations.png"
-"$exe" --dsl "$build/rotation-normals-rotated.dslb" >"$build/rotation-normals-rotated-result.json"
-"$exe" --dsl "$build/rotation-normals-reference.dslb" >"$build/rotation-normals-reference-result.json"
+"$exe" --lmcode "$build/rotation-normals-rotated.dslb" >"$build/rotation-normals-rotated-result.json"
+"$exe" --lmcode "$build/rotation-normals-reference.dslb" >"$build/rotation-normals-reference-result.json"
 python3 tests/rotation_normals_quality.py "$build/rotation-normals-rotated.png" "$build/rotation-normals-reference.png"
-if "$exe" --dsl "$build/rotation-instance-reject.dslb" >"$build/rotation-instance-reject-result.json" 2>&1; then
+if "$exe" --lmcode "$build/rotation-instance-reject.dslb" >"$build/rotation-instance-reject-result.json" 2>&1; then
   echo "instance rotation unexpectedly succeeded" >&2
   exit 1
 fi
 grep -q "cannot rotate an instance" "$build/rotation-instance-reject-result.json"
-"$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-result.json"
+"$exe" --lmcode "$build/embree-heavy.dslb" >"$build/embree-heavy-result.json"
 # Same scene through Cycles BVH2 in this build: the reference stays in the current display encoding.
 cp "$build/embree-heavy.png" "$build/embree-heavy-embree.png"
-LMBLENDER_TEST_BVH2=1 "$exe" --dsl "$build/embree-heavy.dslb" >"$build/embree-heavy-bvh2-result.json"
+LMBLENDER_TEST_BVH2=1 "$exe" --lmcode "$build/embree-heavy.dslb" >"$build/embree-heavy-bvh2-result.json"
 mv "$build/embree-heavy.png" "$build/embree-heavy-bvh2.png"
 mv "$build/embree-heavy-embree.png" "$build/embree-heavy.png"
-"$exe" --dsl "$build/render-settings.dslb" >"$build/render-settings-result.json"
-"$exe" --dsl "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
-"$exe" --dsl "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
-"$exe" --dsl "$build/camera-aspect.dslb" >"$build/camera-aspect-result.json"
-"$exe" --dsl "$build/camera-aspect-cube.dslb" >"$build/camera-aspect-cube-result.json"
-"$exe" --dsl "$build/image-texture.dslb" >"$build/image-texture-result.json"
-"$exe" --dsl "$build/primitive-uv.dslb" >"$build/primitive-uv-result.json"
-"$exe" --dsl "$build/checker-moire.dslb" >"$build/checker-moire-result.json"
-"$exe" --dsl "$build/depth-range.dslb" >"$build/depth-range-result.json"
-"$exe" --dsl "$build/exposure.dslb" >"$build/exposure-result.json" 2>"$build/exposure-stderr.txt"
-"$exe" --dsl "$build/gltf-transform.dslb" >"$build/gltf-transform-result.json"
-"$exe" --dsl "$build/display-transforms.dslb" >"$build/display-transforms-result.json"
-"$exe" --dsl "$build/render-passes.dslb" >"$build/render-passes-result.json"
-"$exe" --dsl "$build/denoise-quality.dslb" >"$build/denoise-quality-result.json" 2>"$build/denoise-quality.log"
-"$exe" --dsl "$build/animation-tween.dslb" >"$build/animation-tween-result.json"
-"$exe" --dsl "$build/animation-visibility-optics.dslb" >"$build/animation-visibility-optics-result.json"
-"$exe" --dsl "$build/motion-blur.dslb" >"$build/motion-blur-result.json"
-"$exe" --dsl "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
-"$exe" --dsl "$build/material-maps.dslb" >"$build/material-maps-result.json"
-"$exe" --dsl "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
-"$exe" --dsl "$build/quality-preset.dslb" >"$build/quality-preset-result.json"
-"$exe" --dsl "$build/denoise-speed.dslb" >"$build/denoise-speed-result.json"
-if "$exe" --dsl "$build/sequence-budget.dslb" >"$build/sequence-budget-result.json"; then
+"$exe" --lmcode "$build/render-settings.dslb" >"$build/render-settings-result.json"
+"$exe" --lmcode "$build/procedural-materials.dslb" >"$build/procedural-materials-result.json"
+"$exe" --lmcode "$build/orthographic-camera.dslb" >"$build/orthographic-camera-result.json"
+"$exe" --lmcode "$build/camera-aspect.dslb" >"$build/camera-aspect-result.json"
+"$exe" --lmcode "$build/camera-aspect-cube.dslb" >"$build/camera-aspect-cube-result.json"
+"$exe" --lmcode "$build/image-texture.dslb" >"$build/image-texture-result.json"
+"$exe" --lmcode "$build/primitive-uv.dslb" >"$build/primitive-uv-result.json"
+"$exe" --lmcode "$build/checker-moire.dslb" >"$build/checker-moire-result.json"
+"$exe" --lmcode "$build/depth-range.dslb" >"$build/depth-range-result.json"
+"$exe" --lmcode "$build/exposure.dslb" >"$build/exposure-result.json" 2>"$build/exposure-stderr.txt"
+"$exe" --lmcode "$build/gltf-transform.dslb" >"$build/gltf-transform-result.json"
+"$exe" --lmcode "$build/display-transforms.dslb" >"$build/display-transforms-result.json"
+"$exe" --lmcode "$build/render-passes.dslb" >"$build/render-passes-result.json"
+"$exe" --lmcode "$build/denoise-quality.dslb" >"$build/denoise-quality-result.json" 2>"$build/denoise-quality.log"
+"$exe" --lmcode "$build/animation-tween.dslb" >"$build/animation-tween-result.json"
+"$exe" --lmcode "$build/animation-visibility-optics.dslb" >"$build/animation-visibility-optics-result.json"
+"$exe" --lmcode "$build/motion-blur.dslb" >"$build/motion-blur-result.json"
+"$exe" --lmcode "$build/material-nodes.dslb" >"$build/material-nodes-result.json"
+"$exe" --lmcode "$build/material-maps.dslb" >"$build/material-maps-result.json"
+"$exe" --lmcode "$build/backface-culling.dslb" >"$build/backface-culling-result.json"
+"$exe" --lmcode "$build/quality-preset.dslb" >"$build/quality-preset-result.json"
+"$exe" --lmcode "$build/denoise-speed.dslb" >"$build/denoise-speed-result.json"
+if "$exe" --lmcode "$build/sequence-budget.dslb" >"$build/sequence-budget-result.json"; then
   echo "sequence budget test unexpectedly rendered" >&2
   exit 1
 fi
@@ -387,18 +390,18 @@ assert r.get('ok') is False and r.get('code') == 'RUN_HOST', r
 m=r.get('message','')
 assert '64,000,000' in m and '240 frames' in m and '960x540' in m and '<= 123 frames' in m, r
 PY
-"$exe" --dsl "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
+"$exe" --lmcode "$build/material-nodes-control.dslb" >"$build/material-nodes-control-result.json"
 for preset in diagram-dark-16x9-draft diagram-dark-16x9-final product-studio turntable-neutral glass-showcase technical-clean; do
-  "$exe" --dsl "$build/preset-$preset.dslb" >"$build/preset-$preset-result.json"
+  "$exe" --lmcode "$build/preset-$preset.dslb" >"$build/preset-$preset-result.json"
 done
-"$exe" --dsl "$build/preset-explicit-overrides.dslb" >"$build/preset-explicit-overrides-result.json"
+"$exe" --lmcode "$build/preset-explicit-overrides.dslb" >"$build/preset-explicit-overrides-result.json"
 python3 tests/preset_explicit_overrides_quality.py "$build"
-"$exe" --dsl "$build/preset-external.dslb" >"$build/preset-external-result.json"
-"$exe" --dsl "$build/preset-switch.dslb" >"$build/preset-switch-result.json"
+"$exe" --lmcode "$build/preset-external.dslb" >"$build/preset-external-result.json"
+"$exe" --lmcode "$build/preset-switch.dslb" >"$build/preset-switch-result.json"
 "$exe" --presets >"$build/presets-list.txt"
 "$exe" --preset-show product-studio >"$build/preset-product-studio.json"
 rm -f "$build/render-timeout.png"
-if "$exe" --dsl "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
+if "$exe" --lmcode "$build/render-timeout.dslb" >"$build/render-timeout-result.json"; then
   echo "render-timeout test unexpectedly completed" >&2
   exit 1
 fi
@@ -493,8 +496,8 @@ python3 tests/denoise_speed_quality.py "$build/denoise-speed-fast.png" "$build/d
 # An instance of a smooth source shades smooth (it used to fall back to flat shading).
 compile_dsl tests/instance-smooth-direct.lms "$build/instance-smooth-direct.dslb"
 compile_dsl tests/instance-smooth-instanced.lms "$build/instance-smooth-instanced.dslb"
-"$exe" --dsl "$build/instance-smooth-direct.dslb" >"$build/instance-smooth-direct-result.json"
-"$exe" --dsl "$build/instance-smooth-instanced.dslb" >"$build/instance-smooth-instanced-result.json"
+"$exe" --lmcode "$build/instance-smooth-direct.dslb" >"$build/instance-smooth-direct-result.json"
+"$exe" --lmcode "$build/instance-smooth-instanced.dslb" >"$build/instance-smooth-instanced-result.json"
 python3 tests/instance_smooth_quality.py "$build/instance-smooth-direct.png" "$build/instance-smooth-instanced.png"
 # README story examples: each renders through this build and passes a sanity/effect gate.
 for story in caustic-ball-lens:900:560 sunset-long-shadows:900:560 backlit-skin:900:500 \
@@ -502,13 +505,13 @@ for story in caustic-ball-lens:900:560 sunset-long-shadows:900:560 backlit-skin:
     salt-crystal:800:570 saturn-rings:900:560 bouncing-ball-strobe:900:520 kepler-orbit:720:450; do
   IFS=: read -r name width height <<<"$story"
   compile_dsl "examples/$name.lms" "$build/$name.dslb"
-  "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
+  "$exe" --lmcode "$build/$name.dslb" >"$build/$name-result.json"
   python3 tests/story_quality.py "$name" "$build/$name.png" "$width" "$height"
 done
 # Scenes shared with lmcad, lmmagnum and lmfilament (README table "Scenes shared ..."): each must render a PNG.
 for name in ball-stick buckyball truss-bridge pbr-spheres material-sandbox model-viewer text shadows multidraw cubemap bullet fluidsimulation3d fluidsimulation2d; do
   compile_dsl "examples/$name.lms" "$build/$name.dslb"
-  "$exe" --dsl "$build/$name.dslb" >"$build/$name-result.json"
+  "$exe" --lmcode "$build/$name.dslb" >"$build/$name-result.json"
   test -s "$build/$name.png"
 done
 # The four lmctl.com homepage storyboards (240 Cycles frames each) are compile-checked only; examples/render-all.sh renders them.
@@ -566,12 +569,12 @@ else
   echo "SKIP: set BLENDERCLI_BLENDER to run Blender-based display-transform and pass numeric tests"
 fi
 python3 tests/png_compare.py "$build/imported-mesh.png" "$build/imported-mesh-xml.png"
-diff -u <("${LMSCRIPT:-lmscript}" --dsl-signatures schema/lmblender.dsl.json) <("$exe" --dsl-signatures)
+diff -u <("${LMSCRIPT:-lmscript}" --lmcode-signatures schema/lmblender.dsl.json) <("$exe" --lmcode-signatures)
 python3 - "$build/version-result.json" "$build/import-mesh-result.json" "$build/render-mesh-result.json" "$build/render-mesh-xml-result.json" "$build/material-principled-result.json" "$build/camera-look-at-result.json" "$build/render-exr-result.json" "$build/mesh-instances-result.json" "$build/render-settings-result.json" "$build/procedural-materials-result.json" "$build/orthographic-camera-result.json" "$build/image-texture-result.json" "$build/display-transforms-result.json" "$build/render-passes-result.json" "$build/animation-tween-result.json" "$build/motion-blur-result.json" "$build/material-nodes-result.json" "$build/material-maps-result.json" "$build/backface-culling-result.json" "$build/material-nodes-control-result.json" "$build/preset-external-result.json" "$build/preset-switch-result.json" <<'PY'
 import json,sys
 for path in sys.argv[1:]:
     result=json.load(open(path)); assert result.get('ok') is True, result
-print('DSL v5 runner, mesh import, direct Cycles rendering, motion blur, display transforms, render passes, and embedded schema pass')
+print('lmcode v6 runner, mesh import, direct Cycles rendering, motion blur, display transforms, render passes, and embedded schema pass')
 PY
 for binary in "$exe" "$build/cycles-static/bin/cycles$exe_suffix"; do
   [ ! -x "$binary" ] && continue

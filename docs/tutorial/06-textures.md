@@ -33,7 +33,7 @@ end _lmcode_
 file = "textures.dslb";
 savedsl(p, file);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, file);
 r = system(argv, 3600000);
 println(trim(r.stdout));

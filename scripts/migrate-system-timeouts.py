@@ -15,7 +15,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SHORT = re.compile(
     r"^(?P<indent>[ \t]*)(?P<result>r|run) = system \$\{dsl_cli\(p\)\} "
-    r"--dsl \$\{(?P<file>out|file)\};$",
+    r"--lmcode \$\{(?P<file>out|file)\};$",
     re.M,
 )
 OLD = re.compile(r"\bsystem\s+\$\{dsl_cli\([^)]*\)\}")
@@ -43,7 +43,7 @@ def rewrite(path: pathlib.Path) -> bool:
         indent + line
         for line in (
             "argv = dsl_cli(p);",
-            'push(argv, "--dsl");',
+            'push(argv, "--lmcode");',
             f"push(argv, {file});",
             f"{result} = system(argv, 3600000);",
             f"println(trim({result}.stdout));",
@@ -75,13 +75,13 @@ def rewrite(path: pathlib.Path) -> bool:
 def rewrite_concat(path: pathlib.Path) -> bool:
     """Use the guide's checked form for recent long-running video examples."""
     source = path.read_text(encoding="utf-8")
-    old = ('r = system(concat(dsl_cli(p), ["--dsl", out]), 3000000);\n'
+    old = ('r = system(concat(dsl_cli(p), ["--lmcode", out]), 3000000);\n'
            'if (r.code != 0) { println(r.stderr + r.stdout); }\n'
            'assert(r.code == 0);')
     if old not in source:
         return False
     new = ('argv = dsl_cli(p);\n'
-           'push(argv, "--dsl");\n'
+           'push(argv, "--lmcode");\n'
            'push(argv, out);\n'
            'r = system(argv, 3600000);\n'
            'println(trim(r.stdout));\n'

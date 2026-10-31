@@ -18,7 +18,7 @@ end _lmcode_
 out = ARGV.len() > 0 ? ARGV[0] : "build/denoise-speed.dslb";
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 run = system(argv, 3600000);
 println(trim(run.stdout));

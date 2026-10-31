@@ -98,7 +98,7 @@ scene.render_png("images/hello.png", 32, 640, 480);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));
@@ -107,7 +107,7 @@ println("wrote images/hello.png");
 ```
 
 - [Tutorial](docs/tutorial/index.md): ten short steps from one sphere to imported meshes, animation, and error handling.
-- [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes (`lmblender --dsl-schema` prints the same list).
+- [DSL guide](docs/LLM_GUIDE.md): every scene call with units, bounds, and error codes (`lmblender --lmcode-schema` prints the same list).
 - [Compared with Blender](docs/tutorial/11-compare-with-blender.md): 44 examples rendered by lmblender and by Blender 5.2, side by side.
 - `examples/render-all.sh` re-renders every gallery image into `docs/images/`.
 

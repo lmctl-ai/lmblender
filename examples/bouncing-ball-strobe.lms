@@ -55,7 +55,7 @@ scene.render_png("images/bouncing-ball-strobe.png", 24, 900, 520);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 r = system(argv, 3600000);
 println(trim(r.stdout));

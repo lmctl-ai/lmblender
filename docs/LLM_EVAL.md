@@ -53,7 +53,7 @@ This evaluation measures that directly.
    default 60 s `system` timeout and discards lmblender's exit code and JSON. Any longer render (turntables,
    sequences, volumes, grass at 2 threads) killed the renderer with exit 0, no message and no image. This was the
    main cause of the 8 baseline failures.
-   *Fix:* the skeleton uses `system([exe, "--dsl", file], 3600000)`, prints `stdout`, and exits on a non-zero code.
+   *Fix:* the skeleton uses `system([exe, "--lmcode", file], 3600000)`, prints `stdout`, and exits on a non-zero code.
    The guide explains the limit.
    Reproduced on 2026-10-23 with the same 4096-sample, 1280×720 sphere scene: the shorthand returned
    `code=null` after 60.24 s without a PNG, while the argument-list call returned code 0 and wrote the PNG

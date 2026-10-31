@@ -14,7 +14,7 @@ scene.expect_int(grass.triangle_count(), 1056);
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 run = system(argv, 3600000);
 println(trim(run.stdout));

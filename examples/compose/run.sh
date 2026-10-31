@@ -14,12 +14,12 @@ mkdir -p "$out/build"
 
 for cad in mug plate-with-holes; do
   ( cd "$cad_source" && "${LMSCRIPT:-lmscript}" "examples/$cad.lms" "$out/$cad.dslb" >/dev/null )
-  ( cd "$out" && "$cad_bin" --dsl "$out/$cad.dslb" )
+  ( cd "$out" && "$cad_bin" --lmcode "$out/$cad.dslb" )
 done
 
 sed "s|schema=\"../lmcad/schema/lmcad.dsl.json\"|schema=\"$cad_source/schema/lmcad.dsl.json\"|" "$root/examples/compose/bracket-cad.lms" >"$out/bracket-cad.lms"
 "${LMSCRIPT:-lmscript}" "$out/bracket-cad.lms" "$out/bracket-cad.dslb" >/dev/null
-( cd "$out" && "$cad_bin" --dsl "$out/bracket-cad.dslb" )
+( cd "$out" && "$cad_bin" --lmcode "$out/bracket-cad.dslb" )
 
 for item in mug plate; do
   "${LMSCRIPT:-lmscript}" "$root/examples/compose/$item-render.lms" "$out/$item-render.dslb" >/dev/null

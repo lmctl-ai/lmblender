@@ -7,7 +7,7 @@ let broken = scene.import_gltf("tests/fixtures/gltf/malformed-json.glb");
 end _lmcode_
 savedsl(p, out);
 argv = dsl_cli(p);
-push(argv, "--dsl");
+push(argv, "--lmcode");
 push(argv, out);
 run = system(argv, 3600000);
 println(trim(run.stdout));
